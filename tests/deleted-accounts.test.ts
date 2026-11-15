@@ -319,6 +319,22 @@ test("hold actions are super admin only; the restore cookie is HttpOnly, SameSit
   assert.match(set, /secure: process\.env\.NODE_ENV === "production"/);
 });
 
+test("a purged account's Terms acceptances stay, stamped with the deletion, for their own 6 years", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const { requestDeletion, runDeletions } = await import("../src/lib/account-deletion");
+  const { purgeTermsProof } = await import("../src/lib/retention");
+  const a = await account();
+  await q.run("INSERT INTO terms_versions (hash, version, body, created_at) VALUES ('h-del', '15 Nov 2026', 'Terms', ?) ON CONFLICT (hash) DO NOTHING", now());
+  await q.run("INSERT INTO terms_acceptances (kind, user_id, email, version, hash, name, accepted_at) VALUES ('account', ?, ?, '15 Nov 2026', 'h-del', 'Del', ?)", a.id, a.email, now());
+  await requestDeletion(a.id);
+  await ageDeletion(a.id, 15);
+  await runDeletions();
+  await purgeTermsProof(now(), Date.now() + 60_000);
+  const row = (await q.get<{ user_id: number | null; account_deleted_at: number | null }>("SELECT user_id, account_deleted_at FROM terms_acceptances WHERE email = ? AND hash = 'h-del'", a.email))!;
+  assert.equal(row.user_id, null);
+  assert.ok(row.account_deleted_at, "stamped");
+});
+
 test("the restore route is open through the site lock and its name can't be taken as a link", async () => {
   const fs = await import("node:fs");
   assert.match(fs.readFileSync("src/proxy.ts", "utf8"), /"\/restore"/);

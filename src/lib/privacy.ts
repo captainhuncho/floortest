@@ -117,7 +117,13 @@ export async function dataFor(email: string) {
   const projects = account
     ? await q.all<Record<string, unknown>>("SELECT title, artist, genre, original_name, size, duration, created_at FROM library_tracks WHERE user_id = ? ORDER BY created_at", account.id)
     : [];
-  return { email: e, account, sent, messages, emails, waitlist, newsletter, reopenAlerts, comments, shareLinks, teams, verification, projects };
+  // Their Terms acceptances (as an account or as a sender): the proof we keep, so it's part of their copy.
+  const termsAcceptances = await q.all<Record<string, unknown>>(
+    "SELECT kind, email, name, version, hash, accepted_at, pdf_sent_at FROM terms_acceptances WHERE lower(email) = ? OR user_id = ? ORDER BY accepted_at",
+    e,
+    account ? account.id : null,
+  );
+  return { email: e, account, sent, messages, emails, waitlist, newsletter, reopenAlerts, comments, shareLinks, teams, verification, projects, termsAcceptances };
 }
 
 /**
@@ -138,6 +144,9 @@ export async function eraseSender(email: string) {
     // (email_suppressions) stays: it is what keeps us from emailing them again.
     await db.run("DELETE FROM outbox WHERE lower(to_email) = ?", e);
     await db.run("DELETE FROM newsletter_subscribers WHERE lower(email) = ?", e);
+    // Terms acceptances stay: they are the proof of what was agreed, kept for possible legal claims and deleted 6 years
+    // after the tick by the nightly clean-up (owner, 15 Nov; lib/retention.ts purgeTermsProof). The Privacy Policy
+    // wording for this is the owner's.
     return { senders: gone.changes, files };
   });
   await drainNow();

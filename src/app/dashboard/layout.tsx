@@ -20,9 +20,14 @@ import { teamsFor } from "@/lib/account-members";
 import { feedbackAskDue } from "@/lib/feedback";
 import { currentTheme, themeClass } from "@/lib/theme";
 import { SkipLink } from "@/components/SkipLink";
+import { redirect } from "next/navigation";
+import { deskNeedsTerms } from "@/lib/terms-record";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, view, theme] = await Promise.all([requireUser(), viewingAs(), currentTheme()]);
+  // New Terms (or none recorded yet): the person ticks them before the desk opens (Research brief, owner 15 Nov).
+  // Never in an admin's view of someone else's desk.
+  if (await deskNeedsTerms(!!view, user.actor_id)) redirect("/accept-terms");
   // Retention cleanup runs after the response, so it never slows a page down.
   after(() => purgeExpired().catch((e) => console.error("[purge]", e)));
   // All of the desk's reads at once (speed phase 1: the feedback ask and the send switch used to wait for the rest).

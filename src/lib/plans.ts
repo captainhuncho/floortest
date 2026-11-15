@@ -4,7 +4,7 @@ export const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
 export const ACCEPTED_EXT = [".wav", ".mp3"];
 
 export const RESERVED_HANDLES = new Set([
-  "api", "dashboard", "sent", "waitlist", "login", "signup", "logout", "t", "s", "settings", "pricing", "about", "admin", "floortest", "v", "trust", "licenses", "contact", "terms", "privacy", "forgot", "reset", "verify-email", "confirm-email", "unsubscribe", "robots.txt", "sitemap.xml", "icon.svg", "_next", "static", "favicon.ico",
+  "api", "dashboard", "sent", "waitlist", "login", "signup", "logout", "t", "s", "settings", "pricing", "about", "admin", "floortest", "v", "trust", "licenses", "contact", "terms", "accept-terms", "privacy", "forgot", "reset", "verify-email", "confirm-email", "unsubscribe", "robots.txt", "sitemap.xml", "icon.svg", "_next", "static", "favicon.ico",
   // Every other top-level page in src/app, so no one can hold a handle a page shadows, and a visit to it is never counted
   // as someone's receiving link (Safety review of #435, 5 Nov).
   "c", "receipt", "join", "invite", "cookies", "security", "takedown", "coming-soon", "content-rules", "privacy-choices", "law-enforcement",
