@@ -350,10 +350,11 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
         signal: AbortSignal.timeout(5_000),
       });
       status = res.ok ? "sent" : `failed (${res.status})`;
-      if (res.ok) providerId = ((await res.json().catch(() => ({}))) as { id?: string }).id ?? null;
-      // The copy counts as sent only once the email is accepted, so a failed try sends it again on the retry (Safety M1).
-      if (res.ok && attachments.length && p.termsPdf) await q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ? AND pdf_sent_at IS NULL", now(), p.termsPdf.acceptanceId);
-      else console.error("[mail] Resend rejected", res.status, await res.text().catch(() => ""));
+      if (res.ok) {
+        providerId = ((await res.json().catch(() => ({}))) as { id?: string }).id ?? null;
+        // The copy counts as sent only once the email is accepted, so a failed try sends it again on the retry (Safety M1).
+        if (attachments.length && p.termsPdf) await q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ? AND pdf_sent_at IS NULL", now(), p.termsPdf.acceptanceId);
+      } else console.error("[mail] Resend rejected", res.status, await res.text().catch(() => ""));
     } catch (e) {
       status = "failed (network)";
       console.error("[mail] delivery failed", e);

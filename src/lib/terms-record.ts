@@ -82,11 +82,17 @@ export async function needsTermsTick(who: { userId: number } | { email: string }
 /**
  * Records a tick for the current Terms. An account's row also keeps the person's email, so it still proves the
  * acceptance after the account is deleted (kept 6 years, lib/retention.ts). Returns the new row (and whether it is the
- * first for this text).
+ * first for this text). Runs under a lock on the person, so a double submit or two sends at once record one tick and
+ * send one copy (Safety, 15 Nov). Pass `db` to run inside the caller's transaction (sign-up).
  */
-export async function recordAcceptance(who: { userId: number; email: string } | { email: string }, name: string, terms?: CurrentTerms, db: Queryable = q) {
+export async function recordAcceptance(who: { userId: number; email: string } | { email: string }, name: string, terms?: CurrentTerms, db?: Queryable) {
   const t = terms ?? (await currentTerms());
+  return db ? recordLocked(who, name, t, db) : q.tx((tx) => recordLocked(who, name, t, tx));
+}
+
+async function recordLocked(who: { userId: number; email: string } | { email: string }, name: string, t: CurrentTerms, db: Queryable) {
   const account = "userId" in who;
+  await db.get("SELECT pg_advisory_xact_lock(hashtext(?))", account ? `terms:user:${who.userId}` : `terms:sender:${who.email}`);
   // Ticking the text they last accepted again adds nothing (no row, no copy): a resubmitted form can't grow the table
   // or send copy after copy (Safety M3). A text accepted before and changed since is a new tick, so it gets its row.
   const last = await latestAcceptance(account ? { userId: who.userId } : { email: who.email }, db);

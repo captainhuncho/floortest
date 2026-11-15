@@ -51,6 +51,34 @@ test("a copy is attached only to the person who accepted, never to another recip
   assert.equal(pdfOf(tries.at(-1)!), undefined);
 });
 
+test("a successful send logs no rejection, with or without a copy (Safety H1)", async () => {
+  const { queueMail, deliver } = await import("../src/lib/mail");
+  const { recordAcceptance, pendingTermsPdf } = await import("../src/lib/terms-record");
+  const logged: string[] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => void logged.push(args.map(String).join(" "));
+  try {
+    answer = 200;
+    const plain = await queueMail({ userId: null, to: "plain@example.test", subject: "Hello", body: "b" });
+    assert.equal(await deliver(plain), "sent");
+    await recordAcceptance({ email: "withcopy@example.test" }, "With Copy");
+    const withCopy = await queueMail({ userId: null, to: "withcopy@example.test", subject: "Delivered", body: "b", termsPdf: await pendingTermsPdf("withcopy@example.test") });
+    assert.equal(await deliver(withCopy), "sent");
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(logged.filter((l) => l.includes("Resend rejected")), []);
+});
+
+test("two ticks of the same text at once record one row (lock on the person)", async () => {
+  const { q } = await import("../src/lib/db");
+  const { recordAcceptance } = await import("../src/lib/terms-record");
+  const email = "twice@example.test";
+  const results = await Promise.all([recordAcceptance({ email }, "Twice"), recordAcceptance({ email }, "Twice")]);
+  assert.equal(results.filter((r) => r.added).length, 1);
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE email = ?", email), 1);
+});
+
 test("copies to one address are capped at 3 a day, whatever asks for them", async () => {
   const { q } = await import("../src/lib/db");
   const { termsPdfMail } = await import("../src/lib/terms-mail");
