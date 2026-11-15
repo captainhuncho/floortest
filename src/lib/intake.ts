@@ -1,4 +1,5 @@
 /** Intake: checks before a sender can send, the two-step upload, and confirming a sender's email. */
+import { pendingTermsPdf } from "./terms-record";
 import { SHARING_TERMS_VERSION } from "./legal";
 import { discardFiles } from "@/lib/deletion";
 import { queueDeletion } from "./deletion-core";
@@ -573,6 +574,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
                 subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "),
                 body: fillEmail(delivered.body, vars),
                 details: receiptDetails([track], fresh.name, collection?.name),
+                termsPdf: await pendingTermsPdf(sender.email, db),
               },
               db,
             ),

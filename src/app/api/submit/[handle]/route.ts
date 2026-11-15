@@ -5,6 +5,7 @@ import { userByHandle } from "@/lib/desk";
 import { readSubmission } from "@/lib/submission";
 import { ipFrom } from "@/lib/ratelimit";
 import { confirmedEmail } from "@/lib/sender-code";
+import { currentTermsOrNull, needsTermsTick, recordAcceptance } from "@/lib/terms-record";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,20 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   if ("error" in read) return bad(read.error, read.status);
   // Without an account, the email must be confirmed with a code first (which is also where the bot check happens).
   if (!account && (await confirmedEmail()) !== read.meta.email) return NextResponse.json({ error: "Confirm your email first.", needsCode: true }, { status: 401 });
+  // Senders without an account tick the Terms against their confirmed email: on their first send, and again on the
+  // next send after the Terms change (Research brief, owner 15 Nov).
+  if (!account) {
+    // Terms that can't be read at all (no good copy on this server yet): nothing is sent or recorded (Safety, 15 Nov).
+    const terms = await currentTermsOrNull();
+    if (!terms) return bad("Couldn't check the Terms just now. Nothing was sent. Try again in a minute: your details are still here.", 503);
+    if (await needsTermsTick({ email: read.meta.email }, terms)) {
+      // The tick comes with the hash of the Terms the form showed, which must be the Terms in force now: the record
+      // proves which text was ticked, and Terms that changed while the form was open are shown again (Safety M2).
+      if (body.terms_tick !== true || body.terms_hash !== terms.hash)
+        return NextResponse.json({ error: "Tick the box to accept the Terms before sending.", termsNeeded: true, termsVersion: terms.version, termsHash: terms.hash }, { status: 409 });
+      await recordAcceptance({ email: read.meta.email }, read.meta.name, terms);
+    }
+  }
 
   try {
     return NextResponse.json(await startUpload(receiver, read.meta, read.size, ipFrom(req.headers)));
