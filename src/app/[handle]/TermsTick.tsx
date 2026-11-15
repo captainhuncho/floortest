@@ -21,8 +21,8 @@ export function TermsTick({ checked, onChange, updated, hash }: { checked: boole
           I have read, understood and agree to the{" "}
           <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-4">
             Terms
-          </a>{" "}
-          and{" "}
+          </a>
+          , and have read the{" "}
           <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-4">
             Privacy Policy
           </a>
