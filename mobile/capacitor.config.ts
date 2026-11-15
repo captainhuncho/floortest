@@ -16,6 +16,8 @@ const config: CapacitorConfig = {
   appName: "FloorTest",
   webDir: "www",
   backgroundColor: "#10110f",
+  // Lets the site tell the app from a browser (src/lib/in-app.ts): Google sign-in is website-only (App Review 4.8).
+  appendUserAgent: "FloorTestApp",
   server: {
     url,
     cleartext: url.startsWith("http://"),
