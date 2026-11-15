@@ -5,6 +5,7 @@ import type { SubmissionMeta } from "@/lib/intake";
 import { folderLimit } from "@/lib/plan-store";
 import { cleanGenre, MIX_STATUS, AI_USE, RELEASE_STATUS, MAX_BATCH_TRACKS, MAX_RELEASE_TRACKS } from "@/lib/plans";
 import { normalEmail } from "./email-normal";
+import { receiverAsksPlayChoice } from "./account-types";
 
 type Problem = { error: string; status: number };
 
@@ -75,7 +76,10 @@ export async function readSubmission(
       mixStatus: pick("mix_status", MIX_STATUS),
       genre,
       originalName: fileName,
-      setsOk: body.sets_ok === true,
+      // Send rules by receiver type (owner, 15 Nov): a Label or A&R desk gets the sender's choice, evaluation only unless
+      // they chose "ok_to_play"; every other desk is DJ-style, so sending means it may be played. The old sets_ok field
+      // is ignored.
+      setsOk: receiverAsksPlayChoice(receiver.kind) ? body.play === "ok_to_play" : true,
       ...(release ? { release } : batch ? { batch } : {}),
       // How many tracks this send holds, so they go out in one receipt email (src/lib/send-receipts.ts).
       ...((release || batch) && Number.isInteger(body.send_size) && Number(body.send_size) >= 2

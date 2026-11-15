@@ -9,13 +9,12 @@ import { CARD, Icon } from "@/components/Kit";
 import { fmtBytes, fmtTime } from "@/lib/format";
 import { EmailCode, startEmailCheck, type TermsState } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
-import { SetsPermission } from "./SetsPermission";
 import { TransferScreen } from "./TransferScreen";
 import { TermsTick } from "./TermsTick";
 import { MAX_FILES, SENDER_KEY, useTrackUpload, type Item } from "./useTrackUpload";
 import { stored, useBrowserValue } from "@/components/useBrowserValue";
 import { recallSender } from "@/lib/sender-memory";
-import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "./Choice";
+import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, PLAY_CHOICES, RELEASE_CHOICES, playHelp } from "./Choice";
 import { normalEmail } from "@/lib/email-normal";
 
 /** Things that arrive on the page (a chosen track, a step, the result) settle in from just below. Reduced motion keeps only the fade. */
@@ -70,6 +69,7 @@ export function SubmitForm({
   promise = [],
   receiverFirstName,
   termsHash,
+  receiverAsksPlay = false,
 }: {
   handle: string;
   receiverName: string;
@@ -98,6 +98,8 @@ export function SubmitForm({
   promise?: string[];
   /** The receiver's first name, for "Add a message for …" (falls back to the first word of their name). */
   receiverFirstName?: string;
+  /** The receiver is a label or A&R desk: the sender picks Evaluation only or OK to play. Everyone else is DJ-style (no choice). */
+  receiverAsksPlay?: boolean;
 }) {
   const { items, phase, error, setError, sender, setSender, remembered, artFailed, add, remove, edit, send, reset: resetUpload, cancel, startedAt } = useTrackUpload(handle, { asAccount: !!account });
   const [drag, setDrag] = useState(false);
@@ -107,7 +109,7 @@ export function SubmitForm({
   const [mix, setMix] = useState("");
   const [release, setRelease] = useState("");
   const [ai, setAi] = useState("");
-  const [setsOk, setSetsOk] = useState(false);
+  const [play, setPlay] = useState("evaluation");
   // Everything still missing, each shown under its field and listed together above Send.
   const [issues, setIssues] = useState<Issue[]>([]);
   // Details remembered on this device show as one line until the sender asks to change them.
@@ -232,7 +234,7 @@ export function SubmitForm({
     setMix("");
     setRelease("");
     setAi("");
-    setSetsOk(false);
+    setPlay("evaluation");
     setIssues([]);
     setMessageOpen(false);
     setMessage("");
@@ -567,7 +569,9 @@ export function SubmitForm({
             options={AI_CHOICES}
             help={AI_HELP}
           />
-          <SetsPermission receiverName={receiverName} many={many} checked={setsOk} onChange={setSetsOk} disabled={busy} />
+          {receiverAsksPlay && (
+            <Choice id="play" name="play" label="Sending to a label" value={play} onChange={setPlay} options={PLAY_CHOICES} help={playHelp(play, receiverName)} disabled={busy} />
+          )}
           {/* Optional extras stay out of the way until asked for. */}
           {(!messageOpen || (trackArt && !artOpen)) && (
             <div className="-my-1.5 flex flex-wrap gap-x-5">
@@ -695,7 +699,7 @@ export function SubmitForm({
             )}
           </div>
           <p className="text-[12px] leading-[18px] text-dim">
-            By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it. They can play it in sets only if you turn on DJ sets above, and can&apos;t release it anywhere without a signed agreement with you.
+            By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it.{receiverAsksPlay ? " They can play it out only if you pick OK to play above, and" : " They"} can&apos;t release it anywhere without a signed agreement with you.
             {/* Draft wording (lawyer brief 11 Oct, 4.1); the version agreed to is stored on the track (SHARING_TERMS_VERSION). */}
             {allowSharing
               ? ` ${receiverName} can also share it privately, through FloorTest, with people they name, who must confirm their email first. Depending on what ${receiverName} allows, those people can listen, or listen and download. Nobody can publish or release it without a signed agreement with you.`
