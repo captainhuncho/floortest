@@ -29,6 +29,29 @@ export const UNCONFIRMED_HANDLE_DAYS = 7;
 /** How long a link name freed that way stays held before anyone can take it (owner, 14 Nov: never claimable at once). */
 export const FREED_HANDLE_HOLD_DAYS = 30;
 export const KEEP_DAYS = { outbox: 90, incidents: 90, events: 730, account_log: 365 } as const;
+/** Proof of Terms acceptance (owner, 15 Nov): 6 years after the account is deleted, or after a sender's tick. */
+export const TERMS_PROOF_YEARS = 6;
+
+/** The same moment `years` calendar years earlier (UTC), so leap days don't shorten the 6 years. */
+export const yearsBefore = (t: number, years: number) => {
+  const d = new Date(t);
+  d.setUTCFullYear(d.getUTCFullYear() - years);
+  return d.getTime();
+};
+
+/**
+ * Terms acceptance records (lib/terms-record.ts). A deleted account's rows lose their user_id; the first clean-up after
+ * that stamps when, and the rows go 6 years later. A sender's rows go 6 years after the tick. Nothing else is kept on
+ * them: name, email, version, time and the text's hash.
+ */
+export async function purgeTermsProof(t: number, until: number) {
+  await q.run("UPDATE terms_acceptances SET account_deleted_at = ? WHERE kind = 'account' AND user_id IS NULL AND account_deleted_at IS NULL", t);
+  const cutoff = yearsBefore(t, TERMS_PROOF_YEARS);
+  return (
+    (await deleteInBatches("terms_acceptances", "kind = 'account' AND account_deleted_at < ?", [cutoff], until)) +
+    (await deleteInBatches("terms_acceptances", "kind = 'sender' AND accepted_at < ?", [cutoff], until))
+  );
+}
 
 const BATCH = 5000;
 
@@ -107,6 +130,7 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
     events: await deleteInBatches("events", "created_at < ?", [t - KEEP_DAYS.events * DAY], until),
     accountLog: await deleteInBatches("account_log", "created_at < ?", [t - KEEP_DAYS.account_log * DAY], until),
     shareLinks: await purgeLinkRecords(t),
+    termsProof: await purgeTermsProof(t, until),
   };
   return removed;
 }

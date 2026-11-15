@@ -19,6 +19,7 @@ Keep this file and `docs/product/` true to what is live. Any change to a feature
 One section per feature in [`docs/product/receiver.md`](product/receiver.md):
 
 - Sign-up / sign-in
+- Terms acceptance (15 Nov, Research brief)
 - Floor (home)
 - Tour / How FloorTest works
 - Collections
@@ -40,6 +41,7 @@ One section per feature in [`docs/product/receiver.md`](product/receiver.md):
 One section per feature in [`docs/product/sender.md`](product/sender.md):
 
 - Send to a link
+- Terms tick (sender without an account)
 - Folders (Pro/Team receivers)
 - Review Together (part of Account teams)
 - Collection share links (held: switch `sharing` off)
