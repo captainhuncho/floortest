@@ -48,7 +48,7 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
   const tabs = [
     { href: "/dashboard/floor", label: "Floor", icon: "layout-grid", active: path === "/dashboard/floor" },
     { href: "/dashboard/review", label: "Queue", icon: "arrow-down-circle", active: path === "/dashboard/review", badge: needsReview },
-    { href: "/dashboard/collections", label: "Collections", icon: "library", active: path.startsWith("/dashboard/collections") },
+    { href: "/dashboard/collections", label: "Collections", icon: "library", active: path.startsWith("/dashboard/collections") || path.startsWith("/dashboard/projects") },
     { href: "/dashboard/prepare", label: "Prepare", icon: "clipboard-check", active: path === "/dashboard/prepare" || path.startsWith("/dashboard/prepare/") },
   ];
   return (
