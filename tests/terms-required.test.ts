@@ -128,3 +128,85 @@ test("admins tick on their own desk like everyone, but the ops console never wai
   }
   assert.match(fs.readFileSync("src/lib/admin.ts", "utf8"), /const u = await currentOpsAdmin\(\);/);
 });
+
+test("behaviour: changes answer 403 before the tick; a teammate ticks for themselves; the Terms page never loops", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const { createSession, currentDeskForChange, requireUser, DESK_COOKIE } = await import("../src/lib/auth");
+  const { currentTerms, recordAcceptance } = await import("../src/lib/terms-record");
+  const page = await import("../src/app/(auth)/accept-terms/page");
+  const owner = await user();
+  const mate = await user();
+  await q.run("INSERT INTO switches (key, on_, updated_at) VALUES ('teams', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now());
+  await q.run("UPDATE users SET plan = 'pro' WHERE id = ?", owner.id);
+  await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)", owner.id, mate.id, now());
+  await recordAcceptance({ userId: owner.id, email: owner.email }, "Owner", await currentTerms());
+
+  const jar = new Map<string, string>();
+  await inRequest(jar, "203.0.113.42", () => createSession(mate.id));
+  const change = (await inRequest(jar, "203.0.113.42", () => currentDeskForChange(), { dropAfter: true })).answer as Response;
+  assert.equal(change.status, 403);
+  assert.equal((await change.json()).termsNeeded, true);
+  const open = await inRequest(jar, "203.0.113.42", () => page.default(), { dropAfter: true });
+  assert.equal(open.redirect, undefined, "the Terms page shows, it doesn't send them round again");
+
+  jar.set(DESK_COOKIE, String(owner.id));
+  const onTeam = await inRequest(jar, "203.0.113.42", () => requireUser(), { dropAfter: true });
+  assert.equal(onTeam.redirect, "/accept-terms", "the owner ticked, the teammate didn't: no team desk for them");
+
+  await recordAcceptance({ userId: mate.id, email: mate.email }, "Mate", await currentTerms());
+  const team = await inRequest(jar, "203.0.113.42", () => requireUser(), { dropAfter: true });
+  assert.equal((team.answer as { id: number }).id, owner.id, "after their own tick they work the team desk");
+  const back = await inRequest(jar, "203.0.113.42", () => page.default(), { dropAfter: true });
+  assert.equal(back.redirect, "/dashboard/floor", "ticked: the Terms page sends them to the desk, once");
+});
+
+test("behaviour: /api/v1/terms limits tries, refuses when the Terms can't be read, and a repeated tick emails once", async () => {
+  const { q } = await import("../src/lib/db");
+  const { issueAppSession } = await import("../src/lib/app-auth");
+  const { forgetTerms, termsSource } = await import("../src/lib/terms-record");
+  const terms = await import("../src/app/api/v1/terms/route");
+  const u = await user();
+  const { accessToken } = await issueAppSession(u.id, "test");
+  const ip = "203.0.113.43";
+  const post = async (b: unknown) =>
+    (await inRequest(new Map(), ip, async () => terms.POST(await appCall("/api/v1/terms", accessToken, { method: "POST", body: JSON.stringify(b) })))).answer as Response;
+  const { hash } = await ((await inRequest(new Map(), ip, async () => terms.GET(await appCall("/api/v1/terms", accessToken)))).answer as Response).json();
+
+  assert.equal((await post({ tick: true, hash })).status, 200);
+  assert.equal((await post({ tick: true, hash })).status, 200, "a repeated tick is fine");
+  const rows = await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM terms_acceptances WHERE user_id = ?", u.id);
+  assert.equal(Number(rows!.n), 1, "one acceptance");
+  const mails = await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM outbox WHERE to_email = ?", u.email);
+  assert.ok(Number(mails!.n) <= 1, "at most one stamped copy");
+
+  const read = termsSource.read;
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    forgetTerms();
+    termsSource.read = async () => {
+      throw new Error("Terms page unreadable");
+    };
+    assert.equal((await post({ tick: true, hash })).status, 503, "can't be read: no tick stored");
+    const get = (await inRequest(new Map(), ip, async () => terms.GET(await appCall("/api/v1/terms", accessToken)))).answer as Response;
+    assert.equal(get.status, 503);
+  } finally {
+    termsSource.read = read;
+    console.error = quiet;
+    forgetTerms();
+  }
+
+  let last = 0;
+  for (let i = 0; i < 31; i++) last = (await post({ tick: true, hash })).status;
+  assert.equal(last, 429, "30 tries an hour");
+});
+
+test("behaviour: a failed archive write doesn't lock out people who ticked", async () => {
+  const { currentTerms, deskNeedsTerms, forgetTerms, recordAcceptance } = await import("../src/lib/terms-record");
+  const u = await user();
+  await recordAcceptance({ userId: u.id, email: u.email }, "Req", await currentTerms());
+  const src = fs.readFileSync("src/lib/terms-record.ts", "utf8");
+  assert.match(src, /catch \(e\) \{\n\s+console\.error\("\[terms\] couldn't archive this Terms text; will retry", e\);/);
+  forgetTerms();
+  assert.equal(await deskNeedsTerms(false, u.id), false, "ticked: in, after a fresh read");
+});

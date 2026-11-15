@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { currentPerson, viewingAs } from "@/lib/auth";
 import { currentTermsOrNull, latestAcceptance, needsTermsTick } from "@/lib/terms-record";
 import { AuthFrame } from "../AuthFrame";
+import { logout } from "../actions";
 import { AcceptForm } from "./AcceptForm";
 import { DeleteAccount } from "../../dashboard/settings/DeleteAccount";
 
@@ -61,6 +62,9 @@ function Leave({ handle, twoFactor }: { handle: string; twoFactor: boolean }) {
         , or delete your account.
       </p>
       <DeleteAccount handle={handle} twoFactor={twoFactor} sub="Your desk stays closed until you tick. You can still leave." />
+      <form action={logout}>
+        <button className="min-h-11 self-start text-[13px] text-mute underline underline-offset-4">Sign out</button>
+      </form>
     </div>
   );
 }

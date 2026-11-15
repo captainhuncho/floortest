@@ -43,14 +43,15 @@ export async function currentTerms(): Promise<CurrentTerms> {
     // A failed read or archive serves the last good text (Safety, 15 Nov), and tries again on the next request.
     if (!cached) throw e;
     console.error("[terms] couldn't read the Terms; using the last good copy", e);
+    // Served stale for another minute, so an outage doesn't re-read the page on every request (Safety, 15 Nov).
+    cached = { at: Date.now(), terms: cached.terms };
     return cached.terms;
   }
 }
 
 /**
- * For pages that must stay up when the Terms can't be read at all (no copy yet on this server): the desk then skips the
- * tick for this request rather than failing every page, and the send page leaves the hash out (the send route still
- * refuses a tick that isn't for the current text).
+ * The Terms, or null when they can't be read at all (no copy yet on this server). Nobody gets in without agreeing
+ * (owner, 15 Nov): callers treat null as "not agreed" (deskNeedsTerms, the accept page, the send route).
  */
 export async function currentTermsOrNull(): Promise<CurrentTerms | null> {
   try {
@@ -76,8 +77,14 @@ async function readTerms(): Promise<CurrentTerms> {
   const body = termsBody(title, updated, sections);
   const terms = { version: updated, hash: termsHash(body), body };
   if (!archived.has(terms.hash)) {
-    await q.run("INSERT INTO terms_versions (hash, version, body, created_at) VALUES (?,?,?,?) ON CONFLICT (hash) DO NOTHING", terms.hash, terms.version, terms.body, now());
-    archived.add(terms.hash);
+    // The text was read: a failed archive write (a database blip) mustn't lock everyone out. Logged, and tried again on
+    // the next read; a tick can't be stored until it lands, because acceptances point at the archived text (Safety, 15 Nov).
+    try {
+      await q.run("INSERT INTO terms_versions (hash, version, body, created_at) VALUES (?,?,?,?) ON CONFLICT (hash) DO NOTHING", terms.hash, terms.version, terms.body, now());
+      archived.add(terms.hash);
+    } catch (e) {
+      console.error("[terms] couldn't archive this Terms text; will retry", e);
+    }
   }
   return terms;
 }
