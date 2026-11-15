@@ -22,11 +22,11 @@ export function TermsTick({ checked, onChange, updated, hash }: { checked: boole
           <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-4">
             Terms
           </a>
-          , and have read the{" "}
+          , including that music I send may be played by the receiver, and have read the{" "}
           <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-4">
             Privacy Policy
           </a>
-          , including that music I send may be played by the receiver.
+          .
         </span>
       </label>
       {hash && <input type="hidden" name="terms_hash" value={hash} />}

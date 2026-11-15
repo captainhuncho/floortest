@@ -66,8 +66,8 @@ export default async function GoogleSignup() {
             label: (
               <>
                 I&apos;m 18 or over, and I have read, understood and agree to the{" "}
-                <a href="/terms" target="_blank" rel="noopener" className="text-bone underline underline-offset-4">Terms</a>, and have read the{" "}
-                <a href="/privacy" target="_blank" rel="noopener" className="text-bone underline underline-offset-4">Privacy Policy</a>, including that music I send may be played by the receiver.
+                <a href="/terms" target="_blank" rel="noopener" className="text-bone underline underline-offset-4">Terms</a>, including that music I send may be played by the receiver, and have read the{" "}
+                <a href="/privacy" target="_blank" rel="noopener" className="text-bone underline underline-offset-4">Privacy Policy</a>.
               </>
             ),
           },
