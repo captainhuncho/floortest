@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { normalEmail } from "@/lib/email-normal";
 import { CARD } from "@/components/Kit";
 
-type Result = { ok?: boolean; error?: string; confirmed?: boolean };
+type Result = { ok?: boolean; error?: string; confirmed?: boolean; termsNeeded?: boolean; termsHash?: string };
+/** What the server says about the Terms for the confirmed email: the hash to send back when a tick is needed. */
+export type TermsState = { termsNeeded?: boolean; termsHash?: string };
 const post = async (body: Record<string, unknown>): Promise<Result> => {
   try {
     const r = await fetch("/api/sender-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -17,13 +19,13 @@ const post = async (body: Record<string, unknown>): Promise<Result> => {
 /**
  * Senders without an account confirm their email with a code before anything uploads. Already confirmed in this
  * browser (30 days): nothing to do. Otherwise the code is emailed (this is where the bot check happens).
- * Returns null when they can send now, "code" when a code was emailed, or an error message.
+ * Returns the Terms state when they can send now, "code" when a code was emailed, or an error message.
  */
-export async function startEmailCheck(email: string, turnstile: string): Promise<null | "code" | string> {
+export async function startEmailCheck(email: string, turnstile: string): Promise<{ ready: TermsState } | "code" | string> {
   const e = normalEmail(email);
   try {
     const r = (await (await fetch(`/api/sender-code?email=${encodeURIComponent(e)}`, { cache: "no-store" })).json()) as Result;
-    if (r.confirmed) return null;
+    if (r.confirmed) return { ready: { termsNeeded: r.termsNeeded, termsHash: r.termsHash } };
   } catch {}
   const sent = await post({ action: "send", email: e, turnstile });
   return sent.ok ? "code" : sent.error || "The code didn't send. Check the email address and try again.";
@@ -38,7 +40,7 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
   receiverName: string;
   /** Track titles (or the folder name) being sent. */
   sending: string[];
-  onConfirmed: () => void;
+  onConfirmed: (terms: TermsState) => void;
   onCancel: () => void;
 }) {
   const top = useRef<HTMLDivElement>(null);
@@ -55,7 +57,7 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
     setBusy(true);
     const r = await post({ action: "check", email, code });
     setBusy(false);
-    if (r.ok) onConfirmed();
+    if (r.ok) onConfirmed({ termsNeeded: r.termsNeeded, termsHash: r.termsHash });
     else setNote({ text: r.error || "That code didn't go through. Check the 6 digits, or send a new code.", error: true });
   }
 

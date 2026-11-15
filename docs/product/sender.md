@@ -8,6 +8,12 @@ One step at a time: the page asks only for the file; once it's chosen the form a
 
 Where: `/<handle>`
 
+## Terms tick (sender without an account)
+
+On a sender's first send, and again whenever the Terms text changes, the send form (the link page and Send folders) shows one tick: "I have read, understood and agree to the Terms, including that music I send may be played by the receiver, and have read the Privacy Policy.", Terms and Privacy Policy linked. After a change it also says "The Terms were updated {date}. Read the whole Terms". Send stays off until it's ticked ("Tick the box above to send."). The server refuses the send unless the tick is for the current text (the form sends the text's fingerprint); ticking the same text twice adds no record. The sender's first Delivered email per Terms version carries the stamped PDF copy. Senders with an account accepted at sign-up and see no tick.
+
+Where: `/<handle>`, Send folders, `src/app/[handle]/TermsTick.tsx`, `src/lib/terms-record.ts`
+
 ## Folders (Pro/Team receivers)
 
 EP/album up to 12 tracks within the receiver's folder size. Mix, release status and AI use are the same tap choices as single tracks. **Genre:** the sender says whether one genre covers every track or each track has its own (then every track needs one, starting from the folder's genre); a genre tapped in the brief starts as the folder's

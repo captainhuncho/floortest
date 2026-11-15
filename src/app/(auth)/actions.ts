@@ -13,6 +13,8 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { NEXT_COOKIE, safeNext, TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { termsVersion } from "@/lib/legal-sharing";
+import { currentTerms, recordAcceptance } from "@/lib/terms-record";
+import { termsPdfMail } from "@/lib/terms-mail";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { createPasswordReset, createSession, currentPerson, destroySession, hashPassword, setDesk, verifyPassword, upgradePasswordHash } from "@/lib/auth";
@@ -158,6 +160,8 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
   if ((await q.get("SELECT 1 FROM users WHERE handle = ?", a.handle)) || (await handleHeld(a.handle))) return { error: "That link is taken." };
   // Read before the transaction: a second query inside it would wait on the transaction's own connection.
   const terms = await termsVersion();
+  // The exact Terms text they tick, archived by its hash (Research brief, owner 15 Nov).
+  const accepted = await currentTerms();
   // Taken last, just before the account is made, so junk attempts that fail any check above never use up the day's
   // unchecked slots; and handed back below unless the account is made (Safety review of #535).
   const slots = opts.unchecked ? await claimUncheckedSlots(ip) : [];
@@ -208,10 +212,14 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
           teamAccount = took.account_id;
         } else if (!open && !invite.valid) throw TEAM_GONE;
       }
+      // The acceptance record, in the same transaction as the account: no account without its record.
+      const { row: acceptance } = await recordAcceptance({ userId: u.id, email: a.email }, a.name, accepted, db);
       // No collection is made for them: each receiver names and creates their own (owner, 15 Oct; two in the beta).
-      return { id: u.id, teamAccount };
+      return { id: u.id, teamAccount, acceptanceId: acceptance.id };
     });
     made = true;
+    // Their stamped copy of the Terms, right after sign-up.
+    afterResponse(() => termsPdfMail({ userId: created.id, email: a.email, name: a.name, acceptanceId: created.acceptanceId }), "[signup] terms copy failed; the queue will retry");
     return created;
   } catch (e) {
     if (e === INVITE_GONE) return { error: "This invite has been used or has expired. Ask the person who invited you for a new one." };
