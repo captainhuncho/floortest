@@ -23,6 +23,8 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 3. Fixes that must reach production are built on a branch from `main`, then merged into `mobile-next`.
 4. Ship: merge the release PR into `main` on GitHub (never push `main`; steps in the `owner-ship` skill), wait ~60 s, merge `main` into `mobile-next` and push `mobile-next`, confirm the deploy.
 5. Checks before every push; e2e when sending, review, downloads, receipts or auth change. On this Mac, at most two full e2e runs at once across all sessions: `npm run e2e` takes one of two machine-wide slots (`scripts/e2e-slot.ts`, folders in `~/.cache/floortest-e2e-slots`, private to this user, shared by every worktree) and waits, retrying every 15 s, while both are held; a dead run's slot is taken over, CI skips the lock, and a single spec run with `npx playwright test e2e/x.spec.ts` takes no slot. Every session stops its own dev and e2e servers, and removes its scratch worktrees, as soon as that run is finished (owner, 2 Nov).
+    - Try it first (owner, 15 Nov): every design or function change goes on mobile-next and the owner tests it before ship; security and bug fixes may skip; docs-only is exempt.
+    - A pushed migration id is frozen (owner, 15 Nov): any change after a push is a new migration, never an edit.
 6. Several sessions share one checkout: commit only your own changes, leave the rest.
 7. Secrets, deletions, sign-ins, dashboard settings and legal wording are the owner's.
 8. Before shipping, check what `main` already has: another session may have shipped it (14 Oct: batches 1–4 and the home went out from one session while another was building the same ship).
