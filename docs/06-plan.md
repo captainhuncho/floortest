@@ -184,6 +184,13 @@ Owner keeps control; sharing never makes music public or moves ownership. Behind
 ## Account teams (built 11 Oct · switch `teams` on in production 11–15 Oct, off since the 15 Oct beta scope: teams only on super-admin desks)
 Decided: a colleague is a **seat on an account** (label, radio, crew), not someone a track is shared with. Seats: Free 1, Pro 2, Team 5, extra seats as add-ons; seats get the plan's benefits only on that desk; Owner / Admin (override, two-step) / Member (review, notes, replies); the owner or an admin chooses whether members' replies need approval and by whom. Left: add-on seats self-serve once Paddle is live (today ops sets them); the app API works on your own desk only; lawyer: teams in the Terms/Privacy (who sees what, the owner's responsibility for their team).
 
+## One agreement, send rules, folder types (Research brief, approved by the owner in the Desk 15 Nov; lane:standard, to mobile-next to try)
+- [x] PR A (Backend), built, not shipped: acceptance records (version, UTC time, SHA-256 of the exact Terms text, against the account or the sender's confirmed email), each Terms text archived, the re-tick on the next desk visit or the next send, the stamped PDF copy (in-house writer, no package). Sign-up tick wording and the screens: Build.
+- [ ] PR B (Backend + Build): send rules by receiver type. Label receivers (`kind = 'label'`, legacy `label_radio`) get Evaluation only (default) or OK to play; radio, A&R and music professional wait on the owner; the per-send box goes.
+- [ ] PR C (Backend + Build): Callout and Project folders, Move to Project with "new Project", the two-per-desk limit replaced by a rate limit; pre-migration checks first.
+- [ ] Legal wording (Terms additions, "Changes and law", Privacy processors as categories): the owner's lawyer approves before any of it ships.
+- Open for the lawyer: acceptance rows go with the account; sender rows have no retention limit yet.
+
 ## Projects (owner, 13 Nov: "build this out some more")
 Every account gets its own library for its own tracks, kept until deleted, with its own allowance. Phases, one at a time:
 1. **Store and listen** (built on `backend/my-music`, not live): `/dashboard/projects`, upload, play, rename, delete; projects (folders, built like collections: create, rename, delete, upload into one, move a track to another); a track the desk added to a collection itself moves to Projects from its review page (owner, 13 Nov: own uploads only, never a sender's).

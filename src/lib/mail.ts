@@ -36,8 +36,10 @@ export const HIDDEN = "•••••• (hidden)";
  * `details`: receipt lines ([label, value]) for the designed version only (src/lib/email-html.ts); the text is unchanged.
  */
 export type Details = [string, string][];
-type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[]; reserved?: boolean; expires?: boolean; details?: Details };
-type Payload = { to: string; subject: string; body: string; unsub: string | null; expires?: boolean; details?: Details };
+/** Attach the stamped PDF of the Terms this acceptance points at (built when the email goes out, never stored). */
+type TermsPdf = { acceptanceId: number; email: string };
+type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[]; reserved?: boolean; expires?: boolean; details?: Details; termsPdf?: TermsPdf };
+type Payload = { to: string; subject: string; body: string; unsub: string | null; expires?: boolean; details?: Details; termsPdf?: TermsPdf };
 
 /*
  * The outbox is also the send queue (Codex review, phase B item 4; 24 Oct). Every email is written to `outbox` before
@@ -84,7 +86,7 @@ export async function queueMail(opts: MailOpts, db: Queryable = q, { holdMs = 0 
   // Optional emails carry a one-click unsubscribe (header for Gmail/Yahoo, plus a link in the text).
   const unsub = opts.unsubscribe && opts.userId ? unsubToken(opts.userId, opts.unsubscribe, opts.to) : null;
   const body = unsub ? `${opts.body}\n\n—\nStop these emails: ${APP_URL}/unsubscribe/${unsub}` : opts.body;
-  const payload: Payload = { to: opts.to, subject: opts.subject, body, unsub, ...(opts.expires ? { expires: true } : {}), ...(opts.details?.length ? { details: opts.details } : {}) };
+  const payload: Payload = { to: opts.to, subject: opts.subject, body, unsub, ...(opts.expires ? { expires: true } : {}), ...(opts.details?.length ? { details: opts.details } : {}), ...(opts.termsPdf ? { termsPdf: opts.termsPdf } : {}) };
   const at = now();
   const row = await db.get<{ id: number }>(
     `INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at, payload, idem_key, attempts, next_at, optional, reserved)
@@ -329,6 +331,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   else if (!willSend && MAIL_SINK) await sinkMail(to, subject, p.body);
   else if (willSend) {
     try {
+      const attachments = p.termsPdf ? await termsAttachment(p.termsPdf) : [];
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.email.resendKey}`, "Content-Type": "application/json", "Idempotency-Key": `outbox-${row.idem_key}` },
@@ -339,6 +342,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
           text: p.body,
           html: emailHtml(p.subject, p.body, { optional: !!row.optional, reserved: !!row.reserved }, p.details),
           ...(env.email.replyTo ? { reply_to: env.email.replyTo } : {}),
+          ...(attachments.length ? { attachments } : {}),
           ...(p.unsub
             ? { headers: { "List-Unsubscribe": `<${APP_URL}/api/unsubscribe/${p.unsub}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }
             : {}),
@@ -397,4 +401,18 @@ export async function drainOutbox(limit = 50, { until = Infinity } = {}) {
     }
   }
   return { due: due.length, sent, ...(stuck.length ? { stuck: stuck.length } : {}), ...(errors ? { errors } : {}) };
+}
+
+/** The stamped Terms PDF as a Resend attachment, or none if the acceptance or its archived text is gone. */
+async function termsAttachment(t: TermsPdf) {
+  const { acceptedTermsPdf } = await import("./terms-pdf");
+  const a = await q.get<{ id: number; version: string; hash: string; name: string; accepted_at: number; pdf_sent_at: number | null }>(
+    "SELECT id, version, hash, name, accepted_at, pdf_sent_at FROM terms_acceptances WHERE id = ?",
+    t.acceptanceId,
+  );
+  const pdf = a && (await acceptedTermsPdf(a, t.email));
+  if (!pdf) return [];
+  // Claimed here, so two emails queued before either went out carry it once.
+  if (!(await q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ? AND pdf_sent_at IS NULL", now(), a.id)).changes) return [];
+  return [{ filename: `FloorTest-Terms-${a.version.replace(/[^A-Za-z0-9]+/g, "-")}.pdf`, content: pdf.toString("base64") }];
 }

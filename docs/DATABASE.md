@@ -25,6 +25,7 @@ The main relationships are:
 - Events provide receiver and sender lifecycle history.
 - Sessions and sensitive tokens are stored as hashes where the flow requires reusable secrets.
 - Share, team, stem, upload and deletion tables model bounded access and asynchronous file lifecycle work.
+- `terms_versions` archives each Terms text by its hash; `terms_acceptances` records each tick against an account or a confirmed sender email (a check constraint allows exactly one), pointing at the archived text it accepted.
 
 Inspect the current migration file before relying on a field name; this guide describes responsibilities rather than freezing every column.
 

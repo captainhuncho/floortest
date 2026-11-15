@@ -647,6 +647,24 @@ export function SubmitForm({
               ))}
             </ul>
           )}
+          {/* Senders without an account tick the Terms (Research brief, owner 15 Nov); the server records it against their
+              confirmed email the first time and again after the Terms change. Layout is Build's to refine. */}
+          {!account && (
+            <label className="flex min-h-[44px] items-center gap-2.5 text-[13px] leading-[19px] text-mute">
+              <input type="checkbox" name="terms_tick" required className="size-[18px] shrink-0" />
+              <span>
+                I have read, understood and agree to the{" "}
+                <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-4">
+                  Terms
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-4">
+                  Privacy Policy
+                </a>
+                , including that music I send may be played by the receiver.
+              </span>
+            </label>
+          )}
           {/* On phones the send button stays within reach at the bottom of the screen while the form scrolls. */}
           <div className="max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-[18px] max-sm:border-t max-sm:border-line max-sm:bg-ink/95 max-sm:px-[18px] max-sm:pt-2.5 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] max-sm:backdrop-blur-sm">
             <button className="btn-lime min-h-[52px] w-full gap-2 rounded-[15px] text-[14.5px] font-bold" disabled={busy || analyzing || checking}>

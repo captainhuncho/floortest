@@ -42,6 +42,8 @@ const env = {
   SEED_LINK_PAGES: "1",
   // Seeded accounts have seen the first-visit tour, so it doesn't cover what other tests click; signed-up ones still get it (scripts/seed.ts).
   SEED_TOUR_SEEN: "1",
+  // Seeded accounts have accepted the current Terms, so log-ins aren't stopped at /accept-terms (scripts/seed-terms.ts).
+  SEED_TERMS_ACCEPTED: "1",
   ADMIN_EMAILS: "ops@floortest.test",
   // A fake virus scanner (e2e/fake-scanner.mjs): every file is clean, but scanner-wake.spec.ts makes it sleep or stay
   // down. The wait for a waking scanner is cut from 150 s to 6 s so those tests stay short.
@@ -83,7 +85,7 @@ export default defineConfig({
     {
       // The dev cache (.next/dev) is cleared first: after a branch switch a stale one made the dev server reload every
       // page, so forms never sent and the sign-up tests failed (29 Oct). The seeded data is fresh each run anyway.
-      command: `node -e "require('fs').rmSync('.next/dev',{recursive:true,force:true})" && npx tsx scripts/seed.ts && npx next dev -p ${PORT}`,
+      command: `node -e "require('fs').rmSync('.next/dev',{recursive:true,force:true})" && npx tsx scripts/seed.ts && npx tsx --conditions=react-server --import ./tests/stubs/register.mjs scripts/seed-terms.ts && npx next dev -p ${PORT}`,
       url: `http://localhost:${PORT}/api/health`,
       timeout: 180_000,
       reuseExistingServer: false,

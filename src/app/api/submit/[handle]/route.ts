@@ -5,6 +5,7 @@ import { userByHandle } from "@/lib/desk";
 import { readSubmission } from "@/lib/submission";
 import { ipFrom } from "@/lib/ratelimit";
 import { confirmedEmail } from "@/lib/sender-code";
+import { currentTerms, needsTermsTick, recordAcceptance } from "@/lib/terms-record";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,17 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   if ("error" in read) return bad(read.error, read.status);
   // Without an account, the email must be confirmed with a code first (which is also where the bot check happens).
   if (!account && (await confirmedEmail()) !== read.meta.email) return NextResponse.json({ error: "Confirm your email first.", needsCode: true }, { status: 401 });
+  // Senders without an account tick the Terms against their confirmed email: on their first send, and again on the
+  // next send after the Terms change (Research brief, owner 15 Nov). 
+  if (!account) {
+    const terms = await currentTerms();
+    if (await needsTermsTick({ email: read.meta.email }, terms)) {
+      // A hash, when the form sends one, must be the Terms in force now (they changed while the form was open otherwise).
+      if (body.terms_tick !== true || (body.terms_hash !== undefined && body.terms_hash !== terms.hash))
+        return NextResponse.json({ error: "Tick the box to accept the Terms before sending.", termsNeeded: true, termsVersion: terms.version, termsHash: terms.hash }, { status: 409 });
+      await recordAcceptance({ email: read.meta.email }, read.meta.name, terms);
+    }
+  }
 
   try {
     return NextResponse.json(await startUpload(receiver, read.meta, read.size, ipFrom(req.headers)));
