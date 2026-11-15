@@ -41,7 +41,7 @@ const isOps = (path: string) => under(path, OPS_PATHS);
 // 10 Nov, "open the legal pages too"). Only who can open them changes; the wording stays as it is. These open only the
 // page itself (a trailing slash too), never a path under it, so a later child route such as /security/<something>
 // stays behind the password (Safety follow-up to #503).
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known", "/sent", "/receipt"];
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/restore", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known", "/sent", "/receipt"];
 const GATE_OPEN_EXACT = ["/terms", "/privacy", "/cookies", "/contact", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"];
 const exactly = (path: string, list: string[]) => list.some((p) => path === p || path === `${p}/`);
 

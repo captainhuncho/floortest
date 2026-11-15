@@ -2415,4 +2415,39 @@ create index if not exists terms_acceptances_email on terms_acceptances (email, 
 create index if not exists terms_acceptances_expiry on terms_acceptances (kind, account_deleted_at, accepted_at);
 create index if not exists terms_acceptances_hash on terms_acceptances (hash);`,
   },
+  {
+    // Deleted accounts (owner, 15 Nov): a deletion switches the account off at once (deletion_requested_at, with the same
+    // time in suspended_at, so every "not suspended" check already shuts it out) and purges it after 14 days unless the
+    // owner signs in to restore it. Restoring needs a fresh, fully verified sign-in that leads only to /restore
+    // (restore_tickets, hashed, short-lived). At the purge, a minimal evidence record is kept 6 years (account_evidence:
+    // no audio, file keys, passwords or tokens). A super admin's legal hold stops both the purge and the expiry.
+    // Additive only: new columns and tables, nothing dropped or rewritten.
+    id: "0150_deleted_accounts",
+    sql: `alter table users add column if not exists deletion_requested_at bigint;
+alter table users add column if not exists legal_hold_at bigint;
+alter table users add column if not exists legal_hold_reason text not null default '';
+create index if not exists users_deletion_due on users (deletion_requested_at) where deletion_requested_at is not null;
+create table if not exists restore_tickets (
+  id_hash text primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  expires_at bigint not null
+);
+create index if not exists restore_tickets_user on restore_tickets (user_id);
+create table if not exists account_evidence (
+  user_id bigint primary key,
+  name text not null,
+  email text not null,
+  handle text not null,
+  account_created_at bigint,
+  deletion_requested_at bigint not null,
+  purged_at bigint not null,
+  keep_from bigint not null,
+  record text not null,
+  legal_hold_at bigint,
+  legal_hold_reason text not null default ''
+);
+create index if not exists account_evidence_expiry on account_evidence (keep_from) where legal_hold_at is null;
+alter table restore_tickets enable row level security;
+alter table account_evidence enable row level security;`,
+  },
 ];

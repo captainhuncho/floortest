@@ -14,6 +14,7 @@ import { q } from "@/lib/db";
 import { sharedLinksFor } from "@/lib/share-links";
 import { CARD, Chip, Icon, PageHead, SectionHead } from "@/components/Kit";
 import { GHOST } from "../kitButtons";
+import { CollectionsTabs } from "./CollectionsTabs";
 
 export const metadata = { title: "Collections — FloorTest" };
 
@@ -52,6 +53,7 @@ export default async function Collections() {
       <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 sm:gap-5">
         <div className="flex flex-col gap-1.5">
           <PageHead label="One per callout" title="Collections" />
+          <CollectionsTabs on="callouts" />
           <p className="max-w-3xl text-[12px] leading-snug text-mute">
             Your link <span className="break-all font-mono text-bone">{host}/{user.handle}</span>{" "}
             {user.active_collection_id ? "sends new tracks to the one that's receiving." : "sends tracks straight to your Review Queue until you make one."}

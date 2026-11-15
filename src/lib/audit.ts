@@ -7,6 +7,8 @@ export const AUDIT_LABELS = {
   shared: "Shared with a colleague:",
   stems_requested: "Asked for stems for",
   signed_in: "Signed in",
+  deletion_requested: "Asked to delete the account",
+  account_restored: "Restored the account",
   signed_out: "Signed out",
   password_reset: "Reset password",
   password_changed: "Changed password",
@@ -88,7 +90,7 @@ export const PERSONAL_ACTIONS: readonly AuditAction[] = [
   "signed_in", "signed_out", "password_reset", "password_changed", "signed_out_others", "two_factor_on", "two_factor_off",
   "google_connected", "google_disconnected", "signin_alerts_on", "signin_alerts_off", "plan_changed", "plan_requested",
   "plan_request_withdrawn", "identity_submitted", "notifications_updated", "digest_sent",
-  "app_token_reused",
+  "app_token_reused", "deletion_requested", "account_restored",
 ];
 
 /**

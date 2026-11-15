@@ -25,6 +25,9 @@ const DAY = 24 * HOUR;
  * is kept for good and nothing deletes from it (owner, 6 Nov: "No admin can delete admin logs").
  */
 /** Days an account that never confirmed its email keeps its link name (see cleanupRecords). */
+/** Rows of an account on legal hold stay put (account-deletion.ts setLegalHold). Needs a user_id column. */
+const NOT_HELD = "NOT EXISTS (SELECT 1 FROM users h WHERE h.id = user_id AND h.legal_hold_at IS NOT NULL)";
+
 export const UNCONFIRMED_HANDLE_DAYS = 7;
 /** How long a link name freed that way stays held before anyone can take it (owner, 14 Nov: never claimable at once). */
 export const FREED_HANDLE_HOLD_DAYS = 30;
@@ -127,8 +130,8 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   const removed = {
     emails: await deleteInBatches("outbox", "created_at < ?", [t - KEEP_DAYS.outbox * DAY], until),
     incidents: await deleteInBatches("incidents", "created_at < ? AND (resolved_at IS NOT NULL OR kind = 'upload_rejected')", [t - KEEP_DAYS.incidents * DAY], until),
-    events: await deleteInBatches("events", "created_at < ?", [t - KEEP_DAYS.events * DAY], until),
-    accountLog: await deleteInBatches("account_log", "created_at < ?", [t - KEEP_DAYS.account_log * DAY], until),
+    events: await deleteInBatches("events", `created_at < ? AND ${NOT_HELD}`, [t - KEEP_DAYS.events * DAY], until),
+    accountLog: await deleteInBatches("account_log", `created_at < ? AND ${NOT_HELD}`, [t - KEEP_DAYS.account_log * DAY], until),
     shareLinks: await purgeLinkRecords(t),
     termsProof: await purgeTermsProof(t, until),
   };
@@ -176,7 +179,8 @@ export async function purgeExpired({ force = false } = {}) {
     return { expired: 0, abandoned: abandoned.length, unreferenced, outbox, deletions: null };
   }
   // Past retention, 200 at a time (one transaction each), until none are left or the time budget is used.
-  const due = `deleted_at IS NULL AND ((decision IS NULL AND created_at < ?) OR (decision = 'passed' AND decided_at < ?))`;
+  // A legal hold keeps everything on that account, so its tracks don't expire while it lasts (owner, 15 Nov).
+  const due = `deleted_at IS NULL AND ((decision IS NULL AND created_at < ?) OR (decision = 'passed' AND decided_at < ?)) AND ${NOT_HELD}`;
   const dueArgs = [t - RETAIN_UNREVIEWED_DAYS * DAY, t - RETAIN_PASSED_DAYS * DAY];
   let expired = 0;
   for (;;) {
