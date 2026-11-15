@@ -189,9 +189,9 @@ export function SendComposer({ host, account, initial }: { host: string; account
           <SectionHead id="send-tracks-h" icon="music" title="Tracks" />
           {found.folderBytes > 0 && <SendModeTabs mode={mode} setMode={setMode} />}
           {found.folderBytes > 0 && mode === "folder" ? (
-            <FolderSend handle={found.handle} receiverName={found.name} genres={found.genres} folderBytes={found.folderBytes} account={account} trackArt={found.trackArt} />
+            <FolderSend handle={found.handle} receiverName={found.name} genres={found.genres} folderBytes={found.folderBytes} account={account} trackArt={found.trackArt} receiverAsksPlay={found.asksPlay} />
           ) : (
-            <SubmitForm handle={found.handle} receiverName={found.name} genres={found.genres} account={account} trackArt={found.trackArt} initialFiles={sharedReady} onSent={shared.length ? dropShared : undefined} />
+            <SubmitForm handle={found.handle} receiverName={found.name} genres={found.genres} account={account} trackArt={found.trackArt} receiverAsksPlay={found.asksPlay} initialFiles={sharedReady} onSent={shared.length ? dropShared : undefined} />
           )}
         </section>
       )}
