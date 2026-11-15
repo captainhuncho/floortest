@@ -1,7 +1,9 @@
 import "server-only";
 import { accountEmailAllowed } from "./email-budget";
 import crypto from "node:crypto";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { issueRestoreTicket, RESTORE_COOKIE, RESTORE_TICKET_MS, restorable } from "./account-deletion";
 import { audit } from "./audit";
 import { createSession } from "./auth";
 import { now, q } from "./db";
@@ -16,8 +18,21 @@ export { deviceLabel };
 
 /** The last step of every sign-in: session, audit trail, and the optional alert email. */
 export async function finishSignIn(userId: number, how: "password" | "two-factor" | "recovery code" | "reset" | "email code" | "Google" | "passkey" | "passkey as two-step") {
-  await createSession(userId);
-  await audit(userId, "signed_in", how === "password" ? "" : `with ${how}`);
+  // A switched-off (deleted) account inside its 14 days gets no session: this sign-in only opens the restore page.
+  const restoring = await restorable(userId);
+  if (!restoring) await createSession(userId);
+  await audit(userId, "signed_in", `${how === "password" ? "" : `with ${how}`}${restoring ? " (to restore)" : ""}`.trim());
+  try {
+    await signInAlert(userId, how);
+  } finally {
+    if (restoring) {
+      (await cookies()).set(RESTORE_COOKIE, await issueRestoreTicket(userId), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/restore", maxAge: RESTORE_TICKET_MS / 1000 });
+      redirect("/restore");
+    }
+  }
+}
+
+async function signInAlert(userId: number, how: string) {
   const u = await q.get<{ email: string; name: string; tz: string; signin_alerts: number }>(
     "SELECT email, name, tz, signin_alerts FROM users WHERE id = ?",
     userId,
