@@ -9,7 +9,7 @@ Open only what the task touches. The docs stay true; if a doc and the code disag
 
 | For | Read |
 |---|---|
-| What a feature does, screen by screen | `docs/01-product.md` |
+| What a feature does, screen by screen | `docs/01-product.md` (index), one section per feature in `docs/product/receiver.md`, `sender.md`, `ops.md` |
 | Stack, services, env, deploys | `docs/02-technical.md`, `docs/services.md` |
 | Money: the finance panel, rhythm, decisions; costs; what a subscriber is worth | `docs/finance.md`, `docs/costs.md`, `docs/revenue-model.md` |
 | What happens on each click | `docs/03-app-flow.md` |

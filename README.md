@@ -10,7 +10,7 @@ This README only gets you running. What the product does, how it's built and wha
 
 | Doc | What's in it |
 | --- | --- |
-| [docs/01-product.md](docs/01-product.md) | Every feature, screen by screen: receiving, review, collections, Prepare for set, contacts, teams, plans, the sender's side, ops |
+| [docs/01-product.md](docs/01-product.md), [docs/product/](docs/product/) | Every feature, screen by screen (index, then one section per feature by area): receiving, review, collections, Prepare for set, contacts, teams, plans, the sender's side, ops |
 | [docs/02-technical.md](docs/02-technical.md) | Stack, services, routes, the app API, switches |
 | [docs/03-app-flow.md](docs/03-app-flow.md) | What happens on each click |
 | [docs/04-design.md](docs/04-design.md) | Colours, type, buttons, layout, brand assets |
