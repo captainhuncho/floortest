@@ -1,4 +1,5 @@
 import { can, requireAdmin } from "@/lib/admin";
+import { UNDO_DAYS } from "@/lib/account-deletion";
 import Link from "next/link";
 import { KIND_LABEL, now } from "@/lib/db";
 import { notFound } from "next/navigation";
@@ -39,7 +40,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
   const support = can(me.access, "users.support");
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
-  const u = await q.get<User & { extra_seats: number; identity_status: string | null; identity_verified_at: number | null; identity_note: string; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string; invite_hint: string | null }>(
+  const u = await q.get<User & { extra_seats: number; identity_status: string | null; identity_verified_at: number | null; identity_note: string; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; deletion_requested_at: number | null; legal_hold_at: number | null; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string; invite_hint: string | null }>(
     "SELECT u.*, (SELECT i.code_hint FROM invites i WHERE i.code = u.invite_code) AS invite_hint FROM users u WHERE u.id = ?",
     id,
   );
@@ -124,7 +125,13 @@ export default async function Account({ params }: { params: Promise<{ id: string
           {u.first_name || u.last_name ? `${u.first_name} ${u.last_name} · ` : "legal name not given · "}{u.email} · {KIND_LABEL[u.kind ?? ""] ?? "type not set"}{u.kind_note ? ` (${u.kind_note})` : ""} · joined {day(u.created_at)} · {u.invite_code ? `invite ${u.invite_hint !== null ? inviteLabel(u.invite_code, u.invite_hint) : u.invite_code}` : u.referred_by ? <Link href={`/admin/accounts/${u.referred_by}`} className="underline">referred</Link> : "no invite"} · {u.tz}{u.signup_source ? ` · came from ${u.signup_source}` : ""}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {u.suspended_at && <span className="chip border-danger/50 text-danger">Suspended {day(u.suspended_at)}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</span>}
+          {u.deletion_requested_at ? (
+            <span className="chip border-danger/50 text-danger">
+              {u.legal_hold_at ? `Deletion on legal hold since ${day(u.legal_hold_at)}` : `Deletion pending, purges on ${day(u.deletion_requested_at + UNDO_DAYS * 86_400_000)}`}
+            </span>
+          ) : (
+            u.suspended_at && <span className="chip border-danger/50 text-danger">Suspended {day(u.suspended_at)}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</span>
+          )}
           {pendingEmail && <span className="chip border-lime/40 text-lime">Email change to {pendingEmail} waiting</span>}
           {oldHandles.map((h) => (
             <span key={h.old_handle} className="chip border-line text-mute">/{h.old_handle} {h.forward_until > t ? `forwards until ${day(h.forward_until)}, ` : ""}reserved until {day(h.expires_at)}</span>
@@ -376,7 +383,9 @@ export default async function Account({ params }: { params: Promise<{ id: string
 
           {support && (
           <div className="space-y-3 rounded-md border border-danger/30 p-4">
-            {u.suspended_at ? (
+            {u.deletion_requested_at ? (
+              <p className="text-sm text-mute">Deletion pending. Only the person can restore it, by signing in within {UNDO_DAYS} days of asking.</p>
+            ) : u.suspended_at ? (
               <ConfirmButton action={unsuspendAccount.bind(null, id)} message={`Restore @${u.handle}? Their link and sign-in come back, and they're emailed.`} className="btn-lime btn-sm w-full">
                 Unsuspend
               </ConfirmButton>

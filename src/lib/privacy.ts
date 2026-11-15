@@ -13,8 +13,17 @@ import { normalEmail } from "./email-normal";
  * to send stays, so the "your account was deleted" email goes out; the outbox clean-up removes it later. The
  * unsubscribe list (email_suppressions) and the admin log stay.
  */
-export async function purgeAccount(userId: number) {
-  await q.tx(async (db) => {
+/**
+ * Deletes an account and everything it owns. `stillDue`, when given, runs first inside the same transaction with the
+ * account row locked; if it says no, nothing is deleted and this returns false (account-deletion.ts: a hold or a change
+ * that lands between the nightly job's check and the purge wins).
+ */
+export async function purgeAccount(userId: number, stillDue?: (db: Queryable) => Promise<boolean>) {
+  const done = await q.tx(async (db) => {
+    if (stillDue) {
+      await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", userId);
+      if (!(await stillDue(db))) return false;
+    }
     await queueDeletion(db, await accountKeys(db, userId), `account #${userId} deleted`, now());
     const who = await db.get<{ email: string }>("SELECT email FROM users WHERE id = ?", userId);
     if (who) await forgetLinkPerson(db, userId, who.email);
@@ -28,8 +37,10 @@ export async function purgeAccount(userId: number) {
       t, t + DELETED_HANDLE_HOLD_DAYS * 86_400_000, userId, t, t + DELETED_HANDLE_HOLD_DAYS * 86_400_000, userId,
     );
     await db.run("DELETE FROM users WHERE id = ?", userId); // cascades to everything the account owns
+    return true;
   });
-  await drainNow();
+  if (done) await drainNow();
+  return done;
 }
 
 /**

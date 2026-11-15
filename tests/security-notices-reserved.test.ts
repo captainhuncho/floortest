@@ -15,7 +15,8 @@ const NOTICES: [string, string][] = [
   ["src/lib/google-link.ts", "Google sign-in was removed from your account"],
   ["src/lib/security.ts", "New sign-in to FloorTest"],
   ["src/app/(auth)/actions.ts", "Someone tried to sign up with your email"],
-  ["src/app/dashboard/actions/settings.ts", "Your FloorTest account was deleted"],
+  ["src/lib/account-deletion.ts", "Your FloorTest account is switched off and will be deleted"],
+  ["src/lib/account-deletion.ts", "Your FloorTest account was deleted"],
 ];
 
 test("security notices are queued as reserved email, so a busy day can't hold them back", () => {

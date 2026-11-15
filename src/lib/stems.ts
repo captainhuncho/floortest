@@ -117,7 +117,9 @@ async function trackForStems(token: string, step: "start" | "complete", uploadId
   if (!t || (life === "closed" && !finishing)) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
   if (step === "start" && life !== "open") throw new IntakeError("This receipt doesn't take stems any more.", 403);
-  const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
+  const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ? AND suspended_at IS NULL", t.user_id))?.plan;
+  // A switched-off receiver (suspended or deleted) takes no stems (Safety, 15 Nov).
+  if (!plan) throw new IntakeError("This track is no longer available.", 404);
   if (!(await featureOn("stems", { id: t.user_id, plan }))) throw new IntakeError("Not found", 404);
   return t;
 }

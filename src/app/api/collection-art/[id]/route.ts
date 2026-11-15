@@ -15,7 +15,7 @@ import { quarantined, recordDigest } from "@/lib/file-digests";
 export const runtime = "nodejs";
 
 const MAX = 8 * 1024 * 1024;
-const collectionOf = async (raw: string) => q.get<Collection>("SELECT * FROM collections WHERE id = ?", Number(raw) || 0);
+const collectionOf = async (raw: string) => q.get<Pick<Collection, "id" | "user_id" | "name" | "art_key">>("SELECT id, user_id, name, art_key FROM collections WHERE id = ?", Number(raw) || 0);
 
 /** The owner's collection, for changing its artwork (never during a read-only support "view as", never from a lost team desk). */
 async function ownCollection(raw: string) {
@@ -72,7 +72,7 @@ export async function DELETE(_req: Request, ctx: RouteContext<"/api/collection-a
 export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const c = await collectionOf((await ctx.params).id);
   if (!c?.art_key) return new Response("Not found", { status: 404 });
-  const owner = await q.get<{ active_collection_id: number | null }>("SELECT active_collection_id FROM users WHERE id = ?", c.user_id);
+  const owner = await q.get<{ active_collection_id: number | null }>("SELECT active_collection_id FROM users WHERE id = ? AND suspended_at IS NULL", c.user_id);
   const viewer = await currentUser();
   const isPublic = !!owner && (await activeCollection(owner))?.id === c.id;
   if (!isPublic && viewer?.id !== c.user_id) return new Response("Not found", { status: 404 });

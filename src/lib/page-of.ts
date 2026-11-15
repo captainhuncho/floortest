@@ -20,7 +20,7 @@ export function pageOf(path: string) {
 const ROUTES = new Set([
   "c", "coming-soon", "confirm-email", "contact", "content-rules", "cookies", "dashboard", "invite", "join", "law-enforcement",
   "licenses", "newsletter", "pricing", "privacy", "privacy-choices", "receipt", "security", "sent", "subprocessors", "takedown",
-  "terms", "trust", "unsubscribe", "verify-email", "waitlist", "forgot", "login", "reset", "signed-out", "signup",
+  "terms", "trust", "unsubscribe", "verify-email", "waitlist", "forgot", "login", "reset", "restore", "signed-out", "signup",
 ]);
 
 /** A page name from pageOf, kept only if it's one of our routes: later parts stay ids, keys or short lowercase words. */

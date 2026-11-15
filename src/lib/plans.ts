@@ -8,7 +8,7 @@ export const RESERVED_HANDLES = new Set([
   // Every other top-level page in src/app, so no one can hold a handle a page shadows, and a visit to it is never counted
   // as someone's receiving link (Safety review of #435, 5 Nov).
   "c", "receipt", "join", "invite", "cookies", "security", "takedown", "coming-soon", "content-rules", "privacy-choices", "law-enforcement",
-  "subprocessors", "newsletter", "signed-out", "ops-login",
+  "subprocessors", "newsletter", "signed-out", "ops-login", "restore",
   // The visit counter's name for pages we don't serve, never a receiver's link.
   "other",
   // The static folders the proxy skips (src/proxy.ts matcher): a link name there would get no proxy at all (Safety
