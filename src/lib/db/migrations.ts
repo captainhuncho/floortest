@@ -2381,6 +2381,7 @@ create table if not exists terms_acceptances (
   name text not null default '',
   accepted_at bigint not null,
   pdf_sent_at bigint,
+  pdf_outbox_id bigint,
   account_deleted_at bigint,
   check (kind = 'account' or (user_id is null and account_deleted_at is null))
 );

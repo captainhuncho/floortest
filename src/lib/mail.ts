@@ -331,7 +331,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   else if (!willSend && MAIL_SINK) await sinkMail(to, subject, p.body);
   else if (willSend) {
     try {
-      const attachments = p.termsPdf ? await termsAttachment(p.termsPdf, to) : [];
+      const attachments = p.termsPdf ? await termsAttachment(p.termsPdf, to, id) : [];
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.email.resendKey}`, "Content-Type": "application/json", "Idempotency-Key": `outbox-${row.idem_key}` },
@@ -350,10 +350,11 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
         signal: AbortSignal.timeout(5_000),
       });
       status = res.ok ? "sent" : `failed (${res.status})`;
-      if (res.ok) providerId = ((await res.json().catch(() => ({}))) as { id?: string }).id ?? null;
-      // The copy counts as sent only once the email is accepted, so a failed try sends it again on the retry (Safety M1).
-      if (res.ok && attachments.length && p.termsPdf) await q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ? AND pdf_sent_at IS NULL", now(), p.termsPdf.acceptanceId);
-      else console.error("[mail] Resend rejected", res.status, await res.text().catch(() => ""));
+      if (res.ok) {
+        providerId = ((await res.json().catch(() => ({}))) as { id?: string }).id ?? null;
+        // The copy counts as sent only once the email is accepted, so a failed try sends it again on the retry (Safety M1).
+        if (attachments.length && p.termsPdf) await q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ? AND pdf_outbox_id = ? AND pdf_sent_at IS NULL", now(), p.termsPdf.acceptanceId, id);
+      } else console.error("[mail] Resend rejected", res.status, await res.text().catch(() => ""));
     } catch (e) {
       status = "failed (network)";
       console.error("[mail] delivery failed", e);
@@ -363,6 +364,8 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     await q.run("UPDATE outbox SET status = 'queued', next_at = ? WHERE id = ?", at + BACKOFF_MS[row.attempts - 1], id);
     return "queued (retrying)";
   }
+  // A copy claimed by an email that finally failed is let go, so the person's next email can carry it.
+  if (status.startsWith("failed") && p.termsPdf) await releaseTermsCopy(id);
   // Final: the sealed text goes, only the hidden copy stays.
   await q.run("UPDATE outbox SET status = ?, provider_id = ?, payload = NULL, next_at = NULL WHERE id = ?", status, providerId, id);
   if (status.startsWith("failed")) await recordIncident("email_failed", `Email to ${p.to.replace(/^(.{2}).*@/, "$1…@")} ${status}`, row.subject);
@@ -407,23 +410,38 @@ export async function drainOutbox(limit = 50, { until = Infinity } = {}) {
 
 /**
  * The stamped Terms PDF as a Resend attachment, or none: if the acceptance or its archived text is gone, if its copy has
- * already gone out on another email, or if the acceptance isn't this recipient's (Safety S5). It is marked sent after
- * the email is accepted (deliver), so a retry carries it again; the PDF is the same bytes each time, so the retry's body
- * matches the first try's for Resend's idempotency key. A PDF that can't be built never holds the email back.
+ * already gone out, if another email holds it, or if the acceptance isn't this recipient's (Safety S5). The copy is
+ * claimed for this one outbox email in a single UPDATE (Safety, 15 Nov), so two emails sent at once can't both carry it;
+ * this email's retries keep the claim and carry it again. The PDF is the same bytes each time, so a retry's body matches
+ * the first try's for Resend's idempotency key. It is marked sent once the email is accepted (deliver) and let go if the
+ * email finally fails. A PDF that can't be built never holds the email back.
  */
-export async function termsAttachment(t: TermsPdf, to: string) {
+export async function termsAttachment(t: TermsPdf, to: string, outboxId: number) {
   try {
     const { acceptedTermsPdf } = await import("./terms-pdf");
     const a = await q.get<{ id: number; email: string; version: string; hash: string; name: string; accepted_at: number; pdf_sent_at: number | null }>(
-      "SELECT id, email, version, hash, name, accepted_at, pdf_sent_at FROM terms_acceptances WHERE id = ?",
+      `UPDATE terms_acceptances SET pdf_outbox_id = ?
+       WHERE id = ? AND pdf_sent_at IS NULL AND (pdf_outbox_id IS NULL OR pdf_outbox_id = ?) AND lower(email) = lower(?)
+       RETURNING id, email, version, hash, name, accepted_at, pdf_sent_at`,
+      outboxId,
       t.acceptanceId,
+      outboxId,
+      to,
     );
-    if (!a || a.pdf_sent_at !== null || a.email.toLowerCase() !== to.toLowerCase()) return [];
+    if (!a) return [];
     const pdf = await acceptedTermsPdf(a, a.email);
-    if (!pdf) return [];
+    if (!pdf) {
+      await releaseTermsCopy(outboxId);
+      return [];
+    }
     return [{ filename: `FloorTest-Terms-${a.version.replace(/[^A-Za-z0-9]+/g, "-")}.pdf`, content: pdf.toString("base64") }];
   } catch (e) {
     console.error("[mail] Terms copy couldn't be built; sending without it", e);
+    await releaseTermsCopy(outboxId).catch(() => {});
     return [];
   }
 }
+
+/** Lets go of a Terms copy this outbox email claimed but didn't send. */
+const releaseTermsCopy = (outboxId: number) =>
+  q.run("UPDATE terms_acceptances SET pdf_outbox_id = NULL WHERE pdf_outbox_id = ? AND pdf_sent_at IS NULL", outboxId);
