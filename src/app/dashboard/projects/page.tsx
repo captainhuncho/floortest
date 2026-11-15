@@ -6,6 +6,7 @@ import { OwnerUpload } from "../collections/OwnerUpload";
 import { MoveAllToProjects } from "./MoveAllToProjects";
 import { MusicList } from "./MusicList";
 import { NewProject, ProjectTile } from "./ProjectsUI";
+import { CollectionsTabs } from "../collections/CollectionsTabs";
 
 export const metadata = { title: "Projects — FloorTest" };
 
@@ -27,7 +28,10 @@ export default async function Projects() {
   return (
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 sm:gap-5">
-        <PageHead label={`${used} of ${limit} tracks`} title="Projects" />
+        <div className="flex flex-col gap-1.5">
+          <PageHead label={`${used} of ${limit} tracks`} title="Collections" />
+          <CollectionsTabs on="projects" />
+        </div>
         <p className="-mt-2 text-[13px] text-mute">Your own tracks to keep and listen to, in projects or on their own. They stay until you delete them.</p>
         {canEdit && inCollections > 0 && <MoveAllToProjects count={inCollections} />}
         {(folders.length > 0 || canEdit) && (
