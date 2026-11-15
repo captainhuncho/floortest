@@ -26,7 +26,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const [c, sp, editor] = await Promise.all([siteCopy("auth"), searchParams, siteEditor()]);
   const { E } = editable(c, !!editor);
   // Google sign-in is offered on the website only, not inside the app (App Review 4.8, owner 15 Nov).
-  const google = !!googleConfig() && !isPreview && !(await inApp());
+  const app = await inApp();
+  const google = !!googleConfig() && !isPreview && !app;
   const googleError = GOOGLE_ERRORS[String(sp.google ?? "")];
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
@@ -51,6 +52,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               </a>
               <div className="af-or">or</div>
             </>
+          )}
+          {app && !!googleConfig() && (
+            // Accounts made with Google have no password: the emailed code reaches the same account.
+            <p className="af-row">
+              Signed up with Google? Use <Link href="/login/code" className="af-lnk"><E k="login_code_link" /></Link>.
+            </p>
           )}
           <AuthForm
             action={login}
