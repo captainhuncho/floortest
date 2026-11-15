@@ -12,9 +12,8 @@ import { CANCELLED, MAX_BYTES, sendArtwork, uploadTrack } from "../../[handle]/u
 import { TransferScreen } from "../../[handle]/TransferScreen";
 import { EmailCode, startEmailCheck, type TermsState } from "../../[handle]/EmailCode";
 import { TermsTick } from "../../[handle]/TermsTick";
-import { SetsPermission } from "../../[handle]/SetsPermission";
 import { GenrePicker } from "../../[handle]/GenrePicker";
-import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../../[handle]/Choice";
+import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, PLAY_CHOICES, RELEASE_CHOICES, playHelp } from "../../[handle]/Choice";
 import { normalEmail } from "@/lib/email-normal";
 import { Chip, Icon, SEG, segTab } from "@/components/Kit";
 import { FIELD_LABEL } from "../kitButtons";
@@ -62,6 +61,7 @@ export function FolderSend({
   trackArt = false,
   callout = null,
   presetGenre = "",
+  receiverAsksPlay = false,
 }: {
   /** The receiver's plan takes artwork: one optional cover for the whole release. */
   trackArt?: boolean;
@@ -77,6 +77,8 @@ export function FolderSend({
   callout?: string | null;
   /** A genre the sender tapped in the receiver's brief; it starts as the folder's genre. */
   presetGenre?: string;
+  /** The receiver is a label or A&R desk: one Evaluation only / OK to play choice for the whole folder. */
+  receiverAsksPlay?: boolean;
 }) {
   const abort = useRef<AbortController | null>(null);
   const [startedAt, setStartedAt] = useState(0);
@@ -94,7 +96,7 @@ export function FolderSend({
   const [message, setMessage] = useState("");
   const [artwork, setArtwork] = useState<File | null>(null);
   const artSent = useRef(false);
-  const [setsOk, setSetsOk] = useState(false);
+  const [play, setPlay] = useState("evaluation");
   const [aiUse, setAiUse] = useState("");
   const [mix, setMix] = useState("");
   const [releaseStatus, setReleaseStatus] = useState("");
@@ -211,7 +213,7 @@ export function FolderSend({
           ai_use: aiUse,
           asAccount: !!account,
           ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_instagram: who.instagram, sender_streaming: who.streaming, terms_tick: termsTicked, terms_hash: termsHash.current }),
-          sets_ok: setsOk,
+          ...(receiverAsksPlay ? { play } : {}),
           release: { id, title: release.title.trim(), artist: release.artist.trim(), kind: release.kind },
           // The folder's tracks share one receipt email, sent once the last one is saved.
           send_size: items.length,
@@ -468,7 +470,9 @@ export function FolderSend({
               <span className="block text-xs text-mute">One cover for the whole release. JPG, PNG or WebP, up to 25 MB. Sent at full quality.</span>
             </label>
           )}
-          <SetsPermission receiverName={receiverName} many checked={setsOk} onChange={setSetsOk} disabled={running} />
+          {receiverAsksPlay && (
+            <Choice id="folder-play" name="play" label="Sending to a label" value={play} onChange={setPlay} options={PLAY_CHOICES} help={playHelp(play, receiverName)} disabled={running} />
+          )}
         </>
       )}
 

@@ -35,7 +35,7 @@ export function SendModes({
           {mode === "tracks" ? (
             tracks
           ) : (
-            <FolderSend handle={form.handle} receiverName={form.receiverName} genres={form.genres} folderBytes={folderBytes} botCheckKey={form.botCheckKey} callout={form.callout} trackArt={form.trackArt} presetGenre={picked} />
+            <FolderSend handle={form.handle} receiverName={form.receiverName} genres={form.genres} folderBytes={folderBytes} botCheckKey={form.botCheckKey} callout={form.callout} trackArt={form.trackArt} presetGenre={picked} receiverAsksPlay={form.receiverAsksPlay} />
           )}
         </div>
       )}
