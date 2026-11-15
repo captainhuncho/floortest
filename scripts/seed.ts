@@ -127,7 +127,7 @@ async function main() {
     // meets the two-a-day limit per email (1 Nov: the third repeat was refused "Too many requests").
     const scanners = Array.from({ length: 6 }, (_, i) => [`scan${i + 1}@floortest.test`, `Scan Tester ${i + 1}`, `scantest${i + 1}`]);
     const strangers = Array.from({ length: 5 }, (_, i) => [`stranger${i + 2}@floortest.test`, `Sam Stranger ${i + 2}`, `samx${i + 2}`]);
-    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"], ["tfa@floortest.test", "Tess Twostep", "tesstfa"], ...scanners, ...strangers])
+    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"], ["tfa@floortest.test", "Tess Twostep", "tesstfa"], ["label-sender@floortest.test", "Lou Sender", "lousender"], ...scanners, ...strangers])
       await db.run(
         "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?)",
         email,
@@ -139,6 +139,21 @@ async function main() {
         now,
         now - DAY,
       );
+    // A label desk for e2e/label-send.spec.ts (send rules, owner 15 Nov): its senders pick Evaluation only or OK to
+    // play, and Lou Sender (above) sends to it. Played out is switched on so the pick page can hold a track back.
+    await db.run(
+      "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at, kind, tools) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      "label@floortest.test",
+      hash("floortest-demo"),
+      "Luna Label",
+      "lunalabel",
+      "free",
+      "Europe/London",
+      now,
+      now - DAY,
+      "label",
+      JSON.stringify({ played_out: true }),
+    );
   }
 
   const senders: Record<string, number> = {};

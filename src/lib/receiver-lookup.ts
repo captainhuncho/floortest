@@ -6,11 +6,12 @@ import { briefItems } from "@/lib/brief";
 import { activeCollection, capacity, isClosed, isPaused, userByHandle } from "@/lib/desk";
 import { genresFor } from "@/lib/plans";
 import { teamSize } from "@/lib/team";
+import { receiverAsksPlayChoice } from "@/lib/account-types";
 
 export type ReceiverLookup =
   | { found: false; reason: string }
   | { found: true; handle: string; name: string; roleLine: string; verified: boolean; accepting: boolean; reason: string | null; genres: string[]; note: string;
-      collection: string | null; brief: { k: string; v: string }[]; folderBytes: number; trackArt: boolean; photo: string | null; links: ProfileLink[] };
+      collection: string | null; brief: { k: string; v: string }[]; folderBytes: number; trackArt: boolean; asksPlay: boolean; photo: string | null; links: ProfileLink[] };
 
 /** Who is floortest.../<handle>, as seen by the signed-in user `u`? The Send page (as you type) and the app use this. */
 export async function receiverLookup(u: Pick<User, "handle">, raw: string): Promise<ReceiverLookup> {
@@ -33,6 +34,8 @@ export async function receiverLookup(u: Pick<User, "handle">, raw: string): Prom
     accepting: !reason, reason, genres: g.list, note: isPaused(r) ? r.pause_message : "", collection: c?.name ?? null, brief,
     folderBytes: await folderLimit(r.plan),
     trackArt: await trackArtEnabled(r.plan),
+    // A label or A&R desk: the sender picks Evaluation only or OK to play, as on the link page.
+    asksPlay: receiverAsksPlayChoice(r.kind),
     photo: r.cover_key ? `/api/cover/${r.handle}?v=${encodeURIComponent(r.cover_key)}` : null,
     links: readLinks(r.links),
   };
