@@ -389,3 +389,112 @@ test("session checks are shared and remembered, and a pass holder never needs on
   assert.equal(await g.gateAdmits((await g.gatePass())!, token), true);
   assert.equal(g.sessionLookups() - r0, 0, "a current pass is checked first, without touching sessions");
 });
+
+// Safety's follow-up to #532: the session check can't be used to wear down the database.
+async function hashOf(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+test("made-up session tokens are never remembered; the remembered list stays bounded", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const id = await user("relock-bounded@example.test");
+  const live = await session(id);
+  const { g } = await relock();
+  for (let i = 0; i < 20; i++) assert.equal(await g.gateAdmits(undefined, crypto.randomBytes(32).toString("base64url")), false);
+  assert.equal(g.rememberedSessions(), 0, "twenty made-up tokens: nothing remembered");
+  assert.equal(await g.gateAdmits(undefined, live), true);
+  assert.equal(g.rememberedSessions(), 1, "a live session is remembered");
+  // Fill it to the limit with real sessions: the next one clears the list and starts again, never grows past it.
+  const tokens = Array.from({ length: g.SESSION_CACHE_MAX }, () => crypto.randomBytes(32).toString("base64url"));
+  const t = now();
+  for (let i = 0; i < tokens.length; i += 500) {
+    const part = tokens.slice(i, i + 500);
+    await q.run(
+      `INSERT INTO sessions (token_hash, user_id, expires_at, created_at, device, last_seen_at, kind) VALUES ${part.map(() => "(?,?,?,?,?,?,?)").join(",")}`,
+      ...(await Promise.all(part.map(async (tok) => [await hashOf(tok), id, t + 86_400_000, t, "test", t, "web"]))).flat(),
+    );
+  }
+  for (const tok of tokens) await g.gateAdmits(undefined, tok);
+  assert.ok(g.rememberedSessions() <= g.SESSION_CACHE_MAX, "never more than the limit");
+  assert.ok(g.rememberedSessions() < g.SESSION_CACHE_MAX, "the list was cleared when it filled");
+  g.forgetSessionChecks();
+});
+
+test("at most SESSION_INFLIGHT_MAX session checks reach the database at once; the rest count as signed out", async () => {
+  const { g } = await relock();
+  await g.gateLock();
+  const { q } = await import("../src/lib/db");
+  const real = q.get;
+  const hold: (() => void)[] = [];
+  q.get = ((sql: string, ...a: unknown[]) => {
+    if (/SELECT 1 AS one FROM sessions/.test(sql)) return new Promise<unknown>((resolve) => hold.push(() => resolve(undefined)));
+    return (real as (s: string, ...r: unknown[]) => Promise<unknown>)(sql, ...a);
+  }) as typeof q.get;
+  try {
+    const r0 = g.sessionLookups();
+    const extra = 5;
+    const checks = Array.from({ length: g.SESSION_INFLIGHT_MAX + extra }, () => g.gateAdmits(undefined, crypto.randomBytes(32).toString("base64url")));
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(g.sessionLookups() - r0, g.SESSION_INFLIGHT_MAX, "only the limit reached the database");
+    hold.forEach((release) => release());
+    assert.ok((await Promise.all(checks)).every((ok) => ok === false));
+  } finally {
+    q.get = real;
+    g.forgetSessionChecks();
+  }
+});
+
+test("after a failed session check, new checks are refused without a query for a moment, then tried again", async (t) => {
+  const id = await user("relock-failcache@example.test");
+  const token = await session(id);
+  const { g } = await relock();
+  await g.gateLock();
+  const { q } = await import("../src/lib/db");
+  const real = q.get;
+  const quiet = console.error;
+  q.get = ((sql: string, ...a: unknown[]) => {
+    if (/SELECT 1 AS one FROM sessions/.test(sql)) return Promise.reject(new Error("database down"));
+    return (real as (s: string, ...r: unknown[]) => Promise<unknown>)(sql, ...a);
+  }) as typeof q.get;
+  console.error = () => {};
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  try {
+    assert.equal(await g.gateAdmits(undefined, crypto.randomBytes(32).toString("base64url")), false);
+    q.get = real;
+    const r0 = g.sessionLookups();
+    assert.equal(await g.gateAdmits(undefined, token), false, "within the fail window: refused");
+    assert.equal(g.sessionLookups() - r0, 0, "and no query was made");
+    t.mock.timers.tick(g.SESSION_FAIL_CACHE_MS + 1);
+    t.mock.timers.tick(g.LOCK_CACHE_MS);
+    assert.equal(await g.gateAdmits(undefined, token), true, "after it: checked again for real");
+  } finally {
+    t.mock.timers.reset();
+    q.get = real;
+    console.error = quiet;
+    g.forgetSessionChecks();
+    g.forgetGateLock();
+  }
+});
+
+test("two flips to the same state at once make one write and one admin log line, in one transaction", async () => {
+  const { q } = await import("../src/lib/db");
+  const { setSwitch } = await import("../src/lib/switches");
+  const { logAdmin } = await import("../src/lib/admin-log");
+  await flip(true);
+  boss ??= await user("lock-super@example.test", { totp: true });
+  const before = (await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM admin_log WHERE action = 'race off'"))!.n;
+  const log = (t: Parameters<typeof logAdmin>[4]) => logAdmin(boss!, "race off", "Site lock", "", t);
+  const results = await Promise.all([setSwitch("site_lock", false, boss, log), setSwitch("site_lock", false, boss, log)]);
+  assert.deepEqual(results.sort(), [false, true], "one changed it, the other found it already off");
+  const after = (await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM admin_log WHERE action = 'race off'"))!.n;
+  assert.equal(Number(after) - Number(before), 1, "one log line");
+  // A log that fails rolls the flip back: the switch never changes without its line in the admin log.
+  const gen = (await q.get<{ updated_at: string }>("SELECT updated_at FROM switches WHERE key = 'site_lock'"))!.updated_at;
+  await new Promise((r) => setTimeout(r, 5));
+  await assert.rejects(setSwitch("site_lock", true, boss, async () => Promise.reject(new Error("log down"))));
+  const row = (await q.get<{ on_: number; updated_at: string }>("SELECT on_, updated_at FROM switches WHERE key = 'site_lock'"))!;
+  assert.equal(Number(row.on_), 0, "still off");
+  assert.equal(String(row.updated_at), String(gen), "same generation");
+  const g = await import("../src/lib/site-gate");
+  g.forgetGateLock();
+});

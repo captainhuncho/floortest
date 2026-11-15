@@ -139,16 +139,28 @@ export async function switchOn(key: SwitchKey, a?: SwitchSubject | number | Quer
   return ruleCovers(key, s.rule, subject, country, isSuperAdmin(subject));
 }
 
-export async function setSwitch(key: SwitchKey, on: boolean, adminId: number) {
-  await q.run(
-    "INSERT INTO switches (key, on_, admin_id, updated_at) VALUES (?,?,?,?) ON CONFLICT (key) DO UPDATE SET on_ = excluded.on_, admin_id = excluded.admin_id, updated_at = excluded.updated_at",
-    key,
-    on ? 1 : 0,
-    adminId,
-    now(),
-  );
-  // This process reads the new lock on its next request; the proxy and other instances within ~5 s (lib/site-gate).
-  if (key === "site_lock") forgetGateLock();
+/**
+ * Turns a site-wide switch on or off. Writes only when it changes (two admins flipping at once, or a double click,
+ * make one write, not two generations of the site lock), and runs `log` in the same transaction, so the admin log
+ * always matches the switch. True when it changed.
+ */
+export async function setSwitch(key: SwitchKey, on: boolean, adminId: number, log?: (db: Queryable) => Promise<void>) {
+  const changed = await q.tx(async (t) => {
+    const r = await t.run(
+      "INSERT INTO switches (key, on_, admin_id, updated_at) VALUES (?,?,?,?) ON CONFLICT (key) DO UPDATE SET on_ = excluded.on_, admin_id = excluded.admin_id, updated_at = excluded.updated_at WHERE switches.on_ <> excluded.on_",
+      key,
+      on ? 1 : 0,
+      adminId,
+      now(),
+    );
+    if (!r.changes) return false;
+    if (log) await log(t);
+    return true;
+  });
+  // After the commit: this process reads the new lock on its next request; the proxy and other instances within ~5 s
+  // (lib/site-gate).
+  if (changed && key === "site_lock") forgetGateLock();
+  return changed;
 }
 
 const isSuperAdmin = (who: SwitchSubject | null) => !!who?.email && env.adminEmails.includes(who.email.toLowerCase());
