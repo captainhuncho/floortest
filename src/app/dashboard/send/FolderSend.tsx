@@ -10,7 +10,8 @@ import { readTags, type Tags } from "@/lib/tags";
 import { Turnstile } from "@/components/Turnstile";
 import { CANCELLED, MAX_BYTES, sendArtwork, uploadTrack } from "../../[handle]/useTrackUpload";
 import { TransferScreen } from "../../[handle]/TransferScreen";
-import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
+import { EmailCode, startEmailCheck, type TermsState } from "../../[handle]/EmailCode";
+import { TermsTick } from "../../[handle]/TermsTick";
 import { SetsPermission } from "../../[handle]/SetsPermission";
 import { GenrePicker } from "../../[handle]/GenrePicker";
 import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../../[handle]/Choice";
@@ -99,6 +100,10 @@ export function FolderSend({
   const [releaseStatus, setReleaseStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  // The one Terms tick for senders without an account (Research brief, owner 15 Nov); the hash comes from the email check.
+  const [termsTicked, setTermsTicked] = useState(false);
+  const termsHash = useRef<string | undefined>(undefined);
+  const termsWaiting = !account && !termsTicked;
   // The current file has landed and its virus check is running (up to a minute while the scanner wakes).
   const [scanning, setScanning] = useState(false);
   const [id] = useState(releaseId);
@@ -157,9 +162,14 @@ export function FolderSend({
       const r = await startEmailCheck(who.email, turnstile);
       setChecking(false);
       if (r === "code") return setWaiting(true);
-      if (r) return setError(r);
+      if (typeof r === "string") return setError(r);
+      keepTerms(r.ready);
     }
     upload();
+  }
+
+  function keepTerms(t: TermsState) {
+    termsHash.current = t.termsNeeded ? t.termsHash : undefined;
   }
 
   async function upload() {
@@ -184,7 +194,7 @@ export function FolderSend({
           mix_status: mix,
           ai_use: aiUse,
           asAccount: !!account,
-          ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_instagram: who.instagram, sender_streaming: who.streaming }),
+          ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_instagram: who.instagram, sender_streaming: who.streaming, terms_tick: termsTicked, terms_hash: termsHash.current }),
           sets_ok: setsOk,
           release: { id, title: release.title.trim(), artist: release.artist.trim(), kind: release.kind },
           // The folder's tracks share one receipt email, sent once the last one is saved.
@@ -251,8 +261,9 @@ export function FolderSend({
         email={normalEmail(who.email)}
         receiverName={receiverName}
         sending={[`${release.title} · ${items.length} tracks`]}
-        onConfirmed={() => {
+        onConfirmed={(t) => {
           setWaiting(false);
+          keepTerms(t);
           upload();
         }}
         onCancel={() => setWaiting(false)}
@@ -453,8 +464,9 @@ export function FolderSend({
           <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a>
         </p>
       )}
+      {items.length > 0 && !account && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={null} hash={null} />}
       {items.length > 0 && (
-        <button type="submit" disabled={running || checking} className="btn-lime inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] text-[13px] font-semibold">
+        <button type="submit" disabled={running || checking || termsWaiting} className="btn-lime inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] text-[13px] font-semibold">
           <Icon name="send" className="size-4" />
           {checking ? "Checking your email…" : running ? "Sending…" : items.some((i) => i.state === "failed") ? "Retry the failed tracks" : `Send folder (${items.length} tracks)`}
         </button>

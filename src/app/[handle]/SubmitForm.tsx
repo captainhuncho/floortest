@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CARD, Icon } from "@/components/Kit";
 import { fmtBytes, fmtTime } from "@/lib/format";
-import { EmailCode, startEmailCheck } from "./EmailCode";
+import { EmailCode, startEmailCheck, type TermsState } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
 import { SetsPermission } from "./SetsPermission";
 import { TransferScreen } from "./TransferScreen";
@@ -273,6 +273,12 @@ export function SubmitForm({
     return false;
   }
 
+  /** Sends with the Terms hash the server just gave for the confirmed email, so a first-time sender's tick is recorded. */
+  function sendWithTerms(fd: FormData, t: TermsState) {
+    if (t.termsNeeded && t.termsHash) fd.set("terms_hash", t.termsHash);
+    return send(fd);
+  }
+
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -283,7 +289,7 @@ export function SubmitForm({
     setChecking(true);
     const r = await startEmailCheck(email, String(fd.get("cf-turnstile-response") ?? ""));
     setChecking(false);
-    if (r === null) return send(fd);
+    if (typeof r === "object") return sendWithTerms(fd, r.ready);
     if (r === "code") return setWaiting({ email, fd });
     setError(r);
   }
@@ -515,10 +521,10 @@ export function SubmitForm({
           email={waiting.email}
           receiverName={receiverName}
           sending={items.map((it) => `${it.tags.title || it.file.name}${it.tags.artist ? ` · ${it.tags.artist}` : ""}`)}
-          onConfirmed={() => {
+          onConfirmed={(t) => {
             const fd = waiting.fd;
             setWaiting(null);
-            send(fd);
+            sendWithTerms(fd, t);
           }}
           onCancel={() => setWaiting(null)}
         />
