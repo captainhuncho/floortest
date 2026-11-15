@@ -9,6 +9,7 @@ import { siteCopy } from "@/lib/content";
 import { env, isPreview } from "@/lib/env";
 import { AuthFrame, LinkCard } from "../AuthFrame";
 import { googleConfig } from "@/lib/google-auth";
+import { inApp } from "@/lib/in-app";
 
 const GOOGLE_ERRORS: Record<string, string> = {
   unconfirmed: "Your FloorTest account's email isn't confirmed yet. Use “Email me a sign-in code” below once; after that, Google works.",
@@ -24,7 +25,8 @@ export const metadata = { title: "Log in — FloorTest" };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const [c, sp, editor] = await Promise.all([siteCopy("auth"), searchParams, siteEditor()]);
   const { E } = editable(c, !!editor);
-  const google = !!googleConfig() && !isPreview;
+  // Google sign-in is offered on the website only, not inside the app (App Review 4.8, owner 15 Nov).
+  const google = !!googleConfig() && !isPreview && !(await inApp());
   const googleError = GOOGLE_ERRORS[String(sp.google ?? "")];
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
