@@ -186,7 +186,7 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 
 ## One agreement, send rules, folder types (Research brief, approved by the owner in the Desk 15 Nov; lane:standard, to mobile-next to try)
 - [x] PR A (Backend), built, not shipped: acceptance records (version, UTC time, SHA-256 of the exact Terms text, against the account or the sender's confirmed email), each Terms text archived, the re-tick on the next desk visit or the next send, the stamped PDF copy (in-house writer, no package). Sign-up tick wording and the screens: Build.
-- [ ] PR B (Backend + Build): send rules by receiver type. Label receivers (`kind = 'label'`, legacy `label_radio`) get Evaluation only (default) or OK to play; radio, A&R and music professional wait on the owner; the per-send box goes.
+- [ ] PR B (Backend + Build): send rules by receiver type (owner, Desk, 15 Nov). Label and A&R receivers (`kind = 'label'` or `'ar'`, legacy `label_radio`) get Evaluation only (default) or OK to play, and the form says "Sending to a label"; radio and every other kind are DJ-style: no choice, the Terms tick covers play-out; the per-send box goes.
 - [ ] PR C (Backend + Build): Callout and Project folders, Move to Project with "new Project", the two-per-desk limit replaced by a rate limit; pre-migration checks first.
 - [ ] Legal wording (Terms additions, "Changes and law", Privacy processors as categories): the owner's lawyer approves before any of it ships.
 - Retention decided (owner, 15 Nov, A1/B1): proof kept 6 years after account deletion; senders' 6 years after the tick (nightly clean-up). Privacy Policy line: owner's wording, pending.
