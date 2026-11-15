@@ -2,6 +2,7 @@ import { canResend, checkCode, CodeError, confirmedEmail, sendCode } from "@/lib
 import { ipFrom } from "@/lib/ratelimit";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import { normalEmail } from "@/lib/email-normal";
+import { senderTermsState } from "@/lib/terms-record";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
@@ -9,8 +10,13 @@ const bad = (error: string, status = 400) => Response.json({ error }, { status }
 /** Is this email already confirmed in this browser? Answers only for the email asked about. */
 export async function GET(req: Request) {
   const email = normalEmail(new URL(req.url).searchParams.get("email") ?? "");
-  return Response.json({ confirmed: !!email && (await confirmedEmail()) === email }, { headers: { "Cache-Control": "no-store" } });
+  const confirmed = !!email && (await confirmedEmail()) === email;
+  // Whether the Terms tick is needed is told only for the email this browser confirmed, never for any other.
+  return Response.json({ confirmed, ...(confirmed ? await termsState(email) : {}) }, { headers: { "Cache-Control": "no-store" } });
 }
+
+/** Whether this confirmed sender must tick the Terms before sending (lib/terms-record.ts senderTermsState). */
+const termsState = senderTermsState;
 
 /** send: bot check, then email a code. resend: a new code after a recent send. check: the typed code; sets the cookie. */
 export async function POST(req: Request) {
@@ -27,6 +33,7 @@ export async function POST(req: Request) {
       await sendCode(email, ip, "resend");
     } else if (body.action === "check") {
       await checkCode(email, String(body.code ?? "").slice(0, 12));
+      return Response.json({ ok: true, ...(await termsState(email)) });
     } else return bad("Unknown request.");
     return Response.json({ ok: true });
   } catch (e) {
