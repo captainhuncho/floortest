@@ -49,7 +49,7 @@ const COLS = "id, version, hash, name, accepted_at, pdf_sent_at";
 export async function latestAcceptance(who: { userId: number } | { email: string }, db: Queryable = q) {
   return "userId" in who
     ? db.get<Acceptance>(`SELECT ${COLS} FROM terms_acceptances WHERE user_id = ? ORDER BY accepted_at DESC, id DESC LIMIT 1`, who.userId)
-    : db.get<Acceptance>(`SELECT ${COLS} FROM terms_acceptances WHERE email = ? ORDER BY accepted_at DESC, id DESC LIMIT 1`, who.email);
+    : db.get<Acceptance>(`SELECT ${COLS} FROM terms_acceptances WHERE kind = 'sender' AND email = ? ORDER BY accepted_at DESC, id DESC LIMIT 1`, who.email);
 }
 
 /**
@@ -62,20 +62,26 @@ export async function needsTermsTick(who: { userId: number } | { email: string }
   return !last || last.hash !== t.hash;
 }
 
-/** Records a tick for the current Terms. Returns the new row (and whether it is the first for this text). */
-export async function recordAcceptance(who: { userId: number } | { email: string }, name: string, terms?: CurrentTerms, db: Queryable = q) {
+/**
+ * Records a tick for the current Terms. An account's row also keeps the person's email, so it still proves the
+ * acceptance after the account is deleted (kept 6 years, lib/retention.ts). Returns the new row (and whether it is the
+ * first for this text).
+ */
+export async function recordAcceptance(who: { userId: number; email: string } | { email: string }, name: string, terms?: CurrentTerms, db: Queryable = q) {
   const t = terms ?? (await currentTerms());
+  const account = "userId" in who;
   const prior = await db.get<{ id: number }>(
-    "userId" in who
+    account
       ? "SELECT id FROM terms_acceptances WHERE user_id = ? AND hash = ? LIMIT 1"
-      : "SELECT id FROM terms_acceptances WHERE email = ? AND hash = ? LIMIT 1",
-    "userId" in who ? who.userId : who.email,
+      : "SELECT id FROM terms_acceptances WHERE kind = 'sender' AND email = ? AND hash = ? LIMIT 1",
+    account ? who.userId : who.email,
     t.hash,
   );
   const row = (await db.get<Acceptance>(
-    `INSERT INTO terms_acceptances (user_id, email, version, hash, name, accepted_at) VALUES (?,?,?,?,?,?) RETURNING ${COLS}`,
-    "userId" in who ? who.userId : null,
-    "userId" in who ? null : who.email,
+    `INSERT INTO terms_acceptances (kind, user_id, email, version, hash, name, accepted_at) VALUES (?,?,?,?,?,?,?) RETURNING ${COLS}`,
+    account ? "account" : "sender",
+    account ? who.userId : null,
+    who.email,
     t.version,
     t.hash,
     name.slice(0, 200),

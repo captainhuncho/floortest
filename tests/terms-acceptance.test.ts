@@ -57,9 +57,9 @@ test("an account must tick when nothing is recorded or the Terms text changed; t
   const id = await user("tick-account@example.test");
   assert.equal(await needsTermsTick({ userId: id }), true, "nothing recorded yet");
   const old = await oldTerms();
-  await q.run("INSERT INTO terms_acceptances (user_id, version, hash, name, accepted_at) VALUES (?,?,?,?,?)", id, old.version, old.hash, "Person", now());
+  await q.run("INSERT INTO terms_acceptances (kind, user_id, email, version, hash, name, accepted_at) VALUES ('account',?,?,?,?,?,?)", id, "tick-account@example.test", old.version, old.hash, "Person", now());
   assert.equal(await needsTermsTick({ userId: id }), true, "accepted older text: asked again");
-  const { row, first } = await recordAcceptance({ userId: id }, "Person One", await currentTerms());
+  const { row, first } = await recordAcceptance({ userId: id, email: "tick-account@example.test" }, "Person One", await currentTerms());
   assert.equal(first, true);
   assert.equal(row.hash, (await currentTerms()).hash);
   assert.equal(await needsTermsTick({ userId: id }), false, "the current text is accepted");
@@ -69,7 +69,7 @@ test("two people: one person's acceptance never counts for another, by account o
   const { recordAcceptance, needsTermsTick } = await import("../src/lib/terms-record");
   const a = await user("two-a@example.test");
   const b = await user("two-b@example.test");
-  await recordAcceptance({ userId: a }, "A");
+  await recordAcceptance({ userId: a, email: "two-a@example.test" }, "A");
   assert.equal(await needsTermsTick({ userId: a }), false);
   assert.equal(await needsTermsTick({ userId: b }), true, "B still has to tick");
   await recordAcceptance({ email: "sender-a@example.test" }, "Sender A");
@@ -78,14 +78,46 @@ test("two people: one person's acceptance never counts for another, by account o
   assert.equal(await needsTermsTick({ email: "two-a@example.test" }), true, "an account's tick isn't a tick for its email as a sender");
 });
 
-test("a record is the account's or the email's, never both and never neither", async () => {
+test("a record is an account's or a sender's: a sender row never points at an account, and every row keeps its email", async () => {
   const { q, now } = await import("../src/lib/db");
   const { currentTerms } = await import("../src/lib/terms-record");
   const t = await currentTerms();
   const id = await user("check-both@example.test");
-  await assert.rejects(q.run("INSERT INTO terms_acceptances (user_id, email, version, hash, accepted_at) VALUES (?,?,?,?,?)", id, "x@example.test", t.version, t.hash, now()));
-  await assert.rejects(q.run("INSERT INTO terms_acceptances (version, hash, accepted_at) VALUES (?,?,?)", t.version, t.hash, now()));
-  await assert.rejects(q.run("INSERT INTO terms_acceptances (email, version, hash, accepted_at) VALUES (?,?,?,?)", "x@example.test", t.version, "not-archived", now()), "the text must be archived first");
+  await assert.rejects(q.run("INSERT INTO terms_acceptances (kind, user_id, email, version, hash, accepted_at) VALUES ('sender',?,?,?,?,?)", id, "x@example.test", t.version, t.hash, now()));
+  await assert.rejects(q.run("INSERT INTO terms_acceptances (kind, user_id, version, hash, accepted_at) VALUES ('account',?,?,?,?)", id, t.version, t.hash, now()), "no email, no proof");
+  await assert.rejects(q.run("INSERT INTO terms_acceptances (kind, email, version, hash, accepted_at) VALUES ('sender',?,?,?,?)", "x@example.test", t.version, "not-archived", now()), "the text must be archived first");
+});
+
+test("proof outlives the account: kept 6 years after the account is deleted, then deleted; senders' 6 years after the tick", async () => {
+  const { q } = await import("../src/lib/db");
+  const { recordAcceptance, latestAcceptance } = await import("../src/lib/terms-record");
+  const { purgeTermsProof, yearsBefore } = await import("../src/lib/retention");
+  const id = await user("leaving@example.test");
+  const { row } = await recordAcceptance({ userId: id, email: "leaving@example.test" }, "Leaving Person");
+  await q.run("DELETE FROM users WHERE id = ?", id);
+  const kept = await q.get<{ user_id: number | null; email: string; name: string; account_deleted_at: number | null }>("SELECT user_id, email, name, account_deleted_at FROM terms_acceptances WHERE id = ?", row.id);
+  assert.deepEqual({ ...kept, account_deleted_at: null }, { user_id: null, email: "leaving@example.test", name: "Leaving Person", account_deleted_at: null }, "the account goes, the proof stays");
+  assert.equal(await latestAcceptance({ email: "leaving@example.test" }), undefined, "an old account's tick isn't a sender's tick");
+  const deletedAt = Date.UTC(2026, 10, 15);
+  const until = Date.now() + 60_000;
+  await purgeTermsProof(deletedAt, until);
+  assert.equal((await q.get<{ a: number }>("SELECT account_deleted_at AS a FROM terms_acceptances WHERE id = ?", row.id))!.a, deletedAt, "the clean-up stamps the deletion");
+  await purgeTermsProof(yearsBefore(deletedAt, -6) - 1, until);
+  assert.ok(await q.get("SELECT id FROM terms_acceptances WHERE id = ?", row.id), "a day short of 6 years: kept");
+  await purgeTermsProof(yearsBefore(deletedAt, -6) + 1, until);
+  assert.equal(await q.get("SELECT id FROM terms_acceptances WHERE id = ?", row.id), undefined, "6 years after deletion: gone");
+
+  const stays = await user("staying@example.test");
+  const { row: live } = await recordAcceptance({ userId: stays, email: "staying@example.test" }, "Staying");
+  await q.run("UPDATE terms_acceptances SET accepted_at = ? WHERE id = ?", Date.UTC(2010, 0, 1), live.id);
+  const { row: sender } = await recordAcceptance({ email: "old-sender@example.test" }, "Old Sender");
+  const tick = Date.UTC(2026, 0, 10);
+  await q.run("UPDATE terms_acceptances SET accepted_at = ? WHERE id = ?", tick, sender.id);
+  await purgeTermsProof(yearsBefore(tick, -6) - 1, until);
+  assert.ok(await q.get("SELECT id FROM terms_acceptances WHERE id = ?", sender.id), "a sender's tick: kept until 6 years");
+  await purgeTermsProof(yearsBefore(tick, -6) + 1, until);
+  assert.equal(await q.get("SELECT id FROM terms_acceptances WHERE id = ?", sender.id), undefined, "then gone");
+  assert.ok(await q.get("SELECT id FROM terms_acceptances WHERE id = ?", live.id), "a live account's tick is never cleaned up, however old");
 });
 
 test("the stamped PDF: name, email, UTC time and version on top, the fingerprint, then the archived text; no IP", async () => {
@@ -190,5 +222,5 @@ test("the dashboard sends anyone who hasn't accepted the current Terms to /accep
   const layout = fs.readFileSync(new URL("../src/app/dashboard/layout.tsx", import.meta.url), "utf8");
   assert.match(layout, /if \(!view && \(await needsTermsTick\(\{ userId: user\.actor_id \}\)\)\) redirect\("\/accept-terms"\);/);
   const signup = fs.readFileSync(new URL("../src/app/(auth)/actions.ts", import.meta.url), "utf8");
-  assert.match(signup, /await recordAcceptance\(\{ userId: u\.id \}, a\.name, accepted, db\)/, "sign-up records it inside the account's transaction");
+  assert.match(signup, /await recordAcceptance\(\{ userId: u\.id, email: a\.email \}, a\.name, accepted, db\)/, "sign-up records it inside the account's transaction");
 });

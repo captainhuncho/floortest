@@ -189,7 +189,7 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 - [ ] PR B (Backend + Build): send rules by receiver type. Label receivers (`kind = 'label'`, legacy `label_radio`) get Evaluation only (default) or OK to play; radio, A&R and music professional wait on the owner; the per-send box goes.
 - [ ] PR C (Backend + Build): Callout and Project folders, Move to Project with "new Project", the two-per-desk limit replaced by a rate limit; pre-migration checks first.
 - [ ] Legal wording (Terms additions, "Changes and law", Privacy processors as categories): the owner's lawyer approves before any of it ships.
-- Open for the lawyer: acceptance rows go with the account; sender rows have no retention limit yet.
+- Retention decided (owner, 15 Nov, A1/B1): proof kept 6 years after account deletion; senders' 6 years after the tick (nightly clean-up). Privacy Policy line: owner's wording, pending.
 
 ## Projects (owner, 13 Nov: "build this out some more")
 Every account gets its own library for its own tracks, kept until deleted, with its own allowance. Phases, one at a time:
