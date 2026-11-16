@@ -174,9 +174,16 @@ export function MiniPlayer() {
       <CoverPlay />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="relative flex">
-          <Link href={trackHref(current)} className="-mt-2.5 min-w-0 flex-1 truncate pt-2.5 text-[13px] leading-5 text-mute">
-            <span className="font-semibold tracking-[-0.2px] text-bone">{current.title}</span>
-            {current.artist && <> · {current.artist}</>}
+          {/* A 44px target with the wave left where it is: the link's own box reaches the player's top edge, and its
+              ::before carries the target 14px above the player. */}
+          <Link
+            href={trackHref(current)}
+            className="relative -mt-2.5 block min-w-0 flex-1 pt-2.5 text-[13px] leading-5 text-mute before:absolute before:inset-x-0 before:-top-3.5 before:h-3.5"
+          >
+            <span className="block truncate">
+              <span className="font-semibold tracking-[-0.2px] text-bone">{current.title}</span>
+              {current.artist && <> · {current.artist}</>}
+            </span>
           </Link>
           {/* Over the end of the title for the moment it shows, so the title keeps the whole line the rest of the time. */}
           <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="absolute right-0 top-0.5 rounded bg-card px-1" />
