@@ -120,3 +120,51 @@ test("actions: an unticked Member is refused creating or editing a callout and c
   const gone = await inRequest(jar, "203.0.113.9", () => actions.deleteCollection(c, "RENAMED"), { dropAfter: true });
   assert.equal(gone.redirect, "/dashboard/settings/team?denied=1", "deleting stays with the owner and A&R / Admins");
 });
+
+test("through the actions: the tick is logged with actor and member; untick refuses create and edit at once; two-step and own-row rules hold", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const { createSession, DESK_COOKIE } = await import("../src/lib/auth");
+  const team = await import("../src/app/dashboard/actions/account-team");
+  const actions = await import("../src/app/dashboard/actions/collections");
+  const m = await import("../src/lib/account-members");
+  const s = await setup();
+  const signIn = async (uid: number) => {
+    const jar = new Map<string, string>();
+    await inRequest(jar, "203.0.113.20", () => createSession(uid));
+    jar.set(DESK_COOKIE, String(s.owner));
+    return <T,>(fn: () => Promise<T>) => inRequest(jar, "203.0.113.20", fn, { dropAfter: true });
+  };
+  const asAdmin = await signIn(s.admin);
+  const asMember = await signIn(s.member);
+  const memberName = (await q.get<{ name: string }>("SELECT name FROM users WHERE id = ?", s.member))!.name;
+
+  // (a) on and off are logged on the desk, naming the member by person and the admin as actor.
+  assert.deepEqual((await asAdmin(() => team.setTeammateCallouts(s.memberRow, true))).answer, { ok: "Saved." });
+  assert.deepEqual((await asAdmin(() => team.setTeammateCallouts(s.memberRow, false))).answer, { ok: "Saved." });
+  const log = await q.all<{ action: string; detail: string; actor_id: number }>("SELECT action, detail, actor_id FROM account_log WHERE user_id = ? AND action LIKE 'team_callouts_%' ORDER BY id", s.owner);
+  assert.deepEqual(log.map((r) => [r.action, r.detail, Number(r.actor_id)]), [
+    ["team_callouts_on", `${memberName} (user ${s.member})`, s.admin],
+    ["team_callouts_off", `${memberName} (user ${s.member})`, s.admin],
+  ]);
+
+  // (b) straight after the untick, the actions refuse the Member.
+  const f = new FormData();
+  f.set("name", "After untick");
+  const c = Number((await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?, 'Kept name', ?) RETURNING id", s.owner, now()))!.id);
+  assert.equal((await asMember(() => actions.createCollection(f))).redirect, "/dashboard/collections?denied=callouts");
+  assert.equal((await asMember(() => actions.updateCollection(c, f))).redirect, "/dashboard/collections?denied=callouts");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ? AND name = 'After untick'", s.owner), 0);
+
+  // (c) an owner without two-step can't tick (as with every team change).
+  await q.run("UPDATE users SET totp_enabled_at = NULL WHERE id = ?", s.owner);
+  await assert.rejects(m.setMemberCallouts({ ...s.desk(s.owner, "owner"), totp_enabled_at: null }, s.memberRow, true), /two-step/);
+  const asOwner = await signIn(s.owner);
+  const refused = (await asOwner(() => team.setTeammateCallouts(s.memberRow, true))).answer as { error?: string };
+  assert.match(refused.error ?? "", /two-step/);
+  assert.ok(!(await m.canRunCallouts(s.desk(s.member, "member"))));
+
+  // (d) an A&R / Admin can't tick their own row, which is an admin row anyway: "Not found", like any other admin row.
+  const own = (await asAdmin(() => team.setTeammateCallouts(s.adminRow, true))).answer as { error?: string };
+  assert.equal(own.error, "Not found");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_members WHERE id = ? AND callouts", s.adminRow), 0);
+});

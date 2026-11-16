@@ -15,6 +15,7 @@ import { q } from "@/lib/db";
 import { sharedLinksFor } from "@/lib/share-links";
 import { CARD, Chip, Icon, PageHead, SectionHead } from "@/components/Kit";
 import { GHOST } from "../kitButtons";
+import { Notice } from "../settings/ui";
 import { CollectionsTabs } from "./CollectionsTabs";
 
 export const metadata = { title: "Collections — FloorTest" };
@@ -23,8 +24,9 @@ export const metadata = { title: "Collections — FloorTest" };
  * A card per callout (owner, 30 Oct: the redesign mock): where it stands, its numbers and the next step; a dashed tile to
  * add one (or the beta limit); then what's in the receiving callout, and collections shared with you.
  */
-export default async function Collections() {
+export default async function Collections({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const user = await requireUser();
+  const { denied } = await searchParams;
   await trackUse(user.id, "collections");
   const collections = await collectionsFor(user.id);
   const sharing = await switchOn("sharing");
@@ -56,6 +58,11 @@ export default async function Collections() {
         <div className="flex flex-col gap-1.5">
           <PageHead label="One per callout" title="Collections" />
           <CollectionsTabs on="callouts" />
+          {denied === "callouts" && (
+            <Notice tone="error" next="Ask the owner or an A&R / Admin to tick Runs callouts for you in Settings → Team.">
+              Making and editing callouts is for people the owner or an A&amp;R / Admin has let run them.
+            </Notice>
+          )}
           <p className="max-w-3xl text-[12px] leading-snug text-mute">
             Your link <span className="break-all font-mono text-bone">{host}/{user.handle}</span>{" "}
             {user.active_collection_id ? "sends new tracks to the one that's receiving." : "sends tracks straight to your Review Queue until you make one."}

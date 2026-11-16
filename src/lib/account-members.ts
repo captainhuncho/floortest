@@ -237,7 +237,10 @@ export async function canRunCallouts(u: Pick<User, "id" | "role" | "actor_id">):
 export async function setMemberCallouts(desk: Pick<User, "id" | "role" | "actor_id" | "totp_enabled_at">, memberId: number, on: boolean) {
   if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can choose who runs callouts.");
   needTwoStep(desk);
-  const m = await q.get<{ user_id: number }>("UPDATE account_members SET callouts = ? WHERE id = ? AND account_id = ? AND role = 'member' AND user_id <> ? RETURNING user_id", !!on, memberId, desk.id, desk.actor_id);
+  const m = await q.get<{ user_id: number; name: string }>(
+    "UPDATE account_members m SET callouts = ? FROM users u WHERE u.id = m.user_id AND m.id = ? AND m.account_id = ? AND m.role = 'member' AND m.user_id <> ? RETURNING m.user_id, u.name",
+    !!on, memberId, desk.id, desk.actor_id,
+  );
   if (!m) throw new TeamError("Not found");
   return m;
 }

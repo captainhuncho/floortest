@@ -2454,6 +2454,7 @@ alter table account_evidence enable row level security;`,
     // Owner, 16 Nov: owners and A&R / Admins run callouts by their role; a Member only once an owner or admin ticks
     // them. Additive: everyone starts unticked. The person role keeps select only on account_members, so nobody can
     // tick themselves from the database; the tick is changed by the app connection after its own checks.
+    // The revoke is belt and braces: ft_person was already select-only on account_members.
     id: "0154_member_callouts",
     sql: `alter table account_members add column if not exists callouts boolean not null default false;
 revoke update on account_members from ft_person;`,
