@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CARD, Cover, Icon, IconBox, initials } from "@/components/Kit";
+import { CARD, Icon, IconBox, NameCover } from "@/components/Kit";
 import { useConfirm } from "@/components/Dialog";
 import { FormError } from "@/components/Feedback";
 import { useFocusTrap } from "@/components/useFocusTrap";
@@ -11,6 +11,7 @@ import { useToast } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
 import { createProject, deleteProject, renameProject } from "../actions/music";
 import { GHOST, GHOST_TALL, LIME } from "../kitButtons";
+import { MoveToFolder } from "../collections/Folders";
 
 export type ProjectView = { id: number; name: string; count: number; duration: number };
 
@@ -125,7 +126,7 @@ export function NewProject() {
 }
 
 /** Rename and delete for one project, from its ··· button. */
-function ProjectOptions({ p, onClose, onRename, showOpen }: { p: ProjectView; onClose: () => void; onRename: () => void; showOpen: boolean }) {
+function ProjectOptions({ p, onClose, onRename, onMove, showOpen }: { p: ProjectView; onClose: () => void; onRename: () => void; /** Move to folder, on a card in the list. */ onMove?: () => void; showOpen: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [ask, confirmDialog] = useConfirm();
@@ -149,6 +150,11 @@ function ProjectOptions({ p, onClose, onRename, showOpen }: { p: ProjectView; on
         <button role="menuitem" onClick={() => (onClose(), onRename())}>
           Rename project
         </button>
+        {onMove && (
+          <button role="menuitem" onClick={() => (onClose(), onMove())}>
+            Move to folder
+          </button>
+        )}
         <button role="menuitem" className="text-danger" onClick={remove}>
           Delete project
         </button>
@@ -162,7 +168,7 @@ function ProjectOptions({ p, onClose, onRename, showOpen }: { p: ProjectView; on
 }
 
 /** The ··· button and what it opens; `showOpen` on a card (the page head is already the project). */
-function ProjectMenu({ p, showOpen, onRename }: { p: ProjectView; showOpen: boolean; onRename: () => void }) {
+function ProjectMenu({ p, showOpen, onRename, onMove }: { p: ProjectView; showOpen: boolean; onRename: () => void; onMove?: () => void }) {
   const [menu, setMenu] = useState(false);
   return (
     <>
@@ -174,7 +180,7 @@ function ProjectMenu({ p, showOpen, onRename }: { p: ProjectView; showOpen: bool
       >
         <MoreIcon />
       </button>
-      {menu && <ProjectOptions p={p} showOpen={showOpen} onClose={() => setMenu(false)} onRename={onRename} />}
+      {menu && <ProjectOptions p={p} showOpen={showOpen} onClose={() => setMenu(false)} onRename={onRename} onMove={onMove} />}
     </>
   );
 }
@@ -198,20 +204,22 @@ function RenameProject({ p, onDone }: { p: ProjectView; onDone: () => void }) {
 }
 
 /** One project as a card (as a collection's): cover, name, its tracks and length. The whole card opens it. */
-export function ProjectTile({ p, canEdit }: { p: ProjectView; canEdit: boolean }) {
+export function ProjectTile({ p, canEdit, folders, folderId = null }: { p: ProjectView; canEdit: boolean; /** The desk's project folders, for Move to folder. */ folders?: { id: number; name: string }[]; folderId?: number | null }) {
   const [renaming, setRenaming] = useState(false);
+  const [moving, setMoving] = useState(false);
   if (renaming) return <RenameProject p={p} onDone={() => setRenaming(false)} />;
   return (
-    <div className={`relative flex flex-col gap-2.5 ${CARD} p-3`}>
+    <div data-card className={`relative flex flex-col gap-2.5 ${CARD} p-3`}>
+      {moving && folders && <MoveToFolder kind="project" itemId={p.id} itemName={p.name} current={folderId} folders={folders} onClose={() => setMoving(false)} />}
       <div className="flex items-start gap-2.5">
-        <Cover text={initials(p.name)} />
+        <NameCover name={p.name} />
         <div className="min-w-0 flex-1">
           <Link href={`/dashboard/projects/${p.id}`} className="block truncate text-[15px] font-semibold tracking-[-0.015em] text-bone after:absolute after:inset-0 after:rounded-[18px]">
             {p.name}
           </Link>
           <p className="mt-1 text-[11.5px] text-mute">Project</p>
         </div>
-        {canEdit && <ProjectMenu p={p} showOpen onRename={() => setRenaming(true)} />}
+        {canEdit && <ProjectMenu p={p} showOpen onRename={() => setRenaming(true)} onMove={folders ? () => setMoving(true) : undefined} />}
       </div>
       <dl className="grid grid-cols-2 text-center">
         <div className="flex flex-col">
@@ -240,7 +248,7 @@ export function ProjectHeader({ p, canEdit }: { p: ProjectView; canEdit: boolean
         <RenameProject p={p} onDone={() => setRenaming(false)} />
       ) : (
         <div className="flex items-center gap-3">
-          <Cover text={initials(p.name)} size="size-[52px]" />
+          <NameCover name={p.name} size="size-[52px]" text="text-[10px]" />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">{p.name}</h1>
             <p className="mt-0.5 text-[12px] text-mute tnum">

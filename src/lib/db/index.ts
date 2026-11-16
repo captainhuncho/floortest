@@ -132,6 +132,8 @@ export type Collection = {
   brief_note: string;
   genres: string;
   allow_sharing: number;
+  /** The callout folder it's filed in (desk_folders, kind 'callout'); null when in none. */
+  desk_folder_id: number | null;
 };
 export type Sender = {
   id: number;
