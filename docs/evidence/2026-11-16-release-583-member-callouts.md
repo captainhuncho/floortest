@@ -29,22 +29,22 @@ it until ticked). "try it #583" in the desk session. `lane:standard`; the merge 
 ## Checks
 | Check | Build | Result |
 |---|---|---|
-| Typecheck | `499e3ee4` | passed |
-| Lint | `499e3ee4` | passed (0 errors) |
-| Unit tests | `499e3ee4` | passed (961/961) |
-| check:perms | `499e3ee4` | passed (86 tables with row-level security) |
-| npm audit --omit=dev | `499e3ee4` | passed (0 vulnerabilities) |
-| e2e (full) | `499e3ee4` | passed (119 passed, 1 skipped, 0 failed) |
+| Typecheck | `dd4c4c52` | passed |
+| Lint | `dd4c4c52` | passed (0 errors) |
+| Unit tests | `dd4c4c52` | passed (961/961) |
+| check:perms | `dd4c4c52` | passed (86 tables with row-level security) |
+| npm audit --omit=dev | `dd4c4c52` | passed (0 vulnerabilities) |
+| e2e (full) | `dd4c4c52` | passed (119 passed, 1 skipped, 0 failed) |
 | e2e (full), earlier head | `eac12f79` | failed: `teams.spec.ts:173` stuck at the bot check (fixed in `29b27f18`) |
 | Safety review | `46e770f3`, `d7e1f9a4`, `8da3b450`, `29b27f18` | passed |
-| Owner test on the test link | `mobile-next` `d604ac33` | see the owner's word before ship |
+| Owner test on the test link | `mobile-next` `d604ac33` (holds `8da3b450`, all of #583's app code) | passed: owner's words in the desk session, "#583 works" |
 | CI | release PR | see PR checks |
 
-`499e3ee4` is this branch before this report was added.
+`dd4c4c52` is this branch with `main` `4f092890` merged in (#593: Next.js 16.4.6 and the #588 report), before this report update. `29b27f18` after the owner's try adds only e2e setup.
 
 ## Status
 - Built and tested: everything above.
-- Live: not yet; goes live when this PR merges, and only after the owner has tried it on the test link.
+- Live: not yet; goes live when this PR merges, on the owner's "ship it" for this PR.
 
 ## Rollback
 - Last good deployment: production 7828643270 (`main` `ef27c72e`). Migration 0154 is additive and stays: old code ignores
