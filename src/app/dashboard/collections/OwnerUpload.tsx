@@ -3,7 +3,7 @@
 import { FormError } from "@/components/Feedback";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fillFromFile, readTags } from "@/lib/tags";
 import { Icon } from "@/components/Kit";
@@ -25,10 +25,13 @@ export function OwnerUpload({
   startOpen = false,
   fields = {},
   elsewhere,
+  fromMenu = false,
 }: {
   api: string;
   heading: string;
-  note: string;
+  note?: string;
+  /** Opened by "Upload audio" in the "+" menu (the ft:add-audio event), straight to the file picker; no button of its own. */
+  fromMenu?: boolean;
   startOpen?: boolean;
   /** Sent with the start, e.g. the project to add to. */
   fields?: Record<string, unknown>;
@@ -42,6 +45,14 @@ export function OwnerUpload({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  // "Upload audio" in the "+" menu goes straight to the file picker. The input is always on the page in this mode, so
+  // the click happens inside the tap (iOS Safari opens a picker only from a tap); choosing files opens the rest.
+  useEffect(() => {
+    if (!fromMenu) return;
+    const go = () => input.current?.click();
+    window.addEventListener("ft:add-audio", go);
+    return () => window.removeEventListener("ft:add-audio", go);
+  }, [fromMenu]);
   const patch = (i: number, p: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...p } : it)));
 
   async function pick(files: FileList | null) {
@@ -98,6 +109,10 @@ export function OwnerUpload({
     router.refresh();
   }
 
+  const picker = (
+    <input ref={input} type="file" accept=".wav,.mp3,audio/wav,audio/mpeg" multiple hidden aria-label="Choose WAV or MP3 files to add" onChange={(e) => (setOpen(true), pick(e.target.files), (e.target.value = ""))} />
+  );
+  if (!open && fromMenu) return picker;
   if (!open)
     return (
       <button type="button" onClick={() => setOpen(true)} className={GHOST}>
@@ -112,13 +127,13 @@ export function OwnerUpload({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-[13px] font-semibold text-bone">{heading}</h3>
-          <p className="mt-1 text-[12px] text-mute">{note}</p>
+          {note && <p className="mt-1 text-[12px] text-mute">{note}</p>}
         </div>
         <button type="button" onClick={() => (setOpen(false), setItems([]))} disabled={busy} className="tap-text text-[11px] font-bold text-mute hover:text-bone">
           Close
         </button>
       </div>
-      <input ref={input} type="file" accept=".wav,.mp3,audio/wav,audio/mpeg" multiple hidden aria-label="Choose WAV or MP3 files to add" onChange={(e) => (pick(e.target.files), (e.target.value = ""))} />
+      {picker}
       <button type="button" onClick={() => input.current?.click()} disabled={busy} className={`${GHOST} mt-3`}>
         Choose WAV or MP3 files
       </button>

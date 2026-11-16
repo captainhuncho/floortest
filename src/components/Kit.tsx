@@ -147,6 +147,18 @@ export function Cover({ text, size = "size-[38px]" }: { text: string; size?: str
   );
 }
 
+/**
+ * The cover of a callout, project or folder item with no artwork (owner, 16 Nov: "cover art or a default cover with the
+ * name of the item"; no gradient): the name itself on the plain card surface. Decorative; the name is always beside it.
+ */
+export function NameCover({ name, size = "size-[38px]", text = "text-[8px]" }: { name: string; size?: string; /** Type size, larger on bigger covers. */ text?: string }) {
+  return (
+    <span aria-hidden className={`flex shrink-0 items-end overflow-hidden rounded-[10px] border border-line bg-well p-1 ${size}`}>
+      <span className={`line-clamp-3 break-words font-semibold leading-[1.15] text-bone ${text}`}>{name}</span>
+    </span>
+  );
+}
+
 /** Two letters for a cover or avatar: the first letters of the first two words. */
 export function initials(s: string) {
   const w = s.replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).filter(Boolean);
