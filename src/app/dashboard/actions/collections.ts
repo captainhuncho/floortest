@@ -17,11 +17,8 @@ export async function createCollection(form: FormData) {
   const u = await requireUser();
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
-  // Two collections per desk during the beta (the page hides New collection at two; addCollection holds the line, atomically).
-  // It stays on the app's own connection: holding that line locks the desk's account row, which a teammate working the
-  // desk as the person couldn't lock. The desk comes from the session, never from the request.
+  // No cap on callouts (owner, 16 Nov). The desk comes from the session, never from the request.
   const id = await addCollection(u.id, name);
-  if (!id) return;
   await audit(u.id, "collection_created", name);
   // "Make this the receiving one" is routing, an owner or admin power: for a member it's ignored and the collection is just added.
   if (form.get("activate") && (await routeToCollection(u, id))) {

@@ -1,5 +1,5 @@
 import { trackUse } from "@/lib/usage";
-import { BETA_COLLECTIONS, canAddCollection, canCapCallouts } from "@/lib/desk";
+import { canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { requireUser, viewingAs } from "@/lib/auth";
@@ -8,7 +8,7 @@ import { fmtDay } from "@/lib/format";
 import { genresFor } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
 import { APP_URL } from "@/lib/mail";
-import { CapTicks, CollectionTile, Folder, NewCollection } from "./CollectionForms";
+import { CapTicks, CollectionTile, NewCollection } from "./CollectionForms";
 import { shareCardTarget } from "./callout-card";
 import { q } from "@/lib/db";
 import { sharedLinksFor } from "@/lib/share-links";
@@ -29,7 +29,6 @@ export default async function Collections() {
   const sharing = await switchOn("sharing");
   const viaLinks = await sharedLinksFor(user);
   const canManage = user.role !== "member";
-  const canAdd = await canAddCollection(user.id);
   // The receiving collection first, then open callouts (newest first), then closed ones (newest first).
   const rank = (c: (typeof collections)[number]) => (c.id === user.active_collection_id ? 0 : isClosed(c) ? 2 : 1);
   const ordered = [...collections].sort((a, b) => rank(a) - rank(b) || b.created_at - a.created_at);
@@ -78,17 +77,7 @@ export default async function Collections() {
           })}
           {canManage && (
             <li className="contents">
-              {canAdd ? (
-                <NewCollection tile />
-              ) : (
-                // Two per desk during the beta: the tile stays in place and says why there's no third.
-                <Folder tab={<span className="font-mono tnum">{collections.length} of {BETA_COLLECTIONS}</span>} hatched>
-                  <div className="m-auto max-w-64 text-center">
-                    <p className="text-[13px] font-semibold text-mute">Two collections per desk during the beta</p>
-                    <p className="mt-1 text-[11.5px] text-faint">Change one&apos;s name or close date to start a new callout.</p>
-                  </div>
-                </Folder>
-              )}
+              <NewCollection tile />
             </li>
           )}
         </ul>
