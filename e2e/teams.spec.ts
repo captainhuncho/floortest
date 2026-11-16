@@ -191,6 +191,11 @@ test("a member the owner ticks for callouts can make one; folders stay the owner
     await lena.getByRole("button", { name: "New", exact: true }).click();
     await expect(lena.getByRole("menuitem", { name: "New callout" })).toBeVisible();
     await expect(lena.getByRole("menuitem", { name: "New folder" })).toHaveCount(0);
+    await lena.keyboard.press("Escape");
+    // A callout's own menu offers Edit to a ticked member, but never Move to folder or Delete; folder tiles have no menu.
+    await lena.getByRole("button", { name: /^More for / }).first().click();
+    await expect(lena.getByRole("menuitem", { name: /^Edit/ })).toBeVisible();
+    await expect(lena.getByRole("menuitem", { name: /Move to folder|Delete|Rename/ })).toHaveCount(0);
   } finally {
     await member.close();
   }
