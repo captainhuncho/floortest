@@ -8,8 +8,9 @@ import { useRouter } from "next/navigation";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions/collections";
 import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
-import { CARD, Chip, Cover, Icon, IconBox, initials } from "@/components/Kit";
+import { CARD, Chip, Icon, IconBox, NameCover } from "@/components/Kit";
 import { LinkRow } from "../floor/FloorClient";
+import { MoveToFolder } from "./Folders";
 import type { ShareCardTarget } from "./callout-card";
 import { DANGER, GHOST, GHOST_TALL, LIME } from "../kitButtons";
 import type { BriefItem } from "@/lib/brief";
@@ -76,7 +77,7 @@ function MoreIcon() {
 
 /** The collection's artwork, or its initials on a cover square when it has none. */
 function CollectionCover({ c }: { c: Pick<C, "name" | "art"> }) {
-  if (!c.art) return <Cover text={initials(c.name)} />;
+  if (!c.art) return <NameCover name={c.name} />;
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={c.art} alt="" className="size-[38px] shrink-0 rounded-[10px] border border-line object-cover" />;
 }
@@ -312,9 +313,10 @@ export function Folder({ tab, hatched = false, children }: { tab: React.ReactNod
  * One callout as a card (the mock): cover, name and where it stands; to review, kept and tracks; how full it is if
  * capped; the link while it's receiving; then the one next step. The whole card opens it; ··· has every option.
  */
-export function CollectionTile({ c, receiving, closed, canManage = true, canEdit = true, link, card }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** May run callouts: owner, A&R / Admin, or a ticked Member (the server checks too). */ canEdit?: boolean; /** The desk's public link, shown on the receiving card. */ link?: string; /** The callout the link's Share offers as a card. */ card?: ShareCardTarget }) {
+export function CollectionTile({ c, receiving, closed, canManage = true, canEdit = true, link, card, folders, folderId = null }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** May run callouts: owner, A&R / Admin, or a ticked Member (the server checks too). */ canEdit?: boolean; /** The desk's public link, shown on the receiving card. */ link?: string; /** The callout the link's Share offers as a card. */ card?: ShareCardTarget; /** The desk's callout folders, for Move to folder (owners and admins). */ folders?: { id: number; name: string }[]; /** The folder it's filed in. */ folderId?: number | null }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [pending, start] = useTransition();
   const live = receiving && !closed;
   const bpm = c.bpmMin || c.bpmMax ? [c.bpmMin, c.bpmMax].filter(Boolean).join("–") : null;
@@ -324,7 +326,7 @@ export function CollectionTile({ c, receiving, closed, canManage = true, canEdit
     ["Tracks", c.count],
   ];
   return (
-    <div className={`relative flex flex-col gap-2.5 ${CARD} p-3 ${live ? "border-lime/55" : ""}`}>
+    <div data-card className={`relative flex flex-col gap-2.5 ${CARD} p-3 ${live ? "border-lime/55" : ""}`}>
       <div className="flex items-start gap-2.5">
         <CollectionCover c={c} />
         <div className="min-w-0 flex-1">
@@ -381,8 +383,9 @@ export function CollectionTile({ c, receiving, closed, canManage = true, canEdit
           <span className="text-[11.5px] text-mute tnum">{bpm} BPM</span>
         ) : null}
       </div>
-      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
+      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} onEdit={() => setEditing(true)} onMove={folders && canManage ? () => setMoving(true) : undefined} onClose={() => setMenu(false)} showOpen />}
       {editing && <EditDialog c={c} receiving={receiving} closed={closed} onClose={() => setEditing(false)} />}
+      {moving && folders && <MoveToFolder kind="callout" itemId={c.id} itemName={c.name} current={folderId} folders={folders} onClose={() => setMoving(false)} />}
     </div>
   );
 }
@@ -414,7 +417,7 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
 }
 
 /** The shared options for one collection. */
-function CollectionOptions({ c, receiving, canManage, canEdit, onEdit, onClose, showOpen }: { c: C; receiving: boolean; canManage: boolean; canEdit: boolean; onEdit: () => void; onClose: () => void; showOpen: boolean }) {
+function CollectionOptions({ c, receiving, canManage, canEdit, onEdit, onMove, onClose, showOpen }: { c: C; receiving: boolean; canManage: boolean; canEdit: boolean; onEdit: () => void; /** Move to folder, where the list offers folders. */ onMove?: () => void; onClose: () => void; showOpen: boolean }) {
   const [pending, start] = useTransition();
   return (
     <OptionsSheet title={c.name} onClose={onClose}>
@@ -436,6 +439,11 @@ function CollectionOptions({ c, receiving, canManage, canEdit, onEdit, onClose, 
       {canEdit && (
         <button role="menuitem" onClick={() => { onClose(); onEdit(); }}>
           Edit collection
+        </button>
+      )}
+      {onMove && (
+        <button role="menuitem" onClick={() => { onClose(); onMove(); }}>
+          Move to folder
         </button>
       )}
       <div>
@@ -504,7 +512,7 @@ function EditDialog({ c, receiving, closed, onClose }: { c: C; receiving: boolea
 }
 
 /** "Edit collection" as a button that opens the edit form in a pop-up. */
-export function EditCollectionInfo({ c, receiving, closed, className = GHOST }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; className?: string }) {
+export function EditCollectionInfo({ c, receiving, closed, className = GHOST }: { c: C; receiving: boolean; closed: boolean; className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>

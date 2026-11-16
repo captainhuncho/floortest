@@ -142,7 +142,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} />
       </div>
       <div className="flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:flex-1">
-        {callouts && <EditCollectionInfo c={editable} receiving={receiving} closed={closed} canManage={admin} />}
+        {callouts && <EditCollectionInfo c={editable} receiving={receiving} closed={closed} />}
         {/* No Add tracks on a callout (owner, 16 Nov: "keep it for Projects only"): senders send through the link, and
             your own tracks are added on a project's page. */}
       </div>

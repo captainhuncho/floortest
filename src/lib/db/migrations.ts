@@ -2451,6 +2451,37 @@ alter table restore_tickets enable row level security;
 alter table account_evidence enable row level security;`,
   },
   {
+    // Folders to organise callouts and projects (owner, 16 Nov, in the Desk: "A"): a desk's callout folders hold only
+    // callouts, its project folders only projects, never both. One level, private to the desk. Each link is a composite
+    // foreign key (folder, desk, kind), so the database itself refuses a folder of another desk or of the other kind on
+    // any path; deleting a folder unfiles what was in it (SET NULL on the folder column only). As the person: a folder's
+    // only changeable field is its name (as library_folders, 0142). Additive only: new table,
+    // new nullable columns and constants, nothing dropped or rewritten; old code ignores them.
+    id: "0151_desk_folders",
+    sql: `create table if not exists desk_folders (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  kind text not null check (kind in ('callout', 'project')),
+  name text not null check (char_length(name) between 1 and 60),
+  created_at bigint not null,
+  unique (id, user_id, kind)
+);
+create index if not exists desk_folders_user on desk_folders(user_id, kind, created_at);
+alter table desk_folders enable row level security;
+grant select, insert, delete on desk_folders to ft_person;
+grant update (name) on desk_folders to ft_person;
+create policy person_desk_folders on desk_folders for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+alter table collections add column if not exists desk_folder_id bigint;
+alter table collections add column if not exists desk_folder_kind text not null default 'callout' check (desk_folder_kind = 'callout');
+alter table collections add constraint collections_folder_fk foreign key (desk_folder_id, user_id, desk_folder_kind) references desk_folders(id, user_id, kind) on delete set null (desk_folder_id);
+create index if not exists collections_folder on collections(desk_folder_id, user_id, desk_folder_kind) where desk_folder_id is not null;
+alter table library_folders add column if not exists desk_folder_id bigint;
+alter table library_folders add column if not exists desk_folder_kind text not null default 'project' check (desk_folder_kind = 'project');
+alter table library_folders add constraint library_folders_folder_fk foreign key (desk_folder_id, user_id, desk_folder_kind) references desk_folders(id, user_id, kind) on delete set null (desk_folder_id);
+create index if not exists library_folders_folder on library_folders(desk_folder_id, user_id, desk_folder_kind) where desk_folder_id is not null;
+grant update (desk_folder_id) on library_folders to ft_person;`,
+  },
+  {
     // Owner, 16 Nov: owners and A&R / Admins run callouts by their role; a Member only once an owner or admin ticks
     // them. Additive: everyone starts unticked. The person role keeps select only on account_members, so nobody can
     // tick themselves from the database; the tick is changed by the app connection after its own checks.

@@ -23,7 +23,8 @@ const ROLES: Record<string, Record<string, Need>> = {
   "report.ts": { reportTrack: "member" }, // blocking in the same step is refused to members inside the action
   "collections.ts": { createCollection: "callouts", setActiveCollection: "admin", updateCollection: "callouts", deleteCollection: "admin" },
   "desk.ts": { sendFeedback: "member", closeFeedbackAsk: "member", dismissOnboarding: "admin", markTourSeen: "person", dismissNotice: "person", markLinkShared: "person", lookupReceiver: "member", clearNotifications: "member", markNotificationsRead: "member", quickSearch: "member", pauseLink: "admin", resumeLink: "admin" },
-  "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin", moveAllToProjects: "admin" },
+  "folders.ts": { createFolder: "admin", renameFolder: "admin", deleteFolder: "admin", fileCallout: "admin", fileProject: "admin" },
+  "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin", moveAllToProjects: "admin", moveManyToProjects: "admin" },
   "links.ts": { createShareLink: "admin", resetShareLink: "admin", revokeShareLink: "admin", addLinkRecipients: "admin", removeLinkRecipient: "admin", answerLinkRequest: "admin", setLinkRequests: "admin" },
   "review.ts": {
     decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member", playedOutBatch: "admin", skipPlayedOutPrompt: "admin",
