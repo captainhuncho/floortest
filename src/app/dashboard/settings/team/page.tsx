@@ -88,7 +88,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
                     </span>
                     {m.paused && <span className="mt-1 block text-[11.5px] text-danger">Paused: over your plan&apos;s seats. Remove someone or add seats to bring them back.</span>}
                     {m.role === "admin" && !m.twofa && (
-                      <span className="mt-1 block text-[11.5px] text-[#d98a2b]">Works as a member until they turn on two-step sign-in.</span>
+                      <span className="mt-1 block text-[11.5px] text-[#d98a2b]">Works as a member until they turn on two-step sign-in, so they can&apos;t run callouts until then.</span>
                     )}
                   </span>
                 </span>

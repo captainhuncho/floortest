@@ -168,3 +168,30 @@ test("through the actions: the tick is logged with actor and member; untick refu
   assert.equal(own.error, "Not found");
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_members WHERE id = ? AND callouts", s.adminRow), 0);
 });
+
+test("fails closed: an A&R / Admin without two-step works as a Member and can't run callouts; another desk's member through the action is Not found", async () => {
+  const { q } = await import("../src/lib/db");
+  const { createSession, DESK_COOKIE } = await import("../src/lib/auth");
+  const team = await import("../src/app/dashboard/actions/account-team");
+  const actions = await import("../src/app/dashboard/actions/collections");
+  const s = await setup();
+  const other = await setup();
+  const signIn = async (uid: number, desk: number) => {
+    const jar = new Map<string, string>();
+    await inRequest(jar, "203.0.113.30", () => createSession(uid));
+    jar.set(DESK_COOKIE, String(desk));
+    return <T,>(fn: () => Promise<T>) => inRequest(jar, "203.0.113.30", fn, { dropAfter: true });
+  };
+
+  await q.run("UPDATE users SET totp_enabled_at = NULL WHERE id = ?", s.admin);
+  const asAdmin = await signIn(s.admin, s.owner);
+  const f = new FormData();
+  f.set("name", "No two-step");
+  assert.equal((await asAdmin(() => actions.createCollection(f))).redirect, "/dashboard/collections?denied=callouts");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", s.owner), 0);
+
+  const asOtherOwner = await signIn(other.owner, other.owner);
+  const foreign = (await asOtherOwner(() => team.setTeammateCallouts(s.memberRow, true))).answer as { error?: string };
+  assert.equal(foreign.error, "Not found");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_members WHERE id = ? AND callouts", s.memberRow), 0);
+});
