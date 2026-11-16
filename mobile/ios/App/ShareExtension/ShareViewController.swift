@@ -15,7 +15,9 @@ class ShareViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = ink
         message.textColor = .white
-        message.font = .monospacedSystemFont(ofSize: 16, weight: .semibold)
+        // Dynamic Type: the mono face scales with the reader's text size (body style) and follows changes live.
+        message.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .monospacedSystemFont(ofSize: 16, weight: .semibold))
+        message.adjustsFontForContentSizeCategory = true
         message.numberOfLines = 0
         message.textAlignment = .center
         message.text = "Adding to FloorTest…"
@@ -28,12 +30,24 @@ class ShareViewController: UIViewController {
         done.background.cornerRadius = 10
         done.cornerStyle = .fixed
         done.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 28, bottom: 12, trailing: 28)
+        // Scales with Dynamic Type (headline style); the button re-runs this on a text-size change.
         done.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
             var a = attrs
-            a.font = .monospacedSystemFont(ofSize: 15, weight: .bold)
+            a.font = UIFontMetrics(forTextStyle: .headline).scaledFont(for: .monospacedSystemFont(ofSize: 15, weight: .bold))
             return a
         }
+        done.titleLineBreakMode = .byTruncatingTail
         button.configuration = done
+        button.titleLabel?.adjustsFontForContentSizeCategory = true
+        // VoiceOver reads "Done, button"; the colours are fixed (ink on lime, about 16:1), so light and dark look the
+        // same, and nothing here animates, so Reduce Motion has nothing to calm.
+        button.accessibilityLabel = "Done"
+        button.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            // Apple's minimum tap target, whatever the text size.
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+        ])
         button.isHidden = true
         button.addTarget(self, action: #selector(close), for: .touchUpInside)
         let stack = UIStackView(arrangedSubviews: [message, button])
