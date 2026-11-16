@@ -14,7 +14,6 @@ const BETA_PLACES: { where: string; legal?: true }[] = [
   { where: "Plans: confirmation, free-trial notes, plan requests" },
   { where: "Checkout: beta discount and trial wording" },
   { where: "Account: “Free in the beta” plan chip" },
-  { where: "Collections: two collections per desk note" },
   { where: "Sign-up: invite-only messages (form and Google)" },
   { where: "Emails: beta invite subject and body" },
   { where: "Share card: BETA pill" },

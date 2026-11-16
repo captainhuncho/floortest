@@ -26,14 +26,3 @@ test("two invites at once can't take more seats than the plan has", async () => 
   assert.match(String((results.find((r) => r.status === "rejected") as PromiseRejectedResult).reason), /All your seats/);
   assert.equal(await T.seatsUsed(label), 2);
 });
-
-test("two new collections at once can't go past the beta limit", async () => {
-  const { q } = await import("../src/lib/db");
-  const { addCollection, BETA_COLLECTIONS } = await import("../src/lib/desk");
-  const t = Date.now();
-  const desk = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('col@cap.io', 'h', 'C', 'colrace', 'free', 'UTC', ?) RETURNING id", t))!.id;
-  await addCollection(desk, "One");
-  const made = await Promise.all([addCollection(desk, "Two"), addCollection(desk, "Three")]);
-  assert.equal(made.filter(Boolean).length, 1, "only one fits");
-  assert.equal(await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", desk), BETA_COLLECTIONS);
-});

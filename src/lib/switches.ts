@@ -39,12 +39,6 @@ export const SWITCHES = {
     initial: false,
     targeted: true,
   },
-  more_collections: {
-    label: "More than two collections",
-    description: "Off (the beta, owner 15 Oct): each desk holds two collections. On: as many as people want.",
-    initial: false,
-    targeted: true,
-  },
   send_music: {
     label: "Send music between desks",
     description: "Off (the beta): receivers don't send to other receivers from FloorTest; the Send page, its sidebar item, the Floor's Send music and Account's row are hidden. Senders still send through anyone's link.",
