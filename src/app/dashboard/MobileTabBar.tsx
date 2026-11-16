@@ -46,7 +46,7 @@ function QueueBadge({ count }: { count: number }) {
  * Phones only: the places a DJ lives, one thumb away, as separate floating pills (owner, 30 Oct redesign). Send joins
  * them (owner, 16 Nov) under the same rule as the desktop rail.
  */
-export function MobileTabBar({ needsReview, canSend = true }: { needsReview: number; canSend?: boolean }) {
+export function MobileTabBar({ needsReview, canSend = false }: { needsReview: number; canSend?: boolean }) {
   const path = useNavPath();
   const tabs = [
     { href: "/dashboard/floor", label: "Floor", icon: "layout-grid", active: path === "/dashboard/floor" },
