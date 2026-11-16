@@ -8,6 +8,10 @@ export const MIX_CHOICES: [string, string][] = Object.entries(MIX_STATUS).map(([
 export const RELEASE_CHOICES: [string, string][] = [["unsigned", "Unreleased"], ["signed", "Signed, forthcoming"], ["released", "Already released"]];
 export const AI_CHOICES: [string, string][] = [["none", "No"], ["partial", "Partly"], ["full", "Fully AI-generated"]];
 export const AI_HELP = "Partly means AI vocals, stems or mastering.";
+/** A send to a label or A&R desk: evaluation only (the default) or OK to play (owner, 15 Nov send rules). */
+export const PLAY_CHOICES: [string, string][] = [["evaluation", "Evaluation only"], ["ok_to_play", "OK to play"]];
+export const playHelp = (play: string, receiverName: string) =>
+  play === "ok_to_play" ? `${receiverName} can listen, download and play it out.` : `${receiverName} can listen and download to evaluate it, not play it out.`;
 
 /**
  * Short labels so each answer fits on one row of three (owner, 30 Oct: side by side, not stacked). Keyed by the saved
@@ -23,6 +27,8 @@ const SHORT: Record<string, string> = {
   none: "No",
   partial: "Partly",
   full: "Fully AI",
+  evaluation: "Evaluation only",
+  ok_to_play: "OK to play",
 };
 
 /** The visible short label; when the full wording starts with it, the rest stays in the text (hidden), so the label's text is still the full wording. */

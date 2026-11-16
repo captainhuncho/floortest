@@ -83,8 +83,10 @@ export async function markDownloaded(user: User, t: Track) {
   );
 }
 
-/** The best news a sender can get: their track was played in a set. Once per track; the note is optional. */
+/** The best news a sender can get: their track was played in a set. Once per track, only for tracks cleared to play; the note is optional. */
 export async function markPlayedOut(user: User, t: Track, note: string) {
+  // A track sent for evaluation only is never marked played (owner, 15 Nov): no signal, no email, no receipt line.
+  if (!t.sets_ok) return false;
   const clean = note.replace(/\s+/g, " ").trim().slice(0, 140);
   return signal(user, t, "played_out", clean, ["UPDATE tracks SET played_out_at = ?, played_out_note = ? WHERE id = ? AND played_out_at IS NULL", now(), clean, t.id], (s) =>
     emailText("played_out", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: receiptUrl(t), sent_url: `${APP_URL}/sent`, note: clean ? ` (${clean})` : "" }),

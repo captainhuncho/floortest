@@ -14,6 +14,14 @@ On a sender's first send, and again whenever the Terms text changes, the send fo
 
 Where: `/<handle>`, Send folders, `src/app/[handle]/TermsTick.tsx`, `src/lib/terms-record.ts`
 
+## Send rules by receiver type (owner, 15 Nov)
+
+The per-send "Can they play it in DJ sets?" switch is gone. Sending to a label or A&R desk (`kind` `label` or `ar`, legacy `label_radio`; `receiverAsksPlayChoice`) shows "Sending to a label" with Evaluation only (default) or OK to play, and a line saying what the pick means; a folder gets one choice for every track. Every other desk is DJ-style: no choice, and the Terms tick covers play-out. The form sends `play` only to label desks; the server ignores the old `sets_ok` field. The note above Send says "They can play it out only if you pick OK to play above" on label desks and drops the sets sentence elsewhere.
+
+The signed-in Send page (`/dashboard/send`) asks the same: the receiver lookup carries `asksPlay`. Tested end to end in `e2e/label-send.spec.ts` (e2e-only label desk `lunalabel`).
+
+Where: `/<handle>`, `/dashboard/send`, Send folders, `src/app/[handle]/Choice.tsx` (`PLAY_CHOICES`), `src/lib/account-types.ts`, `src/lib/receiver-lookup.ts`
+
 ## Folders (Pro/Team receivers)
 
 EP/album up to 12 tracks within the receiver's folder size. Mix, release status and AI use are the same tap choices as single tracks. **Genre:** the sender says whether one genre covers every track or each track has its own (then every track needs one, starting from the folder's genre); a genre tapped in the brief starts as the folder's
