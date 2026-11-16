@@ -39,7 +39,7 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
   const thirdOf = (t: { playedOut: number; downloaded: number }) => (dj ? t.playedOut : t.downloaded);
   const t = day.totals;
   const delta = day.prev ? t.in - day.prev.in : null;
-  const empty = t.in === 0 && !callouts.length && !shared.length;
+  const empty = t.in === 0 && !callouts.length && !shared.rows.length;
   const options = PERIODS.map(([k, label]) => ({ label, href: `/dashboard/analytics?p=${k}`, active: k === range.period }));
 
   return (
@@ -71,6 +71,7 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
                   {delta === 0 ? `Same as ${AGAINST[range.period]}` : `${Math.abs(delta)} ${delta > 0 ? "more" : "fewer"} than ${AGAINST[range.period]}`}
                 </p>
               )}
+              {day.truncated && <p className="text-[12px] text-mute">Only the most recent tracks are counted here.</p>}
               <AnalyticsChart
                 bars={day.bars.map((b) => ({ key: b.key, label: b.label, in: b.in, kept: b.kept, third: thirdOf(b) }))}
                 thirdLabel={third}
@@ -98,9 +99,14 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
               </List>
             )}
 
-            {shared.length > 0 && (
-              <List id="shared-h" title="Shared collections" count={shared.length}>
-                {shared.map((s, i) => (
+            {shared.rows.length > 0 && (
+              <List
+                id="shared-h"
+                title="Shared collections"
+                count={shared.rows.length}
+                more={shared.truncated ? "Only your 500 newest shared links are counted." : undefined}
+              >
+                {shared.rows.map((s, i) => (
                   <Row key={i} name={s.who} detail={`opened ${s.opened} · ${s.played} played${s.downloaded ? ` · ${s.downloaded} downloaded` : ""}`} />
                 ))}
               </List>
