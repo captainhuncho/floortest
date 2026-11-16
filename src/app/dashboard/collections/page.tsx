@@ -41,9 +41,9 @@ export default async function Collections() {
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 sm:gap-5">
         <div className="flex flex-col gap-1.5">
-          <PageHead label="One per callout" title="Collections" />
+          <PageHead label="One per callout" title="Collections" center />
           <CollectionsTabs on="callouts" />
-          <p className="max-w-3xl text-[12px] leading-snug text-mute">
+          <p className="mx-auto w-full max-w-2xl text-center text-[12px] leading-snug text-mute">
             Your link <span className="break-all font-mono text-bone">{host}/{user.handle}</span>{" "}
             {user.active_collection_id ? "sends new tracks to the one that's receiving." : "sends tracks straight to your Review Queue until you make one."}
           </p>
