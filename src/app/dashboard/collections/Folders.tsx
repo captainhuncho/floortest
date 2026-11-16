@@ -27,7 +27,7 @@ const NOUN: Record<FolderKind, string> = { callout: "callout", project: "project
 function ItemCover({ name, art }: { name: string; art: string | null }) {
   // eslint-disable-next-line @next/next/no-img-element
   if (art) return <img src={art} alt="" className="size-full object-cover" />;
-  return <NameCover name={name} size="size-full rounded-none! border-0!" text="text-[11px]" />;
+  return <NameCover name={name} size="size-full rounded-none! border-0!" text="text-[6px] leading-[1.15]" />;
 }
 
 /** Options over the whole screen (as the card ··· menus): a sheet on phones, centred from sm. Escape or a tap outside closes it. */
@@ -211,15 +211,16 @@ export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderVi
   const [pending, start] = useTransition();
   const cells = Array.from({ length: 4 }, (_, i) => f.preview[i]);
   return (
-    <div data-card className={`relative flex flex-col gap-2.5 ${CARD} p-3`}>
-      <div className="grid aspect-square grid-cols-2 gap-1 overflow-hidden rounded-[12px]">
-        {cells.map((p, i) => (
-          <span key={p?.id ?? `empty-${i}`} className="block overflow-hidden rounded-[6px] bg-well">
-            {p ? <ItemCover name={p.name} art={p.art} /> : null}
-          </span>
-        ))}
-      </div>
-      <div className="flex items-start gap-2">
+    // A row the height of a callout card's header (owner, 16 Nov): a small 2×2 of the first covers, then the name.
+    <div data-card className={`relative flex flex-col ${CARD} p-3`}>
+      <div className="flex items-center gap-3">
+        <div aria-hidden className="grid size-[60px] shrink-0 grid-cols-2 gap-0.5 overflow-hidden rounded-[10px]">
+          {cells.map((p, i) => (
+            <span key={p?.id ?? `empty-${i}`} className="block overflow-hidden rounded-[4px] bg-well">
+              {p ? <ItemCover name={p.name} art={p.art} /> : null}
+            </span>
+          ))}
+        </div>
         <div className="min-w-0 flex-1">
           <Link href={`${BASE[kind]}?folder=${f.id}`} className="block truncate text-[15px] font-semibold tracking-[-0.015em] text-bone after:absolute after:inset-0 after:rounded-[18px]">
             {f.name}
