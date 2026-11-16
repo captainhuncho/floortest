@@ -43,6 +43,7 @@ Where: collection page (`CalloutShare.tsx`), `GET`/`POST /api/callout-card/[id]`
 ## Projects
 
 **Folders only (owner, 16 Nov):** the Callouts and Projects lists show each callout or project as a card (name, numbers, the whole card opens it); tracks show only after opening one. The receiving callout's "In …" card with its newest tracks is gone from Callouts.
+**A callout's details fold (owner, 16 Nov):** on a callout's page the details card folds to its readout line ("3 to review · 0 kept · 3 received · closes …") with a chevron; the whole line is the button (44px, aria-expanded, keyboard). Folded on phones and open on desktop until the person chooses; the choice is kept per callout in this browser (`collections/[id]/CollapsiblePanel.tsx`). A callout has no Add tracks any more ("keep it for Projects only"): your own files are added on Projects or a project's page.
 
 **One Collections menu (owner, 15 Nov):** Projects has no menu item of its own. The sidebar and the phone tabs show one Collections, lit on both pages, and both pages open with the Collections heading and a Callouts / Projects switch (`collections/CollectionsTabs.tsx`). The addresses stay `/dashboard/collections` and `/dashboard/projects`.
 
