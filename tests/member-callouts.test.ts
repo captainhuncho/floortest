@@ -119,6 +119,22 @@ test("actions: an unticked Member is refused creating or editing a callout and c
   assert.notEqual((delOk.answer as Response).status, 403, "ticked: artwork allowed");
   const gone = await inRequest(jar, "203.0.113.9", () => actions.deleteCollection(c, "RENAMED"), { dropAfter: true });
   assert.equal(gone.redirect, "/dashboard/settings/team?denied=1", "deleting stays with the owner and A&R / Admins");
+
+  // Folders stay with the owner and A&R / Admins on the server too: a ticked Member is refused every folder action.
+  const folders = await import("../src/app/dashboard/actions/folders");
+  const f = Number((await q.get<{ id: number }>("INSERT INTO desk_folders (user_id, kind, name, created_at) VALUES (?, 'callout', 'Owner folder', ?) RETURNING id", s.owner, Date.now()))!.id);
+  const asTicked = <T,>(fn: () => Promise<T>) => inRequest(jar, "203.0.113.9", fn, { dropAfter: true });
+  for (const [what, run] of [
+    ["create", () => folders.createFolder("callout", "Member folder")],
+    ["rename", () => folders.renameFolder("callout", f, "Member rename")],
+    ["delete", () => folders.deleteFolder("callout", f)],
+    ["file", () => folders.fileCallout(c, f)],
+  ] as const) {
+    assert.equal((await asTicked(run)).redirect, "/dashboard/settings/team?denied=1", `folder ${what}: refused for a ticked Member`);
+  }
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM desk_folders WHERE user_id = ?", s.owner), 1, "no folder made or deleted");
+  assert.equal((await q.get<{ name: string }>("SELECT name FROM desk_folders WHERE id = ?", f))!.name, "Owner folder", "not renamed");
+  assert.equal((await q.get<{ desk_folder_id: number | null }>("SELECT desk_folder_id FROM collections WHERE id = ?", c))!.desk_folder_id, null, "not filed");
 });
 
 test("through the actions: the tick is logged with actor and member; untick refuses create and edit at once; two-step and own-row rules hold", async () => {

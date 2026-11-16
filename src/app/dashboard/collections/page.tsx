@@ -66,7 +66,7 @@ export default async function Collections({ searchParams }: { searchParams: Prom
           </p>
         </div>
         {/* "+ New" and right-click: New callout, New folder (owner, 16 Nov). Folders first, then callouts in none; one column on phones, two from sm, three from xl. */}
-        <FolderArea kind="callout" folder={folder?.id ?? null} canEdit={canManage}>
+        <FolderArea kind="callout" folder={folder?.id ?? null} canEdit={canManage} canCreate={callouts}>
           {folder && <FolderCrumb kind="callout" name={folder.name} />}
           <ul className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label={folder ? folder.name : "Callouts"}>
             {!folder &&
