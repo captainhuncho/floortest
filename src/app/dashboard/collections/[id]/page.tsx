@@ -17,7 +17,7 @@ import { ListRows, type ListRow } from "../../list/ListRows";
 import { LIST_COLUMNS, type ListTrack } from "../../rows";
 import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
 import { shareCardTarget } from "../callout-card";
-import { OwnerUpload } from "../OwnerUpload";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 import { ShareLinks, type ShareLinkView } from "../ShareLinks";
 import { linksFor, sharingOn } from "@/lib/share-links";
 
@@ -107,11 +107,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
 
   // The mock's detail card: the numbers, the brief, the facts as rows, the link while it's receiving, then the actions.
   const details = (
-    <section aria-labelledby="about-h" className={`flex flex-col gap-3 ${CARD} p-3`}>
-      <h2 id="about-h" className="sr-only">
-        About this collection
-      </h2>
-      <p className="font-mono text-[11.5px] text-mute tnum">{readout}</p>
+    <CollapsiblePanel collectionId={c.id} summary={readout}>
       <div className="border-t border-dashed border-line-2" />
       <div>
         <h3 className="mb-1.5 text-[11.5px] text-mute">Brief</h3>
@@ -147,17 +143,10 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
       </div>
       <div className="flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:flex-1">
         {callouts && <EditCollectionInfo c={editable} receiving={receiving} closed={closed} canManage={admin} />}
-        {/* Your own tracks go to Projects, never into a collection (owner, 13 Nov: 1b); senders send through the link. */}
-        {admin && (
-          <OwnerUpload
-            api="/api/music/upload"
-            heading="Add your own tracks"
-            note="They go to Projects, kept until you delete them, never into a collection. Senders and labels send through your link instead."
-            elsewhere={{ label: "Projects", href: "/dashboard/projects" }}
-          />
-        )}
+        {/* No Add tracks on a callout (owner, 16 Nov: "keep it for Projects only"): senders send through the link, and
+            your own tracks are added on a project's page. */}
       </div>
-    </section>
+    </CollapsiblePanel>
   );
 
   return (

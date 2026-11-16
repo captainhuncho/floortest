@@ -9,12 +9,10 @@ import { fmtDay } from "@/lib/format";
 import { genresFor } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
 import { APP_URL } from "@/lib/mail";
-import { CapTicks, CollectionTile, NewCollection } from "./CollectionForms";
+import { CollectionTile, NewCollection } from "./CollectionForms";
 import { shareCardTarget } from "./callout-card";
-import { q } from "@/lib/db";
 import { sharedLinksFor } from "@/lib/share-links";
-import { CARD, Chip, Icon, PageHead, SectionHead } from "@/components/Kit";
-import { GHOST } from "../kitButtons";
+import { CARD, PageHead, SectionHead } from "@/components/Kit";
 import { Notice } from "../settings/ui";
 import { CollectionsTabs } from "./CollectionsTabs";
 
@@ -22,7 +20,8 @@ export const metadata = { title: "Collections — FloorTest" };
 
 /**
  * A card per callout (owner, 30 Oct: the redesign mock): where it stands, its numbers and the next step; a dashed tile to
- * add one (or the beta limit); then what's in the receiving callout, and collections shared with you.
+ * add one (or the beta limit); then collections shared with you. Tracks show only inside a callout (owner, 16 Nov:
+ * "have people click into the folder to view the tracks"): each card is the folder, and the whole card opens it.
  */
 export default async function Collections({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const user = await requireUser();
@@ -38,16 +37,6 @@ export default async function Collections({ searchParams }: { searchParams: Prom
   const rank = (c: (typeof collections)[number]) => (c.id === user.active_collection_id ? 0 : isClosed(c) ? 2 : 1);
   const ordered = [...collections].sort((a, b) => rank(a) - rank(b) || b.created_at - a.created_at);
   const receiving = collections.find((c) => c.id === user.active_collection_id && !isClosed(c));
-  // What's in the receiving callout, newest first: only the fields the rows show.
-  const inside = receiving?.count
-    ? await q.all<{ id: number; title: string; sender_name: string; genre: string; bpm: number | null; musical_key: string | null; decision: string | null; played_at: number | null }>(
-        `SELECT t.id, t.title, s.name AS sender_name, t.genre, t.bpm, t.musical_key, t.decision, t.played_at
-           FROM tracks t JOIN senders s ON s.id = t.sender_id
-          WHERE t.user_id = ? AND t.collection_id = ? AND t.deleted_at IS NULL ORDER BY t.created_at DESC LIMIT 8`,
-        user.id,
-        receiving.id,
-      )
-    : [];
   const card = receiving
     ? shareCardTarget({ isOwner: user.role === "owner", viewingAs: !!(await viewingAs()), active: receiving, blocked: !!calloutBlock(user, receiving, (await capacity(user)).full) })
     : undefined;
@@ -56,14 +45,14 @@ export default async function Collections({ searchParams }: { searchParams: Prom
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 sm:gap-5">
         <div className="flex flex-col gap-1.5">
-          <PageHead label="One per callout" title="Collections" />
+          <PageHead label="One per callout" title="Collections" center />
           <CollectionsTabs on="callouts" />
           {denied === "callouts" && (
             <Notice tone="error" next="Ask the owner or an A&R / Admin to tick Runs callouts for you in Settings → Team.">
               Making and editing callouts is for people the owner or an A&amp;R / Admin has let run them.
             </Notice>
           )}
-          <p className="max-w-3xl text-[12px] leading-snug text-mute">
+          <p className="mx-auto w-full max-w-2xl text-center text-[12px] leading-snug text-mute">
             Your link <span className="break-all font-mono text-bone">{host}/{user.handle}</span>{" "}
             {user.active_collection_id ? "sends new tracks to the one that's receiving." : "sends tracks straight to your Review Queue until you make one."}
           </p>
@@ -92,7 +81,6 @@ export default async function Collections({ searchParams }: { searchParams: Prom
             </li>
           )}
         </ul>
-        {receiving && inside.length > 0 && <Inside c={receiving} rows={inside} />}
         {viaLinks.length > 0 && (
           <section aria-labelledby="links-shared-h" className="flex flex-col gap-3">
             <div>
@@ -120,50 +108,5 @@ export default async function Collections({ searchParams }: { searchParams: Prom
         )}
       </div>
     </div>
-  );
-}
-
-type InsideRow = { id: number; title: string; sender_name: string; genre: string; bpm: number | null; musical_key: string | null; decision: string | null; played_at: number | null };
-
-/** The receiving callout's newest tracks as rows (the mock's "In …" card): track, sender · genre · BPM · key, status. */
-function Inside({ c, rows }: { c: { id: number; name: string; count: number; max_tracks: number | null }; rows: InsideRow[] }) {
-  const status = (r: InsideRow) =>
-    r.decision === "kept" ? <Chip tone="up">Kept</Chip> : r.decision === "passed" ? <Chip>Not for me</Chip> : r.played_at ? <Chip>Listened</Chip> : <Chip tone="warn">Needs review</Chip>;
-  return (
-    <section aria-labelledby="inside-h" className={`flex flex-col gap-2 ${CARD} p-3`}>
-      <SectionHead
-        id="inside-h"
-        title={`In ${c.name}`}
-        aside={
-          <Link href={`/dashboard/collections/${c.id}`} className={GHOST}>
-            Open
-            <Icon name="chev" className="size-3.5" />
-          </Link>
-        }
-      />
-      {c.max_tracks ? (
-        <CapTicks used={c.count} limit={c.max_tracks} />
-      ) : (
-        <p className="font-mono text-[11px] text-mute tnum">
-          {c.count} track{c.count === 1 ? "" : "s"}
-        </p>
-      )}
-      <ul>
-        {rows.map((r) => {
-          const sub = [r.sender_name, r.genre || null, [r.bpm ? Math.round(r.bpm) : null, r.musical_key].filter(Boolean).join(" · ") || null].filter(Boolean).join(" · ");
-          return (
-            <li key={r.id} className="border-t border-line first:border-t-0">
-              <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className="-mx-1.5 flex min-h-11 items-center gap-3 rounded-[10px] px-1.5 py-2 hover:bg-well">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold text-bone">{r.title}</span>
-                  <span className="block truncate text-[11.5px] text-mute tnum">{sub}</span>
-                </span>
-                <span className="shrink-0">{status(r)}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }

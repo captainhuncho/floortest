@@ -20,6 +20,7 @@ type Need = "owner" | "own" | "admin" | "callouts" | "member" | "lib" | "person"
 const ROLES: Record<string, Record<string, Need>> = {
   "account-team.ts": { inviteTeammate: "lib", cancelTeamInvite: "lib", removeTeammate: "lib", changeTeamRole: "lib", setTeammateCallouts: "lib", saveReplyApproval: "lib", answerHeldReply: "lib", switchDesk: "person", joinTeam: "person" },
   "batch.ts": { batchTracks: "member" }, // deleting in a batch is refused to members inside the action
+  "report.ts": { reportTrack: "member" }, // blocking in the same step is refused to members inside the action
   "collections.ts": { createCollection: "callouts", setActiveCollection: "admin", updateCollection: "callouts", deleteCollection: "admin" },
   "desk.ts": { sendFeedback: "member", closeFeedbackAsk: "member", dismissOnboarding: "admin", markTourSeen: "person", dismissNotice: "person", markLinkShared: "person", lookupReceiver: "member", clearNotifications: "member", markNotificationsRead: "member", quickSearch: "member", pauseLink: "admin", resumeLink: "admin" },
   "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin", moveAllToProjects: "admin" },

@@ -79,9 +79,9 @@ export function IconBox({ name, small }: { name: IconName; small?: boolean }) {
 }
 
 /** A page's head: a small label (what's going on) over the title, with optional actions on the right. */
-export function PageHead({ label, title, children }: { label?: React.ReactNode; title: React.ReactNode; children?: React.ReactNode }) {
+export function PageHead({ label, title, children, center = false }: { label?: React.ReactNode; title: React.ReactNode; children?: React.ReactNode; /** Centred over a centred switch (Collections), so the header reads as one block. */ center?: boolean }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-3">
+    <header className={`flex flex-wrap items-end gap-3 ${center ? "justify-center text-center" : "justify-between"}`}>
       <div className="min-w-0">
         {label && <p className="text-[11.5px] text-mute">{label}</p>}
         <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">{title}</h1>

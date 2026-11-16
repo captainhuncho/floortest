@@ -101,24 +101,23 @@ export function CapTicks({ used, limit, cells = 25 }: { used: number; limit: num
   );
 }
 
-function CollectionCard({ c, receiving, closed, canManage = true, startEditing = false }: { c: C; receiving: boolean; closed: boolean; canManage?: boolean; startEditing?: boolean }) {
+function CollectionCard({ c, receiving, closed, startEditing = false, onDone }: { c: C; receiving: boolean; closed: boolean; startEditing?: boolean; /** Called after Save or Cancel, e.g. to close the pop-up the form sits in. */ onDone?: () => void }) {
   const [editing, setEditing] = useState(startEditing);
   const [pending, start] = useTransition();
+  const formId = useId();
+  // Save and Cancel both end editing: in the pop-up that closes it, so nobody has to tap Edit again to get out (owner, 16 Nov).
+  const done = () => (onDone ? onDone() : setEditing(false));
 
   return (
     <div className={`${CARD} p-3 sm:p-4 ${receiving && !closed ? "border-lime/55" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex flex-wrap items-center gap-2 text-[15px] font-semibold tracking-[-0.015em] text-bone">
-            <Link href={`/dashboard/collections/${c.id}`} className="underline-offset-4 hover:underline">
-              {c.name}
-            </Link>
+            {c.name}
             {(receiving || closed) && <StateChip live={receiving && !closed} closed={closed} full={c.full} closesLabel={null} idle="" />}
           </h2>
           <p className="mt-1 text-[12px] text-mute">
-            <Link href={`/dashboard/collections/${c.id}`} className="hover:text-bone">
-              <b className="font-semibold text-lime tnum">{c.needsReview}</b> need review · <b className="font-semibold text-bone tnum">{c.kept}</b> kept · <b className="font-semibold text-bone tnum">{c.count}</b> total · Open folder →
-            </Link>
+            <b className="font-semibold text-lime tnum">{c.needsReview}</b> need review · <b className="font-semibold text-bone tnum">{c.kept}</b> kept · <b className="font-semibold text-bone tnum">{c.count}</b> total
             {c.closesLabel && ` · ${closed ? "closed" : "closes"} ${c.closesLabel}`}
           </p>
           {/* The deadline is already in the line above, so the card's brief leaves it out. */}
@@ -146,29 +145,18 @@ function CollectionCard({ c, receiving, closed, canManage = true, startEditing =
             </div>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/dashboard/collections/${c.id}`} className={GHOST}>
-            Open collection
-          </Link>
-          <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
-          {!receiving && canManage && (
-            <button className={GHOST} disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
-              Send new tracks here
-            </button>
-          )}
-          <button className={GHOST} onClick={() => setEditing((e) => !e)} aria-expanded={editing}>
-            Edit
-          </button>
-        </div>
+        {/* Only the form lives in this pop-up (owner, 16 Nov: one way to do each thing). Open, Download and Send new tracks
+            here are on the collection's tile, its ··· menu and its page; Edit is the button that opened this. */}
       </div>
       {editing && (
         <form
+          id={formId}
           className="mt-4 grid gap-3.5 border-t border-dashed border-line-2 pt-4 sm:grid-cols-[1fr_auto_auto] sm:items-end"
           action={(fd) =>
             start(async () => {
               fd.set("tz", String(new Date().getTimezoneOffset()));
               await updateCollection(c.id, fd);
-              setEditing(false);
+              done();
             })
           }
         >
@@ -190,11 +178,6 @@ function CollectionCard({ c, receiving, closed, canManage = true, startEditing =
               </span>
             </label>
           )}
-          <div className="flex gap-2">
-            <button className={LIME} disabled={pending}>
-              Save
-            </button>
-          </div>
           <p className="text-[12px] text-mute sm:col-span-3">
             After the closing date your link shows “callout closed” and stops taking uploads. Clear the date to reopen.
             {c.canCap && " With a track limit, it shows “callout full” once that many have arrived. Raise or clear the limit to reopen."}
@@ -238,6 +221,17 @@ function CollectionCard({ c, receiving, closed, canManage = true, startEditing =
         </form>
       )}
       {editing && <ArtUpload id={c.id} name={c.name} art={c.art} />}
+      {/* Save comes last, after the brief and the artwork, so the whole form is filled in first (owner, 16 Nov). The artwork saves on its own as soon as it's chosen. */}
+      {editing && (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-dashed border-line-2 pt-4">
+          <button type="submit" form={formId} className={LIME} disabled={pending}>
+            {pending ? "Saving…" : "Save"}
+          </button>
+          <button type="button" className={GHOST} onClick={done} disabled={pending}>
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -388,7 +382,7 @@ export function CollectionTile({ c, receiving, closed, canManage = true, canEdit
         ) : null}
       </div>
       {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
-      {editing && <EditDialog c={c} receiving={receiving} closed={closed} canManage={canManage} onClose={() => setEditing(false)} />}
+      {editing && <EditDialog c={c} receiving={receiving} closed={closed} onClose={() => setEditing(false)} />}
     </div>
   );
 }
@@ -483,13 +477,13 @@ export function CollectionDetailHeader({ c, receiving, closed, canManage = true,
         </button>
       </div>
       {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
-      {editing && <EditDialog c={c} receiving={receiving} closed={closed} canManage={canManage} onClose={() => setEditing(false)} />}
+      {editing && <EditDialog c={c} receiving={receiving} closed={closed} onClose={() => setEditing(false)} />}
     </header>
   );
 }
 
 /** The edit form in a pop-up over the page. Tap outside, Escape or ✕ to close. */
-function EditDialog({ c, receiving, closed, canManage, onClose }: { c: C; receiving: boolean; closed: boolean; canManage: boolean; onClose: () => void }) {
+function EditDialog({ c, receiving, closed, onClose }: { c: C; receiving: boolean; closed: boolean; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   useFocusTrap(box);
   useEffect(() => {
@@ -503,21 +497,21 @@ function EditDialog({ c, receiving, closed, canManage, onClose }: { c: C; receiv
         <button onClick={onClose} aria-label="Close" className="absolute -top-12 right-0 z-10 grid size-11 place-items-center rounded-full border border-line bg-card text-mute hover:text-bone">
           <Icon name="x" className="size-4" />
         </button>
-        <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
+        <CollectionCard c={c} receiving={receiving} closed={closed} startEditing onDone={onClose} />
       </div>
     </div>
   );
 }
 
 /** "Edit collection" as a button that opens the edit form in a pop-up. */
-export function EditCollectionInfo({ c, receiving, closed, canManage = true, className = GHOST }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; className?: string }) {
+export function EditCollectionInfo({ c, receiving, closed, className = GHOST }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button onClick={() => setOpen(true)} className={className}>
         Edit collection
       </button>
-      {open && <EditDialog c={c} receiving={receiving} closed={closed} canManage={canManage} onClose={() => setOpen(false)} />}
+      {open && <EditDialog c={c} receiving={receiving} closed={closed} onClose={() => setOpen(false)} />}
     </>
   );
 }

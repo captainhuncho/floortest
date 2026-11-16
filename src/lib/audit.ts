@@ -36,6 +36,7 @@ export const AUDIT_LABELS = {
   reply_limited: "Reply not sent (reply limit reached) to",
   played_out: "Played out",
   noted: "Added a note on",
+  reported: "Reported",
   blocked: "Blocked",
   unblocked: "Unblocked",
   collection_created: "Created collection",

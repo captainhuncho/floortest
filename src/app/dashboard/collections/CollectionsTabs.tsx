@@ -11,7 +11,7 @@ export function CollectionsTabs({ on }: { on: "callouts" | "projects" }) {
     { key: "projects", href: "/dashboard/projects", label: "Projects", hint: "Your own tracks" },
   ] as const;
   return (
-    <nav aria-label="Collections" className="grid w-full max-w-2xl grid-cols-2 gap-1 rounded-2xl border border-line bg-well p-1">
+    <nav aria-label="Collections" className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-1 rounded-2xl border border-line bg-well p-1">
       {tabs.map((t) => {
         const current = on === t.key;
         return (
