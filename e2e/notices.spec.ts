@@ -1,4 +1,4 @@
-import { expect, logIn, test } from "./fixtures";
+import { expect, logIn, preparePage, test } from "./fixtures";
 import { opsLogIn } from "./ops-login";
 
 /**
@@ -6,6 +6,8 @@ import { opsLogIn } from "./ops-login";
  * with the times in the person's zone, a <script> title stays text, and closing it is saved on the server for them.
  */
 const stamp = Date.now().toString(36);
+/** Its own seeded receiver (scripts/seed.ts), so the sign-ins don't share demo@ with the rest of the suite. */
+const RECEIVER = "notices@floortest.test";
 const M = 60_000;
 const local = (ms: number) => {
   const d = new Date(ms);
@@ -13,7 +15,7 @@ const local = (ms: number) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-test("a notice added in ops shows on the dashboard as text, and closing it sticks", async ({ page, browser }) => {
+test("a notice added in ops shows on the dashboard as text, and closing it sticks", async ({ page, browser, baseURL }) => {
   // Three sign-ins, two extra browsers and about ten page loads: past the 90 s default under full e2e load (Desk, 14 Nov).
   test.setTimeout(240_000);
   const title = `<script>alert(1)</script> Short update ${stamp}`;
@@ -38,12 +40,13 @@ test("a notice added in ops shows on the dashboard as text, and closing it stick
   // A receiver, in their own browser.
   const ctx = await browser.newContext();
   const desk = await ctx.newPage();
+  await preparePage(desk, baseURL ?? undefined);
   let alerted = false;
   desk.on("dialog", (d) => {
     alerted = true;
     void d.dismiss();
   });
-  await logIn(desk, "demo@floortest.test");
+  await logIn(desk, RECEIVER);
   await desk.goto("/dashboard/floor");
   const strip = desk.getByRole("status").filter({ hasText: `Short update ${stamp}` });
   await expect(strip).toBeVisible();
@@ -69,7 +72,8 @@ test("a notice added in ops shows on the dashboard as text, and closing it stick
   const html = await (await desk.request.get("/dashboard/floor")).text();
   expect(html).not.toContain(`Short update ${stamp}`);
   const other = await (await browser.newContext()).newPage();
-  await logIn(other, "demo@floortest.test");
+  await preparePage(other, baseURL ?? undefined);
+  await logIn(other, RECEIVER);
   await other.goto("/dashboard/floor");
   await expect(other.getByRole("heading").first()).toBeVisible();
   await expect(other.getByRole("status").filter({ hasText: `Short update ${stamp}` })).toHaveCount(0);

@@ -1,4 +1,4 @@
-import { appUser } from "@/lib/app-auth";
+import { appUserAgreed } from "@/lib/app-auth";
 import { body, fail, json, unauthorized } from "@/lib/api-v1";
 import { userByHandle } from "@/lib/desk";
 import { IntakeError, startUpload } from "@/lib/intake";
@@ -15,7 +15,8 @@ export const runtime = "nodejs";
  * is when a file left the desk (it would give the decision away); `notListened` turns on 90 days after an unplayed send.
  */
 export async function GET(req: Request) {
-  const u = await appUser(req);
+  const u = await appUserAgreed(req);
+  if (u instanceof Response) return u;
   if (!u) return unauthorized();
   const rows = await sentBy(u);
   return json({
@@ -32,7 +33,8 @@ export async function GET(req: Request) {
  * then call /api/v1/sends/complete. The bytes go straight to storage, never through here.
  */
 export async function POST(req: Request) {
-  const u = await appUser(req);
+  const u = await appUserAgreed(req);
+  if (u instanceof Response) return u;
   if (!u) return unauthorized();
   const data = await body(req);
   const receiver = await userByHandle(String(data.to ?? "").trim().toLowerCase().slice(0, 30));

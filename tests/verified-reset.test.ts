@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { agreeTerms } from "./agree-terms";
 import assert from "node:assert/strict";
 import { testDataDir } from "./test-db";
 import { form, inRequest, type Jar } from "./request-scope";
@@ -57,6 +58,7 @@ test("the Public page save itself keeps the mark for a re-typed profile and take
   ))!.id;
   const jar: Jar = new Map();
   await inRequest(jar, "10.9.0.1", () => createSession(id));
+  await agreeTerms(id);
   const save = (url: string) => inRequest(jar, "10.9.0.1", () => updatePublicPage(undefined, form({ page_style: "classic", platform: "instagram", url })), { dropAfter: true });
   const status = async () => (await q.get<{ s: string }>("SELECT identity_status AS s FROM users WHERE id = ?", id))!.s;
 

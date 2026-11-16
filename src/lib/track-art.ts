@@ -35,7 +35,7 @@ const sentTrack = (token: string) => {
   // thrown away at the end (Safety, 4 Nov), so the answer can't tell the sender it was deleted.
   return q.get<ArtTrack>(
     `SELECT t.id, t.user_id, t.created_at, t.art_key, t.art_attached_at, t.deleted_at, t.played_out_at, t.stems_requested_at, t.stems_sent, u.plan
-       FROM tracks t JOIN users u ON u.id = t.user_id WHERE ${m.sql}`,
+       FROM tracks t JOIN users u ON u.id = t.user_id WHERE u.suspended_at IS NULL AND ${m.sql}`,
     ...m.args,
   );
 };

@@ -6,6 +6,7 @@ import { botCheckKey } from "@/lib/turnstile";
 import { q } from "@/lib/db";
 import { env, isPreview } from "@/lib/env";
 import { googleConfig } from "@/lib/google-auth";
+import { inApp } from "@/lib/in-app";
 import { GuidedSignup } from "./GuidedSignup";
 import { inviteBySecret } from "@/lib/account-members";
 import { currentPerson } from "@/lib/auth";
@@ -64,7 +65,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         lockedEmail={lockedEmail}
         canSignUp={hasInvite}
         initialHandle={(sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined}
-        google={!!googleConfig() && !isPreview}
+        google={!!googleConfig() && !isPreview && !(await inApp())}
         welcome={{ headline: home.headline, italic: home.headline_italic, intro: home.intro }}
         notice={notice}
         waitlistNote={<E k="signup_invite_only" />}

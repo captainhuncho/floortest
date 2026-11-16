@@ -4,6 +4,7 @@ import { audit } from "./audit";
 import { hashToken } from "./token-hash";
 import { now, q, USER_COLUMNS, type User } from "./db";
 import { env } from "./env";
+import { deskNeedsTerms, TERMS_NEEDED_ERROR } from "./terms-record";
 
 /**
  * Sign-in for the mobile app (/api/v1). The phone never holds database or storage keys, only two tokens:
@@ -117,4 +118,15 @@ export async function appUser(req: Request): Promise<User | null> {
     t.session, t.userId, now(),
   );
   return u ? { ...u, actor_id: u.id, actor_name: u.name, role: "owner" } : null;
+}
+
+/**
+ * appUser for every app route but the Terms ones: the account, or a 403 telling the app to show the Terms when the
+ * person hasn't agreed to the current ones or they can't be read (owner, 15 Nov: nobody gets in without agreeing).
+ */
+export async function appUserAgreed(req: Request): Promise<User | null | Response> {
+  const u = await appUser(req);
+  if (!u) return null;
+  if (await deskNeedsTerms(false, u.id)) return Response.json({ error: TERMS_NEEDED_ERROR, termsNeeded: true }, { status: 403 });
+  return u;
 }

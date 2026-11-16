@@ -5,6 +5,7 @@ import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { fileAccess } from "@/lib/file-access";
 import { WEB_IDLE_MS } from "@/lib/sessions";
+import { deskNeedsTerms } from "@/lib/terms-record";
 
 /**
  * Offline kept tracks (phone apps): the app downloads each kept track through a short-lived signed link, because the
@@ -59,6 +60,8 @@ export async function offlineFile(token: string, at = now()): Promise<{ fileKey:
     at - WEB_IDLE_MS,
   );
   if (!live) return null;
+  // Nobody gets in without agreeing (owner, 15 Nov): a saved offline link stops working until the person ticks new Terms.
+  if (await deskNeedsTerms(false, g.actorId)) return null;
   if (g.deskId !== g.actorId && !((await teamsOn(g.deskId)) && (await roleOn(g.deskId, g.actorId)))) return null;
   const desk = await q.get<{ id: number; plan: string }>("SELECT id, plan FROM users WHERE id = ? AND suspended_at IS NULL", g.deskId);
   const f = await fileAccess(desk && { ...desk, actor_id: g.actorId }, "offline", g.trackId);

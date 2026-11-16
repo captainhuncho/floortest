@@ -9,9 +9,9 @@ import { LINK_FIELD_CHARS, MAX_LINKS, profileKey, requestLink, slotLink, type Pr
 import { isAccountType, TOOL_IDS, toolOverrides, type Tool } from "@/lib/account-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { destroySession, requireRole } from "@/lib/auth";
+import { destroySession, requireOwnAccount, requireRole } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { purgeAccount } from "@/lib/privacy";
+import { requestDeletion } from "@/lib/account-deletion";
 import { cancelEmailChange, changeHandle, requestEmailChange, resetIfProfilesChanged, resetVerified } from "@/lib/accounts";
 import { capacity } from "@/lib/desk";
 import { asPerson, asSystem, now, q } from "@/lib/db";
@@ -182,22 +182,18 @@ export async function submitIdentity(_: SettingsState, form: FormData): Promise<
   return { ok: true };
 }
 
-/** Permanently deletes the account, every stored file, and all history. Password (and two-step code), then an email to say it's done. */
+/**
+ * Deletes the account (owner, 15 Nov): password (and two-step code) first, then it is switched off at once and every
+ * session ends; it is purged after 14 days unless the owner signs in and restores it (lib/account-deletion.ts).
+ */
 export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireRole("owner");
+  // Works before the Terms tick too (owner, 15 Nov), from the accept page.
+  const u = await requireOwnAccount();
   const problem = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
   if (problem) return { error: problem };
-  await sendMail({
-    userId: null,
-    audience: "support",
-    to: u.email,
-    reserved: true,
-    subject: "Your FloorTest account was deleted",
-    body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest account (${u.handle}) and everything on it were deleted just now, at your request from Settings.\n\nIf this wasn't you, reply to this email straight away.\n\n— FloorTest`,
-  });
+  await requestDeletion(u.id);
   await destroySession();
-  await purgeAccount(u.id);
-  redirect("/?deleted=1");
+  redirect("/?deleted=pending");
 }
 
 /** Starts an email change from Settings. Needs the password; the new address must confirm before it takes effect. */
