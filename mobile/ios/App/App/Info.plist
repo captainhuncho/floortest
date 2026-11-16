@@ -35,11 +35,13 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+#if FLOORTEST_LOCAL
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+#endif
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -89,7 +91,9 @@
 	<key>WKAppBoundDomains</key>
 	<array>
 		<string>floortest.app</string>
+#if FLOORTEST_LOCAL
 		<string>localhost</string>
+#endif
 	</array>
 </dict>
 </plist>
