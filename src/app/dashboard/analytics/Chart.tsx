@@ -31,7 +31,7 @@ export function AnalyticsChart({ bars, thirdLabel, span }: { bars: ChartBar[]; t
             role="tab"
             aria-selected={view === k}
             onClick={() => setView(k)}
-            className={`tap min-h-9 rounded-[9px] px-2.5 text-[12px] ${view === k ? "bg-lime/15 font-semibold text-lime" : "text-mute hover:text-bone"}`}
+            className={`tap min-h-11 rounded-[9px] px-3 text-[12px] ${view === k ? "bg-lime/15 font-semibold text-lime" : "text-mute hover:text-bone"}`}
           >
             {label}
           </button>
@@ -40,6 +40,28 @@ export function AnalyticsChart({ bars, thirdLabel, span }: { bars: ChartBar[]; t
       <p className="sr-only" aria-live="polite">
         {total} {viewLabel.toLowerCase()} {span}.
       </p>
+      {/* The same numbers as the bars, for screen readers: every bar, every count, no hover needed. */}
+      <table className="sr-only">
+        <caption>{viewLabel} {span}</caption>
+        <thead>
+          <tr>
+            <th scope="col">When</th>
+            <th scope="col">Tracks in</th>
+            <th scope="col">Kept</th>
+            <th scope="col">{thirdLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bars.map((b) => (
+            <tr key={b.key}>
+              <th scope="row">{b.label}</th>
+              <td>{b.in}</td>
+              <td>{b.kept}</td>
+              <td>{b.third}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       <div aria-hidden className="flex flex-col gap-1.5">
         <div className="relative flex h-28 items-end gap-[clamp(1px,0.6vw,8px)] border-b border-dashed border-line-2">
           <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-line" />

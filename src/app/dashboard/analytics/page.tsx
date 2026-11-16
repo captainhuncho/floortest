@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
-import { atLeast } from "@/lib/account-members";
+import { requireRole } from "@/lib/auth";
 import { calloutLinks, perDay, periodRange, PERIODS, sharedLinks, whoSent, type PeriodKey } from "@/lib/analytics";
 import { canMarkPlayedOut } from "@/lib/played-out-prompt";
 import { CARD, PageHead } from "@/components/Kit";
@@ -28,9 +26,9 @@ const n = (v: number, one: string, many = `${one}s`) => `${v} ${v === 1 ? one : 
  * visitors to the link.
  */
 export default async function Analytics({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
-  const user = await requireUser();
-  // Owner and A&R / Admin only (owner, 16 Nov). Members have no menu entry; a typed address goes back to the Floor.
-  if (!atLeast(user.role, "admin")) redirect("/dashboard/floor");
+  // Owner and A&R / Admin only (owner, 16 Nov): the shared desk role check. Members have no menu entry; a typed address goes
+  // to the Team page with its "not for your role" note, like every other admin page. In an admin's View as it reads only.
+  const user = await requireRole("admin");
   const sp = await searchParams;
   const range = periodRange(sp.p, user.tz);
   const [day, senders, callouts, shared] = await Promise.all([perDay(user, range), whoSent(user, range), calloutLinks(user, range), sharedLinks(user, range)]);

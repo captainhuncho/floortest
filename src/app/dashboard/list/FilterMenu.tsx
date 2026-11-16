@@ -36,7 +36,7 @@ export function FilterMenu({ label, options, icon = false, showValue = false }: 
         aria-expanded={open}
         aria-haspopup="menu"
         className={`flex items-center gap-1.5 border border-line bg-well font-medium transition hover:text-bone ${
-          icon ? "min-h-11 rounded-xl px-3 text-[13px]" : "min-h-9 rounded-[10px] px-2.5 text-[11.5px]"
+          icon || showValue ? "min-h-11 rounded-xl px-3 text-[13px]" : "min-h-9 rounded-[10px] px-2.5 text-[11.5px]"
         } ${filtered ? "text-bone" : "text-mute"}`}
       >
         {icon && <Icon name="folder" className="size-4" />}
