@@ -593,6 +593,19 @@ export async function purgeLinkRecords(t = now()) {
   return { codes: codes.changes ?? 0, notes: notes.changes ?? 0, links: links.changes ?? 0, requests: requests.changes ?? 0 };
 }
 
+/**
+ * On an email erase (privacy.ts eraseSender), for someone who may have no account: their place on other people's links
+ * (added by email), their visits, plays, requests and codes. Declined and blocked requests stay, so a block still holds.
+ */
+export async function forgetLinkEmail(db: Queryable, email: string) {
+  const e = cleanEmail(email);
+  await db.run("DELETE FROM link_recipients WHERE kind = 'email' AND value = ?", e);
+  await db.run("DELETE FROM link_sessions WHERE email = ?", e);
+  await db.run("DELETE FROM link_events WHERE email = ?", e);
+  await db.run("DELETE FROM link_requests WHERE email = ? AND status NOT IN ('declined', 'blocked')", e);
+  await db.run("DELETE FROM link_codes WHERE email = ?", e);
+}
+
 /** On account deletion: the account's place on other people's links, and its visits, requests and activity. */
 export async function forgetLinkPerson(db: Queryable, userId: number, email: string) {
   const e = cleanEmail(email);
