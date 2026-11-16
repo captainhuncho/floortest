@@ -15,7 +15,8 @@ test("search is a field beside the bell on laptops and an icon under 1024px", as
   const height = async () => Math.round((await search.boundingBox())!.height);
 
   await expect(search).toContainText("Tracks, artists or contacts");
-  await expect(search).toHaveAccessibleName("Search");
+  // The name holds the words on show (label in name), and is plain "Search" when only the icon shows.
+  await expect(search).toHaveAccessibleName("Search Tracks, artists or contacts");
   // The hint names the key this keyboard has.
   const apple = await page.evaluate(() => /Mac|iPhone|iPad|iPod/.test(navigator.platform));
   await expect(search.locator("kbd")).toHaveText(apple ? "⌘K" : "Ctrl K");
@@ -36,6 +37,7 @@ test("search is a field beside the bell on laptops and an icon under 1024px", as
     await page.setViewportSize({ width: w, height: 800 });
     await expect.poll(width).toBe(44);
     await expect(search.getByText("Tracks, artists or contacts")).toBeHidden();
+    await expect(search).toHaveAccessibleName("Search");
   }
 
   // The field opens the search card, and so does the shortcut.

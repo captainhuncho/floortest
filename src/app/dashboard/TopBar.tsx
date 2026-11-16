@@ -74,12 +74,13 @@ export function TopBar(p: Props) {
         type="button"
         data-search
         onClick={() => toggle("search")}
-        aria-label="Search"
         aria-keyshortcuts="Meta+K Control+K"
         aria-haspopup="dialog"
         aria-expanded={open === "search"}
         className={`${round} min-[1024px]:flex min-[1024px]:w-[240px] min-[1024px]:items-center min-[1024px]:gap-2.5 min-[1024px]:border min-[1024px]:border-line min-[1024px]:bg-well min-[1024px]:px-3 min-[1024px]:text-left min-[1024px]:text-[13px] min-[1024px]:text-mute min-[1024px]:hover:border-line-2 min-[1024px]:hover:text-bone min-[1100px]:w-[360px]`}
       >
+        {/* The name is "Search", plus the words on show from 1024px, so saying what you see finds it. */}
+        <span className="sr-only">Search</span>
         <Icon name="search" className="size-[18px] min-[1024px]:size-4" />
         <span className="hidden min-w-0 flex-1 truncate min-[1024px]:block">Tracks, artists or contacts</span>
         <kbd aria-hidden className="hidden rounded-md border border-line bg-card px-1.5 py-0.5 font-sans text-[10.5px] font-semibold min-[1100px]:block">
