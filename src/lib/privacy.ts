@@ -1,7 +1,7 @@
 import "server-only";
 import { now, q, type Queryable } from "@/lib/db";
 import { accountKeys, drainNow, queueDeletion, trackKeys } from "@/lib/deletion";
-import { forgetLinkPerson, linkDataFor } from "@/lib/share-links";
+import { forgetLinkEmail, forgetLinkPerson, linkDataFor } from "@/lib/share-links";
 import { DELETED_HANDLE_HOLD_DAYS } from "@/lib/accounts";
 import { normalEmail } from "./email-normal";
 
@@ -128,10 +128,11 @@ export async function dataFor(email: string) {
 
 /**
  * Erases someone as a sender: their sender records and the tracks they sent (files and stems), plus their messages,
- * waitlist and newsletter entries, reopen requests and every email to them.
+ * waitlist and newsletter entries, reopen requests, every email to them and everything tied to that email on share links.
  */
 export async function eraseSender(email: string) {
   const e = normalEmail(email);
+  if (!e.includes("@")) throw new Error("Not an email address.");
   const r = await q.tx(async (db) => {
     const ids = (await db.all<{ id: number }>("SELECT t.id FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE lower(s.email) = ?", e)).map((x) => x.id);
     const files = await queueDeletion(db, await trackKeys(db, ids), "sender erased", now());
@@ -140,6 +141,9 @@ export async function eraseSender(email: string) {
     await db.run("DELETE FROM waitlist WHERE lower(email) = ?", e);
     await db.run("DELETE FROM reopen_alerts WHERE lower(email) = ?", e);
     await db.run("DELETE FROM sender_links WHERE lower(email) = ?", e);
+    // Their place, visits, plays, requests and codes on other people's share links, so no desk still sees their email.
+    // An account holder's rows kept by user_id (signed-in visits) go only with the account (purgeAccount).
+    await forgetLinkEmail(db, e);
     // Their emails (queued or sent) and their newsletter entry went too (Batch C, 28 Oct). The unsubscribe list
     // (email_suppressions) stays: it is what keeps us from emailing them again.
     await db.run("DELETE FROM outbox WHERE lower(to_email) = ?", e);

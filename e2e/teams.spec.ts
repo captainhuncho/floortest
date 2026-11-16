@@ -101,6 +101,12 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await page.getByText("Switch desk").click();
   await page.getByRole("button", { name: /Tia Teams/ }).click();
   await expect(page.getByText(/On Tia Teams.s desk as a member/)).toBeVisible();
+  // The Floor's week for a member: the plain line from the Floor's own stats (no played out / downloaded figure from the
+  // Analytics reads) and no link to Analytics, which is for the owner and A&R / Admins.
+  const week = page.getByRole("region", { name: "Your week" });
+  await expect(week).toBeVisible();
+  await expect(week.getByRole("link")).toHaveCount(0);
+  await expect(week).toHaveText(/^Your week · \d+ tracks? in · \d+ kept$/);
   // Members can't send as the account, so Send isn't offered; nor are the owner's setup checklist or link controls.
   await expect(page.getByRole("link", { name: /^Send$/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Hide this" })).toHaveCount(0);
@@ -121,6 +127,10 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await page.goto("/dashboard/settings/security");
   await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
   await expect(page.getByRole("link", { name: "Security" })).toHaveCount(0);
+  // Analytics is for the owner and A&R / Admins (owner, 16 Nov): no menu entry, and the address goes to the Team page.
+  await expect(page.getByRole("link", { name: "Analytics" })).toHaveCount(0);
+  await page.goto("/dashboard/analytics");
+  await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
   // Calling the link's cover route directly is refused too (the page that offers it is A&R / Admin only).
   expect((await page.request.delete("/api/cover")).status()).toBe(403);
 
