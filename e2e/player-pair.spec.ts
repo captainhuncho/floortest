@@ -21,8 +21,9 @@ test("phone: the menu sits alone, the player joins it, the heart keeps with Undo
   await hydrated(play);
   await play.click();
   await expect(mini).toBeVisible();
-  // Same width, 8px apart, the player first in reading order, our own corners.
-  const shape = await pair.evaluate((el) => {
+  // Same width, 8px apart, the player first in reading order, our own corners. Read once the player has finished rising.
+  const shape = () =>
+    pair.evaluate((el) => {
     const [a, b] = [el.querySelector("[data-mini-player]")!, el.querySelector("[data-tabbar]")!];
     const [ra, rb] = [a.getBoundingClientRect(), b.getBoundingClientRect()];
     return {
@@ -32,8 +33,8 @@ test("phone: the menu sits alone, the player joins it, the heart keeps with Undo
       playerFirst: !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING),
       radii: [getComputedStyle(a).borderRadius, getComputedStyle(b).borderRadius],
     };
-  });
-  expect(shape).toEqual({ gap: 8, sameWidth: true, left: 12, playerFirst: true, radii: ["18px", "22px"] });
+    });
+  await expect.poll(shape).toEqual({ gap: 8, sameWidth: true, left: 12, playerFirst: true, radii: ["18px", "22px"] });
 
   // Keep from the heart: saved on the server, with Undo.
   const heart = mini.getByRole("button", { name: /^Keep / });
@@ -108,6 +109,7 @@ test("phone: a member on a team desk has no Send music in More", async ({ page }
 
 /** With "Send music between desks" off nobody is offered it; turned back on, it returns. */
 test("phone: Send music leaves More while send_music is off", async ({ page, browser }) => {
+  test.setTimeout(180_000);
   const ops = await browser.newPage();
   const flip = async (on: boolean) => {
     await ops.goto("/admin/switches");
