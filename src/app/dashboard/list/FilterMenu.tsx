@@ -10,7 +10,7 @@ export type Option = { label: string; href: string; active: boolean; count?: num
  * A compact dropdown filter ("Type ⌄  Genre ⌄"). `icon` puts a folder in front and makes it field-sized, for the
  * Review Queue's collection filter beside the search.
  */
-export function FilterMenu({ label, options, icon = false }: { label: string; options: Option[]; icon?: boolean }) {
+export function FilterMenu({ label, options, icon = false, showValue = false }: { label: string; options: Option[]; icon?: boolean; /** Show the chosen option itself ("Last 30 days ⌄"), for a picker that always has one. */ showValue?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = options.find((o) => o.active);
@@ -40,8 +40,17 @@ export function FilterMenu({ label, options, icon = false }: { label: string; op
         } ${filtered ? "text-bone" : "text-mute"}`}
       >
         {icon && <Icon name="folder" className="size-4" />}
-        {label}
-        {filtered && <span className="max-w-32 truncate text-lime">: {current.label}</span>}
+        {showValue && current ? (
+          <span className="text-bone">
+            <span className="sr-only">{label}: </span>
+            {current.label}
+          </span>
+        ) : (
+          <>
+            {label}
+            {filtered && <span className="max-w-32 truncate text-lime">: {current.label}</span>}
+          </>
+        )}
         <svg aria-hidden viewBox="0 0 12 12" className={`h-3 w-3 transition ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M3 4.5 6 7.5 9 4.5" />
         </svg>

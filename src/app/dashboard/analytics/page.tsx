@@ -43,13 +43,12 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
   const delta = day.prev ? t.in - day.prev.in : null;
   const empty = t.in === 0 && !callouts.length && !shared.length;
   const options = PERIODS.map(([k, label]) => ({ label, href: `/dashboard/analytics?p=${k}`, active: k === range.period }));
-  const current = PERIODS.find(([k]) => k === range.period)![1];
 
   return (
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 sm:gap-5">
         <PageHead label="Your desk and the links you shared" title="Analytics">
-          <FilterMenu label={current} options={options} />
+          <FilterMenu label="Period" options={options} showValue />
         </PageHead>
 
         {empty ? (

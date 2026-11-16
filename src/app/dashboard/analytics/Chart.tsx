@@ -49,7 +49,7 @@ export function AnalyticsChart({ bars, thirdLabel, span }: { bars: ChartBar[]; t
             const lime = view === "in" ? Math.min(b.kept, v) : v;
             const grey = view === "in" ? Math.max(0, v - lime) : 0;
             return (
-              <div key={b.key} className="flex h-full min-w-0 flex-1 flex-col justify-end gap-0.5">
+              <div key={b.key} className="flex h-full min-w-0 max-w-12 flex-1 flex-col justify-end gap-0.5">
                 {grey > 0 && <span className="block rounded-[4px] bg-line-2" style={{ height: `${(grey / top) * 100}%` }} />}
                 {lime > 0 && <span className="block rounded-[4px] bg-lime" style={{ height: `${(lime / top) * 100}%` }} />}
               </div>
@@ -58,7 +58,7 @@ export function AnalyticsChart({ bars, thirdLabel, span }: { bars: ChartBar[]; t
         </div>
         <div className="flex gap-[clamp(1px,0.6vw,8px)] text-[11px] text-faint">
           {bars.map((b, i) => (
-            <span key={b.key} className="min-w-0 flex-1 overflow-visible whitespace-nowrap text-center">
+            <span key={b.key} className="min-w-0 max-w-12 flex-1 overflow-visible whitespace-nowrap text-center">
               {i % every === 0 ? b.label : ""}
             </span>
           ))}

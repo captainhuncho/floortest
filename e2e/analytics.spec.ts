@@ -13,7 +13,7 @@ test("the owner opens Analytics, switches period, and sees the desk's own number
   await expect(page.getByRole("heading", { name: "Analytics", level: 1 })).toBeVisible();
 
   // One picker for the periods; Lifetime covers the demo desk's tracks whatever today's date is.
-  await page.getByRole("button", { name: /Last 30 days/ }).click();
+  await page.getByRole("button", { name: /Period: Last 30 days/ }).click();
   const menu = page.getByRole("menu");
   for (const p of ["Last 7 days", "Last 30 days", "Last 3 months", "This year", "Lifetime"]) await expect(menu.getByRole("menuitemradio", { name: p })).toBeVisible();
   await menu.getByRole("menuitemradio", { name: "Lifetime" }).click();
@@ -26,7 +26,7 @@ test("the owner opens Analytics, switches period, and sees the desk's own number
 
   // An address with an unknown period falls back to the default.
   await page.goto("/dashboard/analytics?p=forever");
-  await expect(page.getByRole("button", { name: /Last 30 days/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Period: Last 30 days/ })).toBeVisible();
 
   // On a phone it sits with Activity on the Account page.
   await page.setViewportSize({ width: 390, height: 844 });
