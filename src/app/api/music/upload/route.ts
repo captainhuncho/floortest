@@ -22,7 +22,6 @@ export async function POST(req: Request) {
       title: String(body.title ?? ""),
       artist: String(body.artist ?? ""),
       genre: String(body.genre ?? ""),
-      rights: body.rights === true,
       // The project to add it to (checked as theirs in startLibraryUpload); none means in no project.
       folderId: body.folderId == null || body.folderId === "" ? null : Number(body.folderId),
     });
