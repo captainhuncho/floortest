@@ -15,6 +15,10 @@ test("search is a field beside the bell on laptops and an icon under 1024px", as
   const height = async () => Math.round((await search.boundingBox())!.height);
 
   await expect(search).toContainText("Tracks, artists or contacts");
+  await expect(search).toHaveAccessibleName("Search");
+  // The hint names the key this keyboard has.
+  const apple = await page.evaluate(() => /Mac|iPhone|iPad|iPod/.test(navigator.platform));
+  await expect(search.locator("kbd")).toHaveText(apple ? "⌘K" : "Ctrl K");
   expect(await width()).toBe(360);
   expect(await height()).toBe(44);
   // Beside the bell: the field ends where the bell starts, give or take the box's 2px gap.
@@ -24,6 +28,7 @@ test("search is a field beside the bell on laptops and an icon under 1024px", as
 
   await page.setViewportSize({ width: 1024, height: 768 });
   await expect.poll(width).toBe(240);
+  expect(await height()).toBe(44);
   // Nothing in the bar runs off the page at the narrowest field size.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
