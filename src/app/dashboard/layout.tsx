@@ -118,7 +118,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </main>
         </div>
         <PlayerBar />
-        <MobileTabBar needsReview={collections.reduce((n, c) => n + c.needs_review, 0)} />
+        <MobileTabBar needsReview={collections.reduce((n, c) => n + c.needs_review, 0)} canSend={canSend} />
       </ToastProvider>
     </PlayerProvider>
     </div>
