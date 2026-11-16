@@ -63,8 +63,22 @@ export function TopBar(p: Props) {
   return (
     <div ref={root} className="relative flex items-center justify-end gap-0.5 rounded-[14px] border border-line bg-card p-[3px]">
       {p.lead}
-      <button className={round} onClick={() => toggle("search")} aria-label="Search (⌘K)" aria-expanded={open === "search"}>
-        <Icon name="search" />
+      {/* Under 1024px: the 44px icon. From 1024px: a field beside the bell (owner, 16 Nov), 240px, 360px from 1100px.
+          Either way it opens the same search card, so there is one place to type. */}
+      <button
+        type="button"
+        data-search
+        onClick={() => toggle("search")}
+        aria-label="Search (⌘K)"
+        aria-haspopup="dialog"
+        aria-expanded={open === "search"}
+        className={`${round} min-[1024px]:flex min-[1024px]:w-[240px] min-[1024px]:items-center min-[1024px]:gap-2.5 min-[1024px]:border min-[1024px]:border-line min-[1024px]:bg-well min-[1024px]:px-3 min-[1024px]:text-left min-[1024px]:text-[13px] min-[1024px]:text-mute min-[1024px]:hover:border-line-2 min-[1024px]:hover:text-bone min-[1100px]:w-[360px]`}
+      >
+        <Icon name="search" className="size-[18px] min-[1024px]:size-4" />
+        <span className="hidden min-w-0 flex-1 truncate min-[1024px]:block">Tracks, artists or contacts</span>
+        <kbd aria-hidden className="hidden rounded-md border border-line bg-card px-1.5 py-0.5 font-sans text-[10.5px] font-semibold min-[1100px]:block">
+          ⌘K
+        </kbd>
       </button>
 
       <div className="relative">
