@@ -5,7 +5,6 @@ import crypto from "node:crypto";
 import { asPerson, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { planLimit } from "./plan-store";
-import { switchOn } from "./switches";
 import { atLeast } from "./account-members";
 import { cache } from "react";
 
@@ -93,28 +92,12 @@ export async function reopenCallouts(db: Queryable = q) {
 /** Whether this account's plan can cap callouts (Pro and Team). */
 export const canCapCallouts = (plan: string) => plan !== "free";
 
-/** Collections a desk can hold during the beta (owner, 15 Oct); the "more_collections" switch lifts it. */
-export const BETA_COLLECTIONS = 2;
-
-/** Whether this desk may start another collection: always with "more_collections" on, otherwise under two. */
-export async function canAddCollection(deskId: number, db: Queryable = q) {
-  if (await switchOn("more_collections", deskId)) return true;
-  const n = await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collections WHERE user_id = ?", deskId);
-  return Number(n?.n ?? 0) < BETA_COLLECTIONS;
-}
-
 /**
- * Start a collection if the desk has room. The desk row is locked while it's counted, so two Creates at the same
- * instant can't make a third in the beta. Returns the new collection's id, or undefined when there's no room.
+ * Start a collection; its id. No cap on callouts (owner, 16 Nov, in the Desk: "let's remove the limits on callout"; the
+ * beta's two per desk is gone): the plan's track allowance is the only limit.
  */
 export async function addCollection(deskId: number, name: string) {
-  const unlimited = await switchOn("more_collections", deskId); // read before the transaction: it uses its own connection
-  return q.tx(async (db) => {
-    await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", deskId);
-    const n = await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collections WHERE user_id = ?", deskId);
-    if (!unlimited && Number(n?.n ?? 0) >= BETA_COLLECTIONS) return undefined;
-    return (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", deskId, name, now()))!.id;
-  });
+  return (await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", deskId, name, now()))!.id;
 }
 
 /**
