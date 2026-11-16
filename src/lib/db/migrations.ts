@@ -2481,4 +2481,18 @@ alter table library_folders add constraint library_folders_folder_fk foreign key
 create index if not exists library_folders_folder on library_folders(desk_folder_id, user_id, desk_folder_kind) where desk_folder_id is not null;
 grant update (desk_folder_id) on library_folders to ft_person;`,
   },
+  {
+    // Cover art on projects and folders (owner, 16 Nov: "Projects, Callout, Folders should be able to either have a cover
+    // art or a default cover with the name of the item"). Same rules as callout art (/api/collection-art): a random
+    // server-made key, kept until replaced, removed or its project or folder is deleted, then queued for deletion. As the
+    // person only the key column is added to what can change. Additive only: new nullable columns, and the file
+    // reservations check widened by one kind (folder_art).
+    id: "0152_folder_art",
+    sql: `alter table library_folders add column if not exists art_key text;
+alter table desk_folders add column if not exists art_key text;
+grant update (art_key) on library_folders to ft_person;
+grant update (art_key) on desk_folders to ft_person;
+alter table file_reservations drop constraint if exists file_reservations_kind_check;
+alter table file_reservations add constraint file_reservations_kind_check check (kind in ('cover', 'collection_art', 'folder_art', 'site_image', 'verification_proof'));`,
+  },
 ];

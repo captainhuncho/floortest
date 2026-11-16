@@ -43,6 +43,7 @@ export const AUDIT_LABELS = {
   teammate_removed: "Removed a teammate from a collection",
   collection_activated: "Now routing to",
   collection_updated: "Edited collection",
+  folder_updated: "Changed a cover",
   collection_deleted: "Deleted collection",
   link_paused: "Paused your link",
   link_resumed: "Reopened your link",

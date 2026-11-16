@@ -95,6 +95,7 @@ const ROUTES: Record<string, Record<string, "admin" | "member" | "public">> = {
   "collections/[id]/upload/complete": { POST: "admin" },
   "cover": { POST: "admin", DELETE: "admin" }, // part of the public page (updatePublicPage)
   "export": { GET: "member" },
+  "folder-art/[type]/[id]": { GET: "member", POST: "admin", DELETE: "admin" },
   "music/[id]/audio": { GET: "member" },
   "music/upload": { POST: "admin" },
   "music/upload/complete": { POST: "admin" },

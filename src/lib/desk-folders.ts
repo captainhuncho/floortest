@@ -1,5 +1,7 @@
 import "server-only";
 import { asPerson, now, q, type User } from "./db";
+import { coverUrl } from "./cover-url";
+import { discardFiles } from "./deletion";
 import { IntakeError } from "./intake";
 
 /**
@@ -9,9 +11,9 @@ import { IntakeError } from "./intake";
  * the signed-in person (asPerson): row-level security shows only desks they may work.
  */
 export type FolderKind = "callout" | "project";
-/** Up to four of what's in a folder, newest first, for its tile (art: the callout's cover URL; null for projects for now). */
+/** Up to four of what's in a folder, newest first, for its tile (art: the callout's or project's cover URL, or null). */
 export type FolderPreview = { id: number; name: string; art: string | null };
-export type DeskFolder = { id: number; kind: FolderKind; name: string; count: number; created_at: number; preview: FolderPreview[] };
+export type DeskFolder = { id: number; kind: FolderKind; name: string; count: number; created_at: number; art: string | null; preview: FolderPreview[] };
 
 type Desk = Pick<User, "id" | "actor_id">;
 // No cap on folders (owner, 16 Nov, in the Desk: "don't limit people folders"); the plan's track allowance is the limit.
@@ -29,17 +31,16 @@ const folderName = (raw: string) => {
 export async function listDeskFolders(desk: Desk, kind: FolderKind): Promise<DeskFolder[]> {
   const rows = await asPerson(desk.actor_id, () =>
     q.all<DeskFolder>(
-      `SELECT f.id, f.kind, f.name, f.created_at, (SELECT COUNT(*) FROM ${ITEMS[kind]} i WHERE i.desk_folder_id = f.id AND i.user_id = f.user_id) AS count
+      `SELECT f.id, f.kind, f.name, f.created_at, f.art_key, (SELECT COUNT(*) FROM ${ITEMS[kind]} i WHERE i.desk_folder_id = f.id AND i.user_id = f.user_id) AS count
        FROM desk_folders f WHERE f.user_id = ? AND f.kind = ? ORDER BY f.created_at, f.id`,
       desk.id,
       kind,
     ),
   );
-  const art = kind === "callout" ? "art_key" : "NULL";
   const items = await asPerson(desk.actor_id, () =>
     q.all<{ id: number; name: string; art_key: string | null; desk_folder_id: number }>(
       `SELECT id, name, art_key, desk_folder_id FROM (
-         SELECT i.id, i.name, ${art} AS art_key, i.desk_folder_id, ROW_NUMBER() OVER (PARTITION BY i.desk_folder_id ORDER BY i.created_at DESC, i.id DESC) AS n
+         SELECT i.id, i.name, i.art_key, i.desk_folder_id, ROW_NUMBER() OVER (PARTITION BY i.desk_folder_id ORDER BY i.created_at DESC, i.id DESC) AS n
          FROM ${ITEMS[kind]} i WHERE i.user_id = ? AND i.desk_folder_id IS NOT NULL
        ) x WHERE n <= 4 ORDER BY desk_folder_id, n`,
       desk.id,
@@ -50,10 +51,10 @@ export async function listDeskFolders(desk: Desk, kind: FolderKind): Promise<Des
     const list = preview.get(Number(i.desk_folder_id)) ?? [];
     preview.set(Number(i.desk_folder_id), [
       ...list,
-      { id: Number(i.id), name: i.name, art: i.art_key ? `/api/collection-art/${i.id}?v=${encodeURIComponent(i.art_key)}` : null },
+      { id: Number(i.id), name: i.name, art: kind === "callout" ? (i.art_key ? `/api/collection-art/${i.id}?v=${encodeURIComponent(i.art_key)}` : null) : coverUrl("project", i.id, i.art_key) },
     ]);
   }
-  return rows.map((r) => ({ id: Number(r.id), kind: r.kind, name: r.name, count: Number(r.count), created_at: Number(r.created_at), preview: preview.get(Number(r.id)) ?? [] }));
+  return rows.map((r) => ({ id: Number(r.id), kind: r.kind, name: r.name, count: Number(r.count), created_at: Number(r.created_at), art: coverUrl("folder", r.id, (r as { art_key?: string | null }).art_key), preview: preview.get(Number(r.id)) ?? [] }));
 }
 
 /** A new folder of this kind; its id. */
@@ -70,9 +71,11 @@ export async function renameDeskFolder(desk: Desk, id: number, raw: string) {
   return !!(await asPerson(desk.actor_id, () => q.get("UPDATE desk_folders SET name = ? WHERE id = ? AND user_id = ? RETURNING id", name, id, desk.id)));
 }
 
-/** Deletes a folder; what was in it stays, in no folder. False when it isn't on this desk. */
+/** Deletes a folder; what was in it stays, in no folder, and its cover is queued for deletion. False when it isn't on this desk. */
 export async function deleteDeskFolder(desk: Desk, id: number) {
-  return !!(await asPerson(desk.actor_id, () => q.get("DELETE FROM desk_folders WHERE id = ? AND user_id = ? RETURNING id", id, desk.id)));
+  const gone = await asPerson(desk.actor_id, () => q.get<{ art_key: string | null }>("DELETE FROM desk_folders WHERE id = ? AND user_id = ? RETURNING art_key", id, desk.id));
+  if (gone?.art_key) await discardFiles([gone.art_key], "folder deleted");
+  return !!gone;
 }
 
 /**

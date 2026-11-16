@@ -1,20 +1,14 @@
-import crypto from "node:crypto";
 import { discardFiles } from "@/lib/deletion";
 import { NextResponse } from "next/server";
 import { audit } from "@/lib/audit";
 import { currentDeskForChange, currentUser, viewingAs } from "@/lib/auth";
 import { q, type Collection } from "@/lib/db";
 import { activeCollection } from "@/lib/desk";
-import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
-import { optimizeImage } from "@/lib/image-optimize";
-import { readFormUpTo } from "@/lib/bounded-form";
-import { storage } from "@/lib/storage";
-import { reserveFile, settleFile } from "@/lib/file-reservations";
-import { quarantined, recordDigest } from "@/lib/file-digests";
+import { readCover, serveCover, settleFile, storeCover } from "@/lib/cover-art";
+import { allow } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
-const MAX = 8 * 1024 * 1024;
 const collectionOf = async (raw: string) => q.get<Pick<Collection, "id" | "user_id" | "name" | "art_key">>("SELECT id, user_id, name, art_key FROM collections WHERE id = ?", Number(raw) || 0);
 
 /** The owner's collection, for changing its artwork (never during a read-only support "view as", never from a lost team desk). */
@@ -31,23 +25,10 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/
   const own = await ownCollection((await ctx.params).id);
   if (own instanceof Response) return own;
   if (!own) return NextResponse.json({ error: "That collection isn't on your desk any more. Reload the page." }, { status: 404 });
-  // The form is read with a hard cap, so a body bigger than an image can't be buffered first.
-  const form = await readFormUpTo(req, MAX + 64 * 1024);
-  if (form === "too-large") return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
-  const file = form?.get("file");
-  if (!(file instanceof File) || !file.size) return NextResponse.json({ error: "Choose an image." }, { status: 400 });
-  if (file.size > MAX) return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
-  const buf = new Uint8Array(await file.arrayBuffer());
-  const kind = imageKind(buf);
-  if (!kind) return NextResponse.json({ error: "Use a JPG, PNG or WebP image." }, { status: 415 });
-  const opt = await optimizeImage(buf, 1000).catch(() => null);
-  if (!opt) return NextResponse.json({ error: "We couldn't read that image. Try another JPG, PNG or WebP." }, { status: 415 });
-  const store = await storage();
-  const key = `collection-art/${own.c.id}-${crypto.randomBytes(6).toString("hex")}.webp`;
-  // Written down first, so a crash before the database points to it can't leave a file nobody knows about.
-  await reserveFile(key, "collection_art");
-  await store.put(key, opt, TYPES.webp);
-  await recordDigest(key, opt);
+  if (!(await allow("cover_art", String(own.user.actor_id), 60, 3_600_000))) return NextResponse.json({ error: "Too many images at once. Try again shortly." }, { status: 429 });
+  const opt = await readCover(req);
+  if (opt instanceof Response) return opt;
+  const key = await storeCover(`collection-art/${own.c.id}`, "collection_art", opt);
   await q.run("UPDATE collections SET art_key = ? WHERE id = ?", key, own.c.id);
   await settleFile(key);
   await discardFiles([own.c.art_key], "collection artwork replaced");
@@ -76,16 +57,5 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/
   const viewer = await currentUser();
   const isPublic = !!owner && (await activeCollection(owner))?.id === c.id;
   if (!isPublic && viewer?.id !== c.user_id) return new Response("Not found", { status: 404 });
-  // Artwork that failed its fingerprint check is held back, like every other stored file.
-  if (await quarantined(c.art_key)) return new Response("Not found", { status: 404 });
-  const store = await storage();
-  const type = TYPES[c.art_key.split(".").pop() as keyof typeof TYPES] ?? "application/octet-stream";
-  // Private artwork: an hour-long link, like the audio, so access that ends (a teammate removed) ends within the hour.
-  // The redirect is kept for 10 minutes, well inside the link's life.
-  const signed = await store.signedGetUrl(c.art_key, { contentType: type, expiresIn: 3600 });
-  if (signed) return new Response(null, { status: 302, headers: { Location: signed, "Cache-Control": "private, max-age=600" } });
-  const head = await store.head(c.art_key);
-  if (!head) return new Response("Not found", { status: 404 });
-  const { body } = await store.stream(c.art_key);
-  return new Response(body, { headers: { "Content-Type": type, "Content-Length": String(head.size), "Cache-Control": "private, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
+  return serveCover(c.art_key);
 }
