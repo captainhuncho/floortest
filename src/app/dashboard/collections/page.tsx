@@ -1,4 +1,5 @@
 import { trackUse } from "@/lib/usage";
+import { canRunCallouts } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { listDeskFolders } from "@/lib/desk-folders";
 import { recordId } from "@/lib/ids";
@@ -15,6 +16,7 @@ import { FolderArea, FolderCrumb, FolderTile } from "./Folders";
 import { shareCardTarget } from "./callout-card";
 import { sharedLinksFor } from "@/lib/share-links";
 import { CARD, PageHead, SectionHead } from "@/components/Kit";
+import { Notice } from "../settings/ui";
 import { CollectionsTabs } from "./CollectionsTabs";
 
 export const metadata = { title: "Collections — FloorTest" };
@@ -24,13 +26,16 @@ export const metadata = { title: "Collections — FloorTest" };
  * add one (or the beta limit); then collections shared with you. Tracks show only inside a callout (owner, 16 Nov:
  * "have people click into the folder to view the tracks"): each card is the folder, and the whole card opens it.
  */
-export default async function Collections({ searchParams }: { searchParams: Promise<{ folder?: string }> }) {
+export default async function Collections({ searchParams }: { searchParams: Promise<{ folder?: string; denied?: string }> }) {
   const user = await requireUser();
+  const { denied } = await searchParams;
   await trackUse(user.id, "collections");
   const collections = await collectionsFor(user.id);
   const sharing = await switchOn("sharing");
   const viaLinks = await sharedLinksFor(user);
   const canManage = user.role !== "member";
+  // New collection and Edit: owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov).
+  const callouts = await canRunCallouts(user);
   const folders = await listDeskFolders(user, "callout");
   // Inside a folder (?folder=), only its callouts; at the top, the folders and then the callouts in none.
   const folderId = recordId((await searchParams).folder);
@@ -50,6 +55,11 @@ export default async function Collections({ searchParams }: { searchParams: Prom
         <div className="flex flex-col gap-1.5">
           <PageHead label="One per callout" title="Collections" center />
           <CollectionsTabs on="callouts" />
+          {denied === "callouts" && (
+            <Notice tone="error" next="Ask the owner or an A&R / Admin to tick Runs callouts for you in Settings → Team.">
+              Making and editing callouts is for people the owner or an A&amp;R / Admin has let run them.
+            </Notice>
+          )}
           <p className="mx-auto w-full max-w-2xl text-center text-[12px] leading-snug text-mute">
             Your link <span className="break-all font-mono text-bone">{host}/{user.handle}</span>{" "}
             {user.active_collection_id ? "sends new tracks to the one that's receiving." : "sends tracks straight to your Review Queue until you make one."}
@@ -74,6 +84,7 @@ export default async function Collections({ searchParams }: { searchParams: Prom
                     receiving={c.id === user.active_collection_id}
                     closed={isClosed(c)}
                     canManage={canManage}
+                    canEdit={callouts}
                     link={`${APP_URL}/${user.handle}`}
                     card={c.id === receiving?.id ? card : undefined}
                     folders={folders.map((f) => ({ id: f.id, name: f.name }))}
