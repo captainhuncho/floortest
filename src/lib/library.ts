@@ -444,7 +444,7 @@ export async function moveAllOwnToProjects(desk: User): Promise<{ moved: number;
 /** The most tracks one batch move takes: a full screen of picks, a stop for scripts. */
 export const MAX_MOVE_BATCH = 100;
 export type MoveTarget = { project: number | null } | { newProject: string };
-export type MoveManyResult = { ok: true; moved: number[]; skipped: number[]; full: boolean; project: number | null } | { ok: false; error: string };
+export type MoveManyResult = { ok: true; moved: number[]; skipped: number[]; full: boolean; projectGone: boolean; project: number | null } | { ok: false; error: string };
 
 /**
  * Moves picked tracks into Projects: into one project, a new one named here, or none. Each track moves on its own
@@ -475,17 +475,26 @@ export async function moveManyToProjects(desk: User, trackIds: unknown, target: 
   }
   const moved: number[] = [];
   let full = false;
-  for (const id of ids) {
-    const r = await moveTrackToProjects(desk, id, project);
-    if (r.ok) moved.push(id);
-    else if (r.code === "full") {
-      full = true;
-      break;
-    } else if (r.code === "project_gone") return { ok: false, error: r.error };
+  let projectGone = false;
+  try {
+    for (const id of ids) {
+      const r = await moveTrackToProjects(desk, id, project);
+      if (r.ok) moved.push(id);
+      else if (r.code === "full") {
+        full = true;
+        break;
+      } else if (r.code === "project_gone") {
+        // Deleted mid-batch: what already moved stays moved and is reported; the rest is left where it was.
+        projectGone = true;
+        break;
+      }
+    }
+  } finally {
+    // A new project nothing went into is removed again, even when a move threw.
+    if (made && project !== null && !moved.length) {
+      await deleteFolder(desk, project).catch((e) => console.error("[projects] couldn't remove the empty new project", e));
+      project = null;
+    }
   }
-  if (made && project !== null && !moved.length) {
-    await deleteFolder(desk, project);
-    project = null;
-  }
-  return { ok: true, moved, skipped: ids.filter((id) => !moved.includes(id)), full, project };
+  return { ok: true, moved, skipped: ids.filter((id) => !moved.includes(id)), full, projectGone, project };
 }

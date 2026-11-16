@@ -263,7 +263,7 @@ test("Projects: batch Move to project moves own uploads one by one, skips the re
 
   // A new project with nothing movable in it is removed again; a sender's track and another desk's look the same.
   const before = await q.count("SELECT COUNT(*) AS n FROM library_folders WHERE user_id = ?", desk.id);
-  assert.deepEqual(await lib.moveManyToProjects(desk, [fromSender, othersOwn], { newProject: "Empty EP" }), { ok: true, moved: [], skipped: [fromSender, othersOwn], full: false, project: null });
+  assert.deepEqual(await lib.moveManyToProjects(desk, [fromSender, othersOwn], { newProject: "Empty EP" }), { ok: true, moved: [], skipped: [fromSender, othersOwn], full: false, projectGone: false, project: null });
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM library_folders WHERE user_id = ?", desk.id), before, "no empty project left behind");
 
   // Duplicates count once; own uploads move into the new project; Projects full stops the rest.
@@ -277,7 +277,7 @@ test("Projects: batch Move to project moves own uploads one by one, skips the re
   // More room: the rest of the desk's own move into that project; the other desk's track is untouched.
   await q.run("UPDATE plans SET library_limit = 10 WHERE id = 'free'");
   const r2 = await lib.moveManyToProjects(desk, [a2, a3, othersOwn], { project: r.project });
-  assert.deepEqual(r2, { ok: true, moved: [a2, a3], skipped: [othersOwn], full: false, project: r.project });
+  assert.deepEqual(r2, { ok: true, moved: [a2, a3], skipped: [othersOwn], full: false, projectGone: false, project: r.project });
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM tracks WHERE id = ? AND deleted_at IS NULL", othersOwn), 1);
   assert.deepEqual(await lib.moveManyToProjects(desk, [a1], { project: 999999 }), { ok: false, error: "That project isn't there any more. Choose another." });
 });

@@ -100,6 +100,7 @@ export async function moveToProjects(trackId: number, folder: number | null): Pr
  */
 export async function moveManyToProjects(trackIds: number[], target: MoveTarget): Promise<MoveManyResult> {
   const u = await requireRole("admin");
+  // Charged before the batch is checked, on purpose: a stream of junk batches is throttled too, and checking is cheap.
   if (!(await allow("move_projects", String(u.actor_id), 60, 3_600_000))) return { ok: false, error: "Too many moves at once. Try again shortly." };
   const r = await moveManyFromCollections(u, trackIds, target);
   if (r.ok) revalidatePath("/dashboard", "layout");

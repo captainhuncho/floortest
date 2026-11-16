@@ -32,7 +32,7 @@ const ctx = (type: string, id: number | string) => ({ params: Promise.resolve({ 
 async function upload(jar: Jar, type: string, id: number, bytes: Uint8Array, name = "c.png") {
   const { POST } = await route();
   const form = new FormData();
-  form.set("file", new File([bytes], name, { type: "image/png" }));
+  form.set("file", new File([Buffer.from(bytes)], name, { type: "image/png" }));
   const req = new Request(`http://localhost/api/folder-art/${type}/${id}`, { method: "POST", body: form });
   return (await inRequest(jar, "10.9.0.1", () => POST(req, ctx(type, id)), { dropAfter: true })).answer as Response;
 }
@@ -102,4 +102,14 @@ test("project and folder covers: owner sets, replaces and removes; another desk 
   assert.ok((await accountKeys(q, a)).includes(pKey2));
   assert.ok(await lib.deleteFolder(desk, project));
   assert.ok(await gone(pKey2), "a deleted project's cover goes too");
+});
+
+test("batch Move to project is throttled per person: the 61st batch in an hour is refused before any work", async () => {
+  const { allow } = await import("../src/lib/ratelimit");
+  const a = await account();
+  const jar = await signIn(a);
+  for (let i = 0; i < 60; i++) assert.ok(await allow("move_projects", String(a), 60, 3_600_000));
+  const { moveManyToProjects } = await import("../src/app/dashboard/actions/music");
+  const out = await inRequest(jar, "10.9.0.1", () => moveManyToProjects([1], { project: null }), { dropAfter: true });
+  assert.deepEqual(out.answer, { ok: false, error: "Too many moves at once. Try again shortly." });
 });

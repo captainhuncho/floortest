@@ -2495,4 +2495,15 @@ grant update (art_key) on desk_folders to ft_person;
 alter table file_reservations drop constraint if exists file_reservations_kind_check;
 alter table file_reservations add constraint file_reservations_kind_check check (kind in ('cover', 'collection_art', 'folder_art', 'site_image', 'verification_proof'));`,
   },
+  {
+    // Defence in depth for folders (Safety, 16 Nov): anyone on the desk may see its folders, but only the owner and
+    // A&R / Admins may make, rename, cover or delete one, enforced by the database too (ft_desk_admin), not only by
+    // requireRole. Replaces 0151's one rule with a read rule and three write rules; nothing else changes.
+    id: "0153_desk_folders_admin_writes",
+    sql: `drop policy if exists person_desk_folders on desk_folders;
+create policy person_desk_folders_read on desk_folders for select to ft_person using (ft_desk(user_id));
+create policy person_desk_folders_insert on desk_folders for insert to ft_person with check (ft_desk_admin(user_id));
+create policy person_desk_folders_update on desk_folders for update to ft_person using (ft_desk_admin(user_id)) with check (ft_desk_admin(user_id));
+create policy person_desk_folders_delete on desk_folders for delete to ft_person using (ft_desk_admin(user_id));`,
+  },
 ];

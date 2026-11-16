@@ -72,6 +72,13 @@ test("folders: one kind each, private to the desk, refused across desks and kind
   // A teammate works the desk's folders while on the team, and loses them once removed (a stale member sees nothing).
   await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?,?,'admin',?)", a.id, b.id, t);
   assert.equal(await asPerson(b.actor_id, () => q.count("SELECT COUNT(*) AS n FROM desk_folders")), 2, "a current teammate sees the desk's folders");
+  // A plain Member sees them but the database refuses their writes (ft_desk_admin, 0153), whatever the app does.
+  await q.run("UPDATE account_members SET role = 'member' WHERE account_id = ? AND user_id = ?", a.id, b.id);
+  assert.equal(await asPerson(b.actor_id, () => q.count("SELECT COUNT(*) AS n FROM desk_folders")), 2, "a member sees the desk's folders");
+  await assert.rejects(asB("INSERT INTO desk_folders (user_id, kind, name, created_at) VALUES (?,?,?,?)", a.id, "callout", "By member", t), "a member can't make a folder");
+  await asB("UPDATE desk_folders SET name = 'Member rename' WHERE id = ?", cFolder);
+  await asB("DELETE FROM desk_folders WHERE id = ?", cFolder);
+  assert.equal((await q.get<{ name: string }>("SELECT name FROM desk_folders WHERE id = ?", cFolder))?.name, "House callouts", "a member's rename and delete change nothing");
   await q.run("DELETE FROM account_members WHERE account_id = ? AND user_id = ?", a.id, b.id);
   assert.equal(await asPerson(b.actor_id, () => q.count("SELECT COUNT(*) AS n FROM desk_folders")), 0, "a removed teammate sees none");
   await assert.rejects(asB("UPDATE desk_folders SET name = 'Gone' WHERE id = ? RETURNING id", cFolder).then(async () => {
