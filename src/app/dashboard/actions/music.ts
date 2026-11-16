@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { folderId, recordId } from "@/lib/ids";
 import { IntakeError } from "@/lib/intake";
-import { createFolder, deleteFolder, deleteLibraryTrack, moveAllOwnToProjects, moveLibraryTrack, moveTrackToProjects, renameFolder, renameLibraryTrack } from "@/lib/library";
+import { createFolder, deleteFolder, deleteLibraryTrack, moveAllOwnToProjects, moveLibraryTrack, moveManyToProjects as moveManyFromCollections, moveTrackToProjects, renameFolder, renameLibraryTrack, type MoveManyResult, type MoveTarget } from "@/lib/library";
+import { allow } from "@/lib/ratelimit";
 
 export type MusicResult = { ok: true } | { ok: false; error: string };
 
@@ -93,47 +94,16 @@ export async function moveToProjects(trackId: number, folder: number | null): Pr
   return { ok: true };
 }
 
-/** The most tracks one batch move takes: a full screen of picks, a stop for scripts. */
-const MAX_BATCH = 100;
-
 /**
- * Moves picked tracks into Projects, into one project, a new one named here, or none. Only the desk's own uploads move
- * (never a sender's). Each track moves on its own (not all or nothing): the answer lists the ids that moved and the ids that
- * didn't (another desk's, a sender's, gone or held for a check all look the same). Stops when Projects are full. Owner and admins.
+ * Moves picked tracks into Projects (a project, a new one, or none); own uploads only, each on its own. Owner and admins.
+ * Throttled like the List view's batch (60 an hour per person): abuse protection, never a limit on folders or projects.
  */
-export async function moveManyToProjects(
-  trackIds: number[],
-  target: { project: number | null } | { newProject: string },
-): Promise<{ ok: true; moved: number[]; skipped: number[]; full: boolean; project: number | null } | { ok: false; error: string }> {
+export async function moveManyToProjects(trackIds: number[], target: MoveTarget): Promise<MoveManyResult> {
   const u = await requireRole("admin");
-  const ids = [...new Set((Array.isArray(trackIds) ? trackIds : []).map(recordId))].filter((id): id is number => id !== null);
-  if (!ids.length) return { ok: false, error: "Pick at least one track." };
-  if (ids.length > MAX_BATCH) return { ok: false, error: `Move up to ${MAX_BATCH} tracks at a time.` };
-  let project: number | null;
-  if (target && "newProject" in target) {
-    try {
-      project = await createFolder(u, String(target.newProject ?? ""));
-    } catch (e) {
-      if (e instanceof IntakeError) return { ok: false, error: e.message };
-      throw e;
-    }
-  } else {
-    const f = folderId(target?.project ?? null);
-    if (Number.isNaN(f)) return { ok: false, error: "Choose a project." };
-    project = f;
-  }
-  const moved: number[] = [];
-  let full = false;
-  for (const id of ids) {
-    const r = await moveTrackToProjects(u, id, project);
-    if (r.ok) moved.push(id);
-    else if (r.error.startsWith("Projects are full")) {
-      full = true;
-      break;
-    } else if (r.error.startsWith("That project isn't there")) return { ok: false, error: r.error };
-  }
-  revalidatePath("/dashboard", "layout");
-  return { ok: true, moved, skipped: ids.filter((id) => !moved.includes(id)), full, project };
+  if (!(await allow("move_projects", String(u.actor_id), 60, 3_600_000))) return { ok: false, error: "Too many moves at once. Try again shortly." };
+  const r = await moveManyFromCollections(u, trackIds, target);
+  if (r.ok) revalidatePath("/dashboard", "layout");
+  return r;
 }
 
 /** 1b: moves all the desk's own uploads from its collections into Projects (never a sender's). Owner and admins. */

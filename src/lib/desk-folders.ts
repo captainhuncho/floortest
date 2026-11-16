@@ -83,6 +83,10 @@ export async function fileInFolder(desk: Desk, kind: FolderKind, itemId: number,
   if (!Number.isSafeInteger(itemId) || (folderId !== null && !Number.isSafeInteger(folderId))) return false;
   return asPerson(desk.actor_id, async () => {
     if (folderId !== null && !(await q.get("SELECT 1 FROM desk_folders WHERE id = ? AND user_id = ? AND kind = ?", folderId, desk.id, kind))) return false;
-    return !!(await q.get(`UPDATE ${ITEMS[kind]} SET desk_folder_id = ? WHERE id = ? AND user_id = ? RETURNING id`, folderId, itemId, desk.id));
+    // A delete in between makes the key refuse (23503): the folder is gone, the same answer as above.
+    return !!(await q.get(`UPDATE ${ITEMS[kind]} SET desk_folder_id = ? WHERE id = ? AND user_id = ? RETURNING id`, folderId, itemId, desk.id).catch((e) => {
+      if ((e as { code?: string })?.code === "23503") return undefined;
+      throw e;
+    }));
   });
 }
