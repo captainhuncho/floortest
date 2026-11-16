@@ -1,4 +1,4 @@
-import { appUser } from "@/lib/app-auth";
+import { appUserAgreed } from "@/lib/app-auth";
 import { body, fail, json, unauthorized } from "@/lib/api-v1";
 import { asPerson, isDecision } from "@/lib/db";
 import { ownedTrack } from "@/lib/desk";
@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 
 /** Keep or "not for me": { decision: "kept" | "passed" }. Private to the receiver, as on the web. */
 export async function POST(req: Request, ctx: RouteContext<"/api/v1/tracks/[id]/decision">) {
-  const u = await appUser(req);
+  const u = await appUserAgreed(req);
+  if (u instanceof Response) return u;
   if (!u) return unauthorized();
   if (!(await allow("app_decision", String(u.id), 600, 3_600_000))) return fail("Too many changes. Try again shortly.", 429);
   const decision = (await body(req)).decision;

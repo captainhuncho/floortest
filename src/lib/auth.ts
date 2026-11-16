@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { atLeast, type TeamRole } from "./account-members";
 import { refuseStaleChange, resolveDesk } from "./team-desk";
+import { deskNeedsTerms, TERMS_NEEDED_ERROR } from "./terms-record";
 import "server-only";
 import { isWriteRequest } from "./read-marker";
 import crypto from "node:crypto";
@@ -130,14 +131,21 @@ const self = (u: Omit<User, "actor_id" | "actor_name" | "role">): User => ({ ...
  * this, so a teammate works on the team's desk with its plan. Person-only things (sign-in, security, the /c share
  * pages, sending as yourself) use `currentPerson()` instead.
  */
-export const currentUser = cache(async (): Promise<User | null> => (await currentDesk())?.user ?? null);
+export const currentUser = cache(async (): Promise<User | null> => {
+  const d = await currentDesk();
+  // Not agreed to the Terms: no desk. API routes answer as signed out; desk pages send them to /accept-terms (requireUser).
+  return d && !d.termsNeeded ? d.user : null;
+});
 
 /** currentUser, plus whether the desk cookie names a team desk the person lost (src/lib/team-desk.ts). Memoised per request. */
-const currentDesk = cache(async (): Promise<{ user: User; stale: boolean } | null> => {
+const currentDesk = cache(async (): Promise<{ user: User; stale: boolean; termsNeeded: boolean } | null> => {
   const person = await currentPerson();
   if (!person) return null;
-  if (await viewingAs()) return { user: person, stale: false };
-  return resolveDesk(person, Number((await cookies()).get(DESK_COOKIE)?.value));
+  if (await viewingAs()) return { user: person, stale: false, termsNeeded: false };
+  // Nobody uses a desk without agreeing to the current Terms (owner, 15 Nov). Checked on the person, so a teammate
+  // ticks for themselves before working a team's desk.
+  const termsNeeded = await deskNeedsTerms(false, person.id);
+  return { ...(await resolveDesk(person, Number((await cookies()).get(DESK_COOKIE)?.value))), termsNeeded };
 });
 
 /**
@@ -209,12 +217,25 @@ export async function requireUser(): Promise<User> {
   // In a read-only admin view, a blocked change goes back to the desk, not to the login page.
   if (!d && (await viewingAs())) redirect("/dashboard/floor?readonly=1");
   if (!d) redirect("/login");
+  if (d.termsNeeded) redirect("/accept-terms");
   // A change from a team desk they lost (removed, seat paused) is stopped, not made on their own desk instead:
   // back to their own desk with a note. Pages just show their own desk.
   if (d.stale && (await isWrite())) {
     (await cookies()).delete(DESK_COOKIE);
     redirect("/dashboard/floor?desk=ended");
   }
+  return d.user;
+}
+
+/**
+ * Deleting your own account: like requireRole("owner"), but it never waits for the Terms tick (owner, 15 Nov: someone
+ * who won't agree can still delete their account and ask for their data). Only for deleteAccount.
+ */
+export async function requireOwnAccount(): Promise<User> {
+  const d = await currentDesk();
+  if (!d && (await viewingAs())) redirect("/dashboard/floor?readonly=1");
+  if (!d) redirect("/login");
+  if (d.stale || !atLeast(d.user.role, "owner")) redirect("/dashboard/settings/team?denied=1");
   return d.user;
 }
 
@@ -226,6 +247,7 @@ export async function requireUser(): Promise<User> {
 export async function currentDeskForChange(): Promise<User | null | Response> {
   const d = await currentDesk();
   if (!d) return null;
+  if (d.termsNeeded) return Response.json({ error: TERMS_NEEDED_ERROR, termsNeeded: true }, { status: 403 });
   const desk = refuseStaleChange(d);
   if (desk instanceof Response) (await cookies()).delete(DESK_COOKIE);
   return desk;

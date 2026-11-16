@@ -337,10 +337,10 @@ test("the desk sends someone who hasn't accepted the current Terms to /accept-te
   assert.equal(await deskNeedsTerms(true, id), false, "an admin's view never asks");
   await recordAcceptance({ userId: id, email: "fresh-desk@example.test" }, "Fresh", await currentTerms());
   assert.equal(await deskNeedsTerms(false, id), false, "ticked the current text: straight in");
-  // The layout itself pulls in client components, so its one call is pinned here.
+  // The redirect itself lives in requireUser (every desk page and action); tests/terms-required.test.ts runs it.
   const fs = await import("node:fs");
   const layout = fs.readFileSync(new URL("../src/app/dashboard/layout.tsx", import.meta.url), "utf8");
-  assert.match(layout, /if \(await deskNeedsTerms\(!!view, user\.actor_id\)\) redirect\("\/accept-terms"\);/);
+  assert.match(layout, /requireUser\(\)/);
 });
 
 test("sign-up records the tick inside the account's own transaction", async () => {

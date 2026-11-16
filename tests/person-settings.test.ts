@@ -134,10 +134,12 @@ test("Settings saves the owner's own alerts and profile through the person's rul
   // The role each action needs is exactly what it was (owner, 5 Nov: team-desk settings stay owner and admins as today).
   const roles: Record<string, string> = {
     updateNotifications: "owner", sendDigestNow: "owner", updateSettings: "owner", updatePublicPage: "admin", setPlan: "owner",
-    confirmBetaUpgrade: "owner", identityCode: "owner", submitIdentity: "owner", deleteAccount: "owner", changeMyEmail: "owner",
+    confirmBetaUpgrade: "owner", identityCode: "owner", submitIdentity: "owner", changeMyEmail: "owner",
     cancelMyEmailChange: "owner", requestPlan: "owner", withdrawPlanRequest: "owner", setRerouteClosed: "admin",
   };
   for (const [name, role] of Object.entries(roles)) assert.match(body(name), new RegExp(`requireRole\\("${role}"\\)`), `${name} still needs ${role}`);
+  // Owner only too, but it never waits for the Terms tick (owner, 15 Nov): requireOwnAccount.
+  assert.match(body("deleteAccount"), /requireOwnAccount\(\)/);
   assert.match(body("updateNotifications"), /saveAlerts\(u\.actor_id, u\.id,/);
   assert.match(body("updateNotifications"), /if \(problem\) return \{ error: problem \}/);
   assert.doesNotMatch(body("updateNotifications"), /UPDATE users/, "no write of its own outside the person's rules");

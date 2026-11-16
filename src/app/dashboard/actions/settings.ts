@@ -9,7 +9,7 @@ import { LINK_FIELD_CHARS, MAX_LINKS, profileKey, requestLink, slotLink, type Pr
 import { isAccountType, TOOL_IDS, toolOverrides, type Tool } from "@/lib/account-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { destroySession, requireRole } from "@/lib/auth";
+import { destroySession, requireOwnAccount, requireRole } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { requestDeletion } from "@/lib/account-deletion";
 import { cancelEmailChange, changeHandle, requestEmailChange, resetIfProfilesChanged, resetVerified } from "@/lib/accounts";
@@ -187,7 +187,8 @@ export async function submitIdentity(_: SettingsState, form: FormData): Promise<
  * session ends; it is purged after 14 days unless the owner signs in and restores it (lib/account-deletion.ts).
  */
 export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireRole("owner");
+  // Works before the Terms tick too (owner, 15 Nov), from the accept page.
+  const u = await requireOwnAccount();
   const problem = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
   if (problem) return { error: problem };
   await requestDeletion(u.id);
