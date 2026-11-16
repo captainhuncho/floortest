@@ -60,6 +60,10 @@ test("folders: one kind each, private to the desk, refused across desks and kind
   const asA = (sql: string, ...args: unknown[]) => asPerson(a.actor_id, () => q.run(sql, ...args));
   await assert.rejects(asA("UPDATE collections SET desk_folder_id = ? WHERE id = ?", pFolder, callout), "a project folder for a callout is refused");
   await assert.rejects(asA("UPDATE library_folders SET desk_folder_id = ? WHERE id = ?", cFolder, project), "a callout folder for a project is refused");
+  // ft_person may update collections at table level, so the constant kind column is writable there: the check refuses it.
+  await assert.rejects(asA("UPDATE collections SET desk_folder_kind = 'project', desk_folder_id = ? WHERE id = ?", pFolder, callout), "a callout can't pose as a project");
+  await assert.rejects(asA("UPDATE collections SET desk_folder_kind = 'project' WHERE id = ?", callout), "the kind column is pinned to callout");
+  await assert.rejects(asA("UPDATE library_folders SET desk_folder_kind = 'callout' WHERE id = ?", project), "a project's kind column isn't writable as the person");
   await assert.rejects(asA("UPDATE desk_folders SET kind = 'project' WHERE id = ?", cFolder), "a folder's kind can't be changed as the person");
   await assert.rejects(asA("UPDATE desk_folders SET user_id = ? WHERE id = ?", b.id, cFolder), "a folder can't be moved to another desk");
   await assert.rejects(asB("INSERT INTO desk_folders (user_id, kind, name, created_at) VALUES (?,?,?,?)", a.id, "callout", "Planted", t), "can't make a folder on another desk");

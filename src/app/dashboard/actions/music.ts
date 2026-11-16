@@ -98,12 +98,13 @@ const MAX_BATCH = 100;
 
 /**
  * Moves picked tracks into Projects, into one project, a new one named here, or none. Only the desk's own uploads move
- * (never a sender's): the rest are counted as skipped. Stops when Projects are full. Owner and admins.
+ * (never a sender's). Each track moves on its own (not all or nothing): the answer lists the ids that moved and the ids that
+ * didn't (another desk's, a sender's, gone or held for a check all look the same). Stops when Projects are full. Owner and admins.
  */
 export async function moveManyToProjects(
   trackIds: number[],
   target: { project: number | null } | { newProject: string },
-): Promise<{ ok: true; moved: number; skipped: number; full: boolean; project: number | null } | { ok: false; error: string }> {
+): Promise<{ ok: true; moved: number[]; skipped: number[]; full: boolean; project: number | null } | { ok: false; error: string }> {
   const u = await requireRole("admin");
   const ids = [...new Set((Array.isArray(trackIds) ? trackIds : []).map(recordId))].filter((id): id is number => id !== null);
   if (!ids.length) return { ok: false, error: "Pick at least one track." };
@@ -121,18 +122,18 @@ export async function moveManyToProjects(
     if (Number.isNaN(f)) return { ok: false, error: "Choose a project." };
     project = f;
   }
-  let moved = 0;
+  const moved: number[] = [];
   let full = false;
   for (const id of ids) {
     const r = await moveTrackToProjects(u, id, project);
-    if (r.ok) moved++;
+    if (r.ok) moved.push(id);
     else if (r.error.startsWith("Projects are full")) {
       full = true;
       break;
     } else if (r.error.startsWith("That project isn't there")) return { ok: false, error: r.error };
   }
   revalidatePath("/dashboard", "layout");
-  return { ok: true, moved, skipped: ids.length - moved, full, project };
+  return { ok: true, moved, skipped: ids.filter((id) => !moved.includes(id)), full, project };
 }
 
 /** 1b: moves all the desk's own uploads from its collections into Projects (never a sender's). Owner and admins. */
