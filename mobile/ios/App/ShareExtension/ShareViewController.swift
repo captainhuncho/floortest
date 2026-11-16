@@ -19,12 +19,21 @@ class ShareViewController: UIViewController {
         message.numberOfLines = 0
         message.textAlignment = .center
         message.text = "Adding to FloorTest…"
-        button.setTitle("Done", for: .normal)
-        button.titleLabel?.font = .monospacedSystemFont(ofSize: 15, weight: .bold)
-        button.setTitleColor(ink, for: .normal)
-        button.backgroundColor = lime
-        button.layer.cornerRadius = 10
-        button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 28, bottom: 12, right: 28)
+        // UIButton.Configuration (iOS 15+): contentEdgeInsets is ignored and deprecated under it. Same look as before:
+        // lime fill, ink bold mono text, 10pt corners, 12/28 padding.
+        var done = UIButton.Configuration.filled()
+        done.title = "Done"
+        done.baseBackgroundColor = lime
+        done.baseForegroundColor = ink
+        done.background.cornerRadius = 10
+        done.cornerStyle = .fixed
+        done.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 28, bottom: 12, trailing: 28)
+        done.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var a = attrs
+            a.font = .monospacedSystemFont(ofSize: 15, weight: .bold)
+            return a
+        }
+        button.configuration = done
         button.isHidden = true
         button.addTarget(self, action: #selector(close), for: .touchUpInside)
         let stack = UIStackView(arrangedSubviews: [message, button])
