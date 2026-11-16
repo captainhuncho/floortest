@@ -19,7 +19,10 @@ test("a new desk has no collection, and its link is open", async ({ page }) => {
   await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
   await expect(page.getByText("Sends tracks to your Review Queue")).toBeVisible();
   await page.goto("/dashboard/collections");
-  await expect(page.getByRole("button", { name: "New collection" })).toBeVisible();
+  // The first callout is made from "+ New" (owner, 16 Nov: one New menu with New callout and New folder).
+  await page.getByRole("button", { name: "New", exact: true }).click();
+  await expect(page.getByRole("menu", { name: "New" }).getByRole("menuitem", { name: "New callout" })).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.getByText("Receiving", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/sends tracks straight to your Review Queue/)).toBeVisible();
   // A link takes tracks only once its owner has confirmed their email (sign-up guard, #535): confirm it from the email.
