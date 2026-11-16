@@ -10,7 +10,10 @@ test("the callout edit pop-up ends with Save and Cancel, after the artwork, and 
 
   await page.getByRole("button", { name: "Edit collection" }).first().click();
   const dialog = page.getByRole("dialog");
+  // One way to do each thing: the pop-up holds only the form (no second Edit, no Open that leads back to this page).
   await expect(dialog.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole("link", { name: "Open collection" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Send new tracks here" })).toHaveCount(0);
   const save = dialog.getByRole("button", { name: "Save", exact: true });
   const art = dialog.getByText("Artwork (optional)");
   await expect(save).toBeVisible();
