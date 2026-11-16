@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { PlayerBar, PlayerProvider } from "@/components/Player";
+import { PlayerProvider } from "@/components/Player";
 import { LivePulse } from "@/components/LivePulse";
 import { ToastProvider } from "@/components/Toast";
 import { requireUser, viewingAs, currentPerson } from "@/lib/auth";
@@ -13,6 +13,8 @@ import { Logo } from "@/components/Logo";
 import { Sidebar } from "./Sidebar";
 import { FeedbackAsk, FeedbackButton } from "./FeedbackButton";
 import { MobileTabBar } from "./MobileTabBar";
+import { BottomPair } from "./BottomPair";
+import { MiniPlayer, PlayerBar } from "./PlayerBars";
 import { TopBar } from "./TopBar";
 import { DeskBar } from "./DeskBar";
 import { PageFrame } from "./PageFrame";
@@ -67,7 +69,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             pause={pauseState}
             canSend={canSend}
           />
-          <main id="main" className="min-w-0 pb-48 md:overflow-y-auto md:pb-24">
+          {/* The page column. On laptops the player bar floats inside it, so it never runs under the menu rail. */}
+          <div className="relative min-w-0 md:h-dvh">
+          <main id="main" className="min-w-0 pb-48 md:h-full md:overflow-y-auto md:pb-28">
             {/* Phones: the logo floats on top in a frosted bar, always in view (owner, 30 Oct); desktop keeps the slim bar. */}
             <div className="sticky top-0 z-40 bg-gradient-to-b from-ink from-60% to-transparent px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] md:bg-none md:p-0">
               <div className="flex h-14 items-center justify-end gap-2 rounded-[20px] border border-line bg-card/80 pl-3 pr-1.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.55)] backdrop-blur-xl backdrop-saturate-150 sm:gap-3 md:h-14 md:rounded-none md:border-0 md:bg-ink/70 md:px-6 md:shadow-none">
@@ -116,9 +120,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <PageFrame>{children}</PageFrame>
             {!view && <LivePulse url="/api/pulse" />}
           </main>
+          <PlayerBar />
+          </div>
         </div>
-        <PlayerBar />
-        <MobileTabBar needsReview={collections.reduce((n, c) => n + c.needs_review, 0)} />
+        {/* Phones: the mini player over the menu, one floating pair. The player comes first in reading order. */}
+        <BottomPair>
+          <MiniPlayer />
+          <MobileTabBar needsReview={collections.reduce((n, c) => n + c.needs_review, 0)} canSend={canSend} />
+        </BottomPair>
       </ToastProvider>
     </PlayerProvider>
     </div>

@@ -115,6 +115,8 @@ export function ListRows({
       const next = current === d ? null : d;
       const wasPlaying = player.current?.id === r.id && player.playing;
       setDecisions((m) => ({ ...m, [r.id]: next }));
+      // The player's own heart shows the same answer.
+      player.markDecision(r.id, next);
       start(async () => {
         if (next === null) {
           await clearDecision(r.id);
@@ -129,6 +131,7 @@ export function ListRows({
               label: "Undo",
               run: async () => {
                 setDecisions((m) => ({ ...m, [r.id]: token.prev.decision }));
+                player.markDecision(r.id, token.prev.decision);
                 await undoDecision(token);
               },
             },
