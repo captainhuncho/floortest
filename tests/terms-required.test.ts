@@ -201,12 +201,33 @@ test("behaviour: /api/v1/terms limits tries, refuses when the Terms can't be rea
   assert.equal(last, 429, "30 tries an hour");
 });
 
-test("behaviour: a failed archive write doesn't lock out people who ticked", async () => {
-  const { currentTerms, deskNeedsTerms, forgetTerms, recordAcceptance } = await import("../src/lib/terms-record");
-  const u = await user();
-  await recordAcceptance({ userId: u.id, email: u.email }, "Req", await currentTerms());
-  const src = fs.readFileSync("src/lib/terms-record.ts", "utf8");
-  assert.match(src, /catch \(e\) \{\n\s+console\.error\("\[terms\] couldn't archive this Terms text; will retry", e\);/);
-  forgetTerms();
-  assert.equal(await deskNeedsTerms(false, u.id), false, "ticked: in, after a fresh read");
+test("behaviour: a failed archive write doesn't lock anyone out, and is tried again", async () => {
+  const { q } = await import("../src/lib/db");
+  const { archiveTerms, termsHash } = await import("../src/lib/terms-record");
+  const body = "Archive blip test text";
+  const t = { version: "test", hash: termsHash(body), body };
+  const run = q.run;
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    (q as { run: unknown }).run = async () => {
+      throw new Error("database blip");
+    };
+    assert.equal(await archiveTerms(t), false, "a failed write is reported, not thrown");
+  } finally {
+    (q as { run: unknown }).run = run;
+    console.error = quiet;
+  }
+  assert.equal(await archiveTerms(t), true, "tried again on the next read");
+  assert.ok(await q.get("SELECT hash FROM terms_versions WHERE hash = ?", t.hash), "stored");
+});
+
+test("a teammate on a team's desk isn't offered Delete on the Terms page; only deleteAccount skips the tick", () => {
+  const page = fs.readFileSync("src/app/(auth)/accept-terms/page.tsx", "utf8");
+  assert.match(page, /ownDesk=\{me\.actor_id === me\.id\}/);
+  assert.match(page, /\{ownDesk && <DeleteAccount /);
+  for (const f of ["src/app/(auth)/accept-terms/actions.ts", "src/app/api/v1/terms/route.ts"]) {
+    assert.match(fs.readFileSync(f, "utf8"), /The Terms couldn't be saved just now\. Try again in a minute\./, `${f}: a blip answers plainly`);
+  }
+  assert.match(fs.readFileSync("scripts/check-desk-roles.ts", "utf8"), /only deleteAccount may call requireOwnAccount/);
 });

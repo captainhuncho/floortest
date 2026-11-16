@@ -76,17 +76,25 @@ async function readTerms(): Promise<CurrentTerms> {
   const { title, updated = "", sections } = page.props;
   const body = termsBody(title, updated, sections);
   const terms = { version: updated, hash: termsHash(body), body };
-  if (!archived.has(terms.hash)) {
-    // The text was read: a failed archive write (a database blip) mustn't lock everyone out. Logged, and tried again on
-    // the next read; a tick can't be stored until it lands, because acceptances point at the archived text (Safety, 15 Nov).
-    try {
-      await q.run("INSERT INTO terms_versions (hash, version, body, created_at) VALUES (?,?,?,?) ON CONFLICT (hash) DO NOTHING", terms.hash, terms.version, terms.body, now());
-      archived.add(terms.hash);
-    } catch (e) {
-      console.error("[terms] couldn't archive this Terms text; will retry", e);
-    }
-  }
+  await archiveTerms(terms);
   return terms;
+}
+
+/**
+ * Stores this exact text once. The text was read: a failed archive write (a database blip) mustn't lock everyone out.
+ * Logged, and tried again on the next read; a tick can't be stored until it lands, because acceptances point at the
+ * archived text (Safety, 15 Nov). True once it is stored.
+ */
+export async function archiveTerms(terms: CurrentTerms): Promise<boolean> {
+  if (archived.has(terms.hash)) return true;
+  try {
+    await q.run("INSERT INTO terms_versions (hash, version, body, created_at) VALUES (?,?,?,?) ON CONFLICT (hash) DO NOTHING", terms.hash, terms.version, terms.body, now());
+    archived.add(terms.hash);
+    return true;
+  } catch (e) {
+    console.error("[terms] couldn't archive this Terms text; will retry", e);
+    return false;
+  }
 }
 
 export type Acceptance = { id: number; email: string; version: string; hash: string; name: string; accepted_at: number; pdf_sent_at: number | null };
