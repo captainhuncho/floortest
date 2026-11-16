@@ -15,6 +15,7 @@ import { scannerAwake, scanStored, SCAN_FAILED, SCAN_REFUSED, type ScanResult } 
 import { chargeScanner, senderScope } from "./scan-budget";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
+import { folderId, recordId } from "./ids";
 
 /**
  * Projects (owner, 13 Nov): a person's own tracks, kept until they delete them. Not desk tracks: they never reach the
@@ -39,7 +40,7 @@ export type LibraryTrack = {
 };
 
 /** A project: a folder of the desk's own tracks (owner, 13 Nov: "folders like collections"). */
-export type LibraryFolder = { id: number; name: string; count: number; duration: number; created_at: number };
+export type LibraryFolder = { id: number; name: string; count: number; duration: number; created_at: number; /** The project folder it is filed in (desk_folders, kind "project"); null when in none. */ desk_folder_id: number | null };
 
 const COLUMNS = "id, title, artist, genre, mime, size, duration, peaks, folder_id, created_at";
 /** The most projects one desk can have: plenty for real use, a stop for scripts. */
@@ -99,13 +100,13 @@ export async function libraryUsed(desk: Pick<User, "id">) {
 export async function listFolders(desk: Pick<User, "id" | "actor_id">): Promise<LibraryFolder[]> {
   const rows = await asPerson(desk.actor_id, () =>
     q.all<LibraryFolder>(
-      `SELECT f.id, f.name, f.created_at, COUNT(t.id) AS count, COALESCE(SUM(t.duration), 0) AS duration
+      `SELECT f.id, f.name, f.created_at, f.desk_folder_id, COUNT(t.id) AS count, COALESCE(SUM(t.duration), 0) AS duration
        FROM library_folders f LEFT JOIN library_tracks t ON t.folder_id = f.id AND t.user_id = f.user_id
-       WHERE f.user_id = ? GROUP BY f.id, f.name, f.created_at ORDER BY f.created_at, f.id`,
+       WHERE f.user_id = ? GROUP BY f.id, f.name, f.created_at, f.desk_folder_id ORDER BY f.created_at, f.id`,
       desk.id,
     ),
   );
-  return rows.map((r) => ({ id: Number(r.id), name: r.name, count: Number(r.count), duration: Number(r.duration), created_at: Number(r.created_at) }));
+  return rows.map((r) => ({ id: Number(r.id), name: r.name, count: Number(r.count), duration: Number(r.duration), created_at: Number(r.created_at), desk_folder_id: r.desk_folder_id == null ? null : Number(r.desk_folder_id) }));
 }
 
 /** One of the desk's projects, or null when it isn't theirs (or is gone). */
@@ -337,7 +338,10 @@ export async function deleteLibraryTrack(desk: Pick<User, "id" | "actor_id">, id
  * row; the desk track is retired as a delete would (its artwork and stems go, its slot frees up), and the move is in
  * the desk's activity. Who may is checked as the person; the move itself runs on the app's connection in one step.
  */
-export async function moveTrackToProjects(desk: User, trackId: number, folder: number | null): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
+/** Why a track didn't move: Projects full, the chosen project gone, or this track can't move (not the desk's own upload, gone or held). */
+export type MoveRefusal = "full" | "project_gone" | "skip";
+
+export async function moveTrackToProjects(desk: User, trackId: number, folder: number | null): Promise<{ ok: true; id: number } | { ok: false; error: string; code: MoveRefusal }> {
   type T = { id: number; sender_id: number; title: string; artist: string; genre: string; file_key: string; original_name: string; mime: string; size: number; duration: number | null; bpm: number | null; peaks: string | null };
   const t = await asPerson(desk.actor_id, () =>
     q.get<T>(
@@ -349,9 +353,9 @@ export async function moveTrackToProjects(desk: User, trackId: number, folder: n
       desk.id,
     ),
   );
-  if (!t) return { ok: false, error: "Only tracks you added yourself can move to Projects." };
-  if (await quarantined(t.file_key)) return { ok: false, error: "That track is held for a check and can't move right now." };
-  if (folder !== null && !(await getFolder(desk, folder))) return { ok: false, error: "That project isn't there any more. Choose another." };
+  if (!t) return { ok: false, error: "Only tracks you added yourself can move to Projects.", code: "skip" };
+  if (await quarantined(t.file_key)) return { ok: false, error: "That track is held for a check and can't move right now.", code: "skip" };
+  if (folder !== null && !(await getFolder(desk, folder))) return { ok: false, error: "That project isn't there any more. Choose another.", code: "project_gone" };
   const limit = await libraryLimit(desk.plan);
   const moved = await q.tx(async (db) => {
     await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", desk.id);
@@ -390,9 +394,9 @@ export async function moveTrackToProjects(desk: User, trackId: number, folder: n
     await logEvent({ user_id: desk.id, actor_id: desk.actor_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "moved to Projects" }, db);
     return Number(row!.id);
   });
-  if (moved === null) return { ok: false, error: `Projects are full (${limit} tracks on your plan). Delete some or upgrade to add more.` };
-  if (moved === 0) return { ok: false, error: "That track isn't in the collection any more." };
-  if (moved === -1) return { ok: false, error: "That project isn't there any more. Choose another." };
+  if (moved === null) return { ok: false, error: `Projects are full (${limit} tracks on your plan). Delete some or upgrade to add more.`, code: "full" };
+  if (moved === 0) return { ok: false, error: "That track isn't in the collection any more.", code: "skip" };
+  if (moved === -1) return { ok: false, error: "That project isn't there any more. Choose another.", code: "project_gone" };
   await drainNow();
   await alertIfFull(desk.id, await capacity(desk));
   return { ok: true, id: moved };
@@ -428,7 +432,56 @@ export async function moveAllOwnToProjects(desk: User): Promise<{ moved: number;
   for (const id of ids) {
     const r = await moveTrackToProjects(desk, id, null);
     if (r.ok) moved++;
-    else if (r.error.startsWith("Projects are full")) return { moved, left: ids.length - moved, full: true };
+    else if (r.code === "full") return { moved, left: ids.length - moved, full: true };
   }
   return { moved, left: ids.length - moved, full: false };
+}
+
+/** The most tracks one batch move takes: a full screen of picks, a stop for scripts. */
+export const MAX_MOVE_BATCH = 100;
+export type MoveTarget = { project: number | null } | { newProject: string };
+export type MoveManyResult = { ok: true; moved: number[]; skipped: number[]; full: boolean; project: number | null } | { ok: false; error: string };
+
+/**
+ * Moves picked tracks into Projects: into one project, a new one named here, or none. Each track moves on its own
+ * through moveTrackToProjects (not all or nothing): the answer lists the ids that moved and the ids that didn't, and
+ * another desk's track, a sender's, a missing one or one held for a check all look the same. Stops when Projects are
+ * full. A new project that ends up empty (nothing could move) is removed again.
+ */
+export async function moveManyToProjects(desk: User, trackIds: unknown, target: unknown): Promise<MoveManyResult> {
+  const ids = [...new Set((Array.isArray(trackIds) ? trackIds : []).map(recordId))].filter((id): id is number => id !== null);
+  if (!ids.length) return { ok: false, error: "Pick at least one track." };
+  if (ids.length > MAX_MOVE_BATCH) return { ok: false, error: `Move up to ${MAX_MOVE_BATCH} tracks at a time.` };
+  if (!target || typeof target !== "object") return { ok: false, error: "Choose a project." };
+  let project: number | null;
+  let made = false;
+  if ("newProject" in target) {
+    try {
+      project = await createFolder(desk, String((target as { newProject: unknown }).newProject ?? ""));
+      made = true;
+    } catch (e) {
+      if (e instanceof IntakeError) return { ok: false, error: e.message };
+      throw e;
+    }
+  } else {
+    const f = folderId((target as { project?: unknown }).project ?? null);
+    if (Number.isNaN(f)) return { ok: false, error: "Choose a project." };
+    if (f !== null && !(await getFolder(desk, f))) return { ok: false, error: "That project isn't there any more. Choose another." };
+    project = f;
+  }
+  const moved: number[] = [];
+  let full = false;
+  for (const id of ids) {
+    const r = await moveTrackToProjects(desk, id, project);
+    if (r.ok) moved.push(id);
+    else if (r.code === "full") {
+      full = true;
+      break;
+    } else if (r.code === "project_gone") return { ok: false, error: r.error };
+  }
+  if (made && project !== null && !moved.length) {
+    await deleteFolder(desk, project);
+    project = null;
+  }
+  return { ok: true, moved, skipped: ids.filter((id) => !moved.includes(id)), full, project };
 }
