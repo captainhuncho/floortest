@@ -23,7 +23,7 @@ Status: **meets** (built and in the code), **gap** (needed before submitting, no
 
 | Guideline | What Apple asks | Status | Evidence |
 |---|---|---|---|
-| 1.2 User-generated content | Filter objectionable material, a way to report it, block abusive users, published contact details | meets, one gap | Uploads are scanned before they are accepted: `src/lib/scan.ts:54`. Receivers block senders: `src/app/dashboard/actions/review.ts:244`, list and unblock at `src/app/dashboard/settings/receiving/page.tsx:45`; staff can block too: `src/app/admin/actions.ts:248`. Contact form with "Report abuse", "Impersonation" and "Copyright claim": `src/app/contact/ContactForm.tsx:35`; takedown policy `src/app/takedown/page.tsx`. Tracks are private to the receiver (no public feed). **Gap:** no report button on a track inside the desk; reporting is only through the contact form. |
+| 1.2 User-generated content | Filter objectionable material, a way to report it, block abusive users, published contact details | meets | Uploads are scanned before they are accepted: `src/lib/scan.ts:54`. Receivers block senders: `src/app/dashboard/actions/review.ts:244`, list and unblock at `src/app/dashboard/settings/receiving/page.tsx:45`; staff can block too: `src/app/admin/actions.ts:248`. Contact form with "Report abuse", "Impersonation" and "Copyright claim": `src/app/contact/ContactForm.tsx:35`; takedown policy `src/app/takedown/page.tsx`. Tracks are private to the receiver (no public feed). Report button on every track in the desk (Details): reason, optional note, admins and owners can block in the same step; lands in the admin inbox and support email: `src/app/dashboard/actions/report.ts`, `src/app/dashboard/ReportTrack.tsx` (e2e `e2e/report-track.spec.ts`). |
 | 1.2.1(a) Creator content age limits | Age gate where content exceeds the rating | n/a | No public creator content. Terms require 18+: `src/app/terms/page.tsx:24`. |
 | 1.5 Developer information | Easy way to contact the developer | meets | `/contact` (`src/app/contact/page.tsx`); support URL in `mobile/store-listing.md`. |
 | 2.1(a) App completeness, demo account | Final build, working URLs, demo account and back end on | owner | The seed demo account (`scripts/seed.ts:3`) is local only. A demo account on floortest.app with sample tracks is needed for review (listing notes already say so). |
@@ -56,5 +56,5 @@ Status: **meets** (built and in the code), **gap** (needed before submitting, no
 1. In-app purchase with StoreKit, Restore Purchases on the plans page and in Settings, server receipt checks; hide
    web checkout and pricing links inside the app.
 2. Sign in with Apple, or Google sign-in hidden in the app.
-3. Report button on a track in the desk.
+3. ~~Report button on a track in the desk.~~ Done, see 1.2.
 4. ~~Release build: drop `localhost` and local networking from `Info.plist`.~~ Done: Debug only, see 2.5.
