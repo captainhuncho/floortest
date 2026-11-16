@@ -1,5 +1,5 @@
 import "server-only";
-import { atLeast } from "./account-members";
+import { atLeast, roleOn } from "./account-members";
 import { asPerson, q, type User } from "./db";
 
 /**
@@ -23,11 +23,18 @@ export const PERIODS = [
 export type PeriodKey = (typeof PERIODS)[number][0];
 export const pickPeriod = (s: string | undefined): PeriodKey => PERIODS.find(([k]) => k === s)?.[0] ?? "30d";
 
-/** The signed-in desk as requireRole("admin") returns it. Each helper checks the role again, so a Member never gets numbers. */
-export type Desk = Pick<User, "id" | "actor_id" | "tz" | "role">;
-function deskOf(desk: Desk) {
-  if (!atLeast(desk.role, "admin")) throw new Error("Analytics is for the owner and A&R / Admins.");
+/** The signed-in desk: the account (id) and the person signed in to it (actor_id). Build it with analyticsDesk. */
+export type Desk = Pick<User, "id" | "actor_id"> & { tz: string };
+/** Each helper re-reads the person's role on the account from the database, so a Member never gets numbers. */
+async function deskOf(desk: Desk) {
+  const role = await roleOn(desk.id, desk.actor_id);
+  if (!role || !atLeast(role, "admin")) throw new Error("Analytics is for the owner and A&R / Admins.");
   return desk;
+}
+
+/** The one way to make a Desk: from the signed-in User, with the time zone checked once (bad reads as UTC). */
+export function analyticsDesk(user: User, tz: string | null | undefined): Desk {
+  return { id: user.id, actor_id: user.actor_id, tz: safeTz(tz) };
 }
 
 /** A time zone the browser and server both know; anything else (a bad value stored on the account) reads as UTC. */
@@ -118,19 +125,21 @@ const within = (t: number | null, from: number, to: number): t is number => t !=
  * same totals for the span compared against. Read from the desk's tracks (deleted tracks keep their row, so Lifetime never
  * shrinks). Both played out and downloaded come back; the screen shows the one the desk type uses.
  */
-export async function perDay(d: Desk, range: Range): Promise<{ bars: Bar[]; totals: Totals; prev: Totals | null }> {
-  const desk = deskOf(d);
+export async function perDay(d: Desk, range: Range): Promise<{ bars: Bar[]; totals: Totals; prev: Totals | null; truncated: boolean }> {
+  const desk = await deskOf(d);
   const since = range.prev ? range.prev.from : range.from;
   const rows = await asPerson(desk.actor_id, () =>
     q.all<{ sender_id: number; created_at: number; decision: string | null; decided_at: number | null; downloaded_at: number | null; played_out_at: number | null }>(
       `SELECT sender_id, created_at, decision, decided_at, downloaded_at, played_out_at FROM tracks
        WHERE user_id = ? AND (created_at >= ? OR decided_at >= ? OR downloaded_at >= ? OR played_out_at >= ?)
-       ORDER BY created_at LIMIT ?`,
+       ORDER BY created_at DESC LIMIT ?`,
       desk.id, since, since, since, since, MAX_TRACK_ROWS,
     ),
   );
   const num = (v: number | null) => (v === null ? null : Number(v));
-  const tracks = rows.map((r) => ({ sender: Number(r.sender_id), created: Number(r.created_at), decision: r.decision, decided: num(r.decided_at), downloaded: num(r.downloaded_at), playedOut: num(r.played_out_at) }));
+  // Newest first, so a very big desk loses its oldest rows (and says so), never this week's. Then oldest first again.
+  const truncated = rows.length >= MAX_TRACK_ROWS;
+  const tracks = rows.reverse().map((r) => ({ sender: Number(r.sender_id), created: Number(r.created_at), decision: r.decision, decided: num(r.decided_at), downloaded: num(r.downloaded_at), playedOut: num(r.played_out_at) }));
 
   const barKey = (t: number) => {
     const k = dayKey(t, range.tz);
@@ -178,13 +187,14 @@ export async function perDay(d: Desk, range: Range): Promise<{ bars: Bar[]; tota
     }),
     totals: sum(range.from, range.to),
     prev: range.prev ? sum(range.prev.from, range.prev.to) : null,
+    truncated,
   };
 }
 
 /** Who sent what in the span: each sender's name, tracks sent and kept, most tracks first. Names only, never emails. */
 export async function whoSent(d: Desk, range: Range, limit = 10) {
-  const desk = deskOf(d);
-  const cap = Math.min(Math.max(1, Math.floor(limit)), 200);
+  const desk = await deskOf(d);
+  const cap = Number.isFinite(limit) ? Math.min(Math.max(1, Math.floor(limit)), 200) : 10;
   return asPerson(desk.actor_id, async () => {
     const [rows, total] = await Promise.all([
       q.all<{ name: string; tracks: number; kept: number }>(
@@ -202,7 +212,7 @@ export async function whoSent(d: Desk, range: Range, limit = 10) {
 
 /** Each callout that got tracks in the span: its name, tracks sent in and how many different senders, busiest first. */
 export async function calloutLinks(d: Desk, range: Range) {
-  const desk = deskOf(d);
+  const desk = await deskOf(d);
   const rows = await asPerson(desk.actor_id, () =>
     q.all<{ id: number; name: string; tracks: number; senders: number }>(
       `SELECT c.id, c.name, COUNT(t.id)::int AS tracks, COUNT(DISTINCT t.sender_id)::int AS senders
@@ -219,36 +229,45 @@ export async function calloutLinks(d: Desk, range: Range) {
  * Shared collections, per person, in the span: who opened them (signed-in visits), how many tracks each played and how many
  * downloads. Privacy covers this: "The collection owner sees who opened their collection and what each person played and
  * downloaded." Someone with a FloorTest account shows as their @username (never the account's email); someone without one,
- * as the email the link was shared with. An account being deleted shows as "Removed" (an erased account's visits are
- * already gone: share-links.ts deletes them).
+ * as the email the link was shared with. An account being deleted shows as "Removed" (also for visits made before
+ * sign-in that carry its email). Erased people are gone: account deletion (share-links.ts forgetLinkPerson) and the
+ * email erase (privacy.ts eraseSender, via forgetLinkEmail) delete their visits and plays. Rows are grouped per person
+ * (account id, else email), so two people shown the same way (two Removed) stay apart. Single-track
+ * shares aren't counted: that feature retired on 1 Oct and its tables (track_shares, share_access) were dropped (6f36fbcf).
  */
 /** How a share recipient is named: "Removed" while their account is being deleted, @username with an account, else the email. */
-const WHO = (email: string) => `CASE WHEN u.deletion_requested_at IS NOT NULL THEN 'Removed' WHEN u.handle IS NOT NULL THEN '@' || u.handle ELSE ${email} END`;
+const WHO = (email: string) =>
+  `CASE WHEN u.deletion_requested_at IS NOT NULL OR g.deletion_requested_at IS NOT NULL THEN 'Removed' WHEN u.handle IS NOT NULL THEN '@' || u.handle ELSE ${email} END`;
+/** The account a row belongs to: its user_id, or (a visit made before sign-in) the account with that email. */
+const ACCOUNT = (t: string) => `LEFT JOIN users u ON u.id = ${t}.user_id LEFT JOIN users g ON ${t}.user_id IS NULL AND lower(g.email) = lower(${t}.email)`;
+const PERSON = (t: string) => `COALESCE(${t}.user_id, g.id)::text`;
 
 export async function sharedLinks(d: Desk, range: Range) {
-  const desk = deskOf(d);
+  const desk = await deskOf(d);
   // The desk's links, found under the per-person rules; their visits and events are then read only for those links.
   const links = await asPerson(desk.actor_id, () =>
-    q.all<{ id: number }>("SELECT l.id FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE c.user_id = ? LIMIT ?", desk.id, MAX_LINKS),
+    q.all<{ id: number }>("SELECT l.id FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE c.user_id = ? ORDER BY l.created_at DESC, l.id DESC LIMIT ?", desk.id, MAX_LINKS + 1),
   );
-  if (!links.length) return [];
-  const ids = links.map((l) => Number(l.id));
+  if (!links.length) return { rows: [], truncated: false };
+  // Newest links first; past MAX_LINKS the oldest are left out and the page says so.
+  const truncated = links.length > MAX_LINKS;
+  const ids = links.slice(0, MAX_LINKS).map((l) => Number(l.id));
   const marks = ids.map(() => "?").join(",");
   const rows = await q.all<{ who: string; opened: number; played: number; downloaded: number }>(
     `WITH ev AS (
-       SELECT ${WHO("s.email")} AS who, 'open' AS kind, NULL::bigint AS track_id
-       FROM link_sessions s LEFT JOIN users u ON u.id = s.user_id
+       SELECT COALESCE(${PERSON("s")}, lower(s.email)) AS person, ${WHO("s.email")} AS who, 'open' AS kind, NULL::bigint AS track_id
+       FROM link_sessions s ${ACCOUNT("s")}
        WHERE s.link_id IN (${marks}) AND s.created_at >= ? AND s.created_at < ?
        UNION ALL
-       SELECT ${WHO("e.email")} AS who, e.kind, e.track_id
-       FROM link_events e LEFT JOIN users u ON u.id = e.user_id
+       SELECT COALESCE(${PERSON("e")}, lower(e.email)) AS person, ${WHO("e.email")} AS who, e.kind, e.track_id
+       FROM link_events e ${ACCOUNT("e")}
        WHERE e.link_id IN (${marks}) AND e.kind IN ('listened', 'downloaded') AND e.created_at >= ? AND e.created_at < ?
      )
-     SELECT who, COUNT(*) FILTER (WHERE kind = 'open')::int AS opened,
+     SELECT MIN(who) AS who, COUNT(*) FILTER (WHERE kind = 'open')::int AS opened,
        COUNT(DISTINCT track_id) FILTER (WHERE kind = 'listened')::int AS played,
        COUNT(*) FILTER (WHERE kind = 'downloaded')::int AS downloaded
-     FROM ev WHERE who IS NOT NULL GROUP BY who ORDER BY opened DESC, played DESC, who LIMIT 100`,
+     FROM ev WHERE person IS NOT NULL AND who IS NOT NULL GROUP BY person ORDER BY opened DESC, played DESC, MIN(who) LIMIT 100`,
     ...ids, range.from, range.to, ...ids, range.from, range.to,
   );
-  return rows.map((r) => ({ who: r.who, opened: Number(r.opened), played: Number(r.played), downloaded: Number(r.downloaded) }));
+  return { rows: rows.map((r) => ({ who: r.who, opened: Number(r.opened), played: Number(r.played), downloaded: Number(r.downloaded) })), truncated };
 }
