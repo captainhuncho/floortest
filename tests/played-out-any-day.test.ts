@@ -64,6 +64,7 @@ test("Prepare can mark any kept track the sender cleared for sets, once", async 
   assert.equal(markableOnPrepare(await track(evalOnly)), false, "evaluation only: ask first");
 
   const user = (await q.get<import("../src/lib/db").User>("SELECT * FROM users WHERE id = ?", dj))!;
+  assert.equal(await markPlayedOut(user, await track(evalOnly), ""), false, "evaluation only is never marked played, whichever way it's asked");
   assert.equal(await markPlayedOut(user, await track(cleared), ""), true);
   assert.equal(markableOnPrepare(await track(cleared)), false, "once only");
 

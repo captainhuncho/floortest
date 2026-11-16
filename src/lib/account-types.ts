@@ -50,3 +50,12 @@ export function toolOverrides(kind: AccountType | null, chosen: Partial<Record<T
 export function hasTool(user: { kind: AccountType | null; tools?: string | null }, tool: Tool) {
   return readTools(user.tools)[tool] ?? toolDefault(user.kind, tool);
 }
+
+/**
+ * Send rules by receiver type (Research brief, owner 15 Nov): a sender to a Label or A&R desk chooses "Evaluation only"
+ * (the default) or "OK to play". Every other desk is DJ-style: no choice, and sending means it may be played. The one
+ * place this rule lives; the send form, the receipt and the played-out lists all ask it. "label_radio" is a retired type
+ * that behaves as a label if an old row still carries it.
+ */
+const PLAY_CHOICE_KINDS: ReadonlySet<string> = new Set(["label", "ar", "label_radio"]);
+export const receiverAsksPlayChoice = (kind: string | null | undefined) => !!kind && PLAY_CHOICE_KINDS.has(kind);
