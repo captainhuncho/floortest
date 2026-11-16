@@ -11,6 +11,8 @@ import { asPerson, q, type User } from "./db";
 /** Most rows read for one chart. A desk's tracks are bounded by its plan, so this is only a backstop. */
 const MAX_TRACK_ROWS = 50_000;
 const MAX_LINKS = 500;
+/** Rows shown in the callout and shared-collection lists; past this the page says there are more. */
+const MAX_ROWS = 100;
 
 /** The periods, in the order the picker shows them. The address carries only the key; anything else means 30d. */
 export const PERIODS = [
@@ -218,17 +220,17 @@ export async function calloutLinks(d: Desk, range: Range) {
       `SELECT c.id, c.name, COUNT(t.id)::int AS tracks, COUNT(DISTINCT t.sender_id)::int AS senders
        FROM collections c JOIN tracks t ON t.collection_id = c.id AND t.user_id = c.user_id
        WHERE c.user_id = ? AND t.created_at >= ? AND t.created_at < ?
-       GROUP BY c.id, c.name ORDER BY tracks DESC, c.name LIMIT 100`,
-      desk.id, range.from, range.to,
+       GROUP BY c.id, c.name ORDER BY tracks DESC, c.name LIMIT ?`,
+      desk.id, range.from, range.to, MAX_ROWS + 1,
     ),
   );
-  return rows.map((r) => ({ id: Number(r.id), name: r.name, tracks: Number(r.tracks), senders: Number(r.senders) }));
+  return { rows: rows.slice(0, MAX_ROWS).map((r) => ({ id: Number(r.id), name: r.name, tracks: Number(r.tracks), senders: Number(r.senders) })), more: rows.length > MAX_ROWS };
 }
 
 /**
  * Shared collections, per person, in the span: who opened them (signed-in visits), how many tracks each played and how many
  * downloads. Privacy covers this: "The collection owner sees who opened their collection and what each person played and
- * downloaded." Someone with a FloorTest account shows as their @username (never the account's email); someone without one,
+ * downloaded." Someone with a FloorTest account shows as their @username (never the account's email, also for visits before sign-in); someone without one,
  * as the email the link was shared with. An account being deleted shows as "Removed" (also for visits made before
  * sign-in that carry its email). Erased people are gone: account deletion (share-links.ts forgetLinkPerson) and the
  * email erase (privacy.ts eraseSender, via forgetLinkEmail) delete their visits and plays. Rows are grouped per person
@@ -237,7 +239,7 @@ export async function calloutLinks(d: Desk, range: Range) {
  */
 /** How a share recipient is named: "Removed" while their account is being deleted, @username with an account, else the email. */
 const WHO = (email: string) =>
-  `CASE WHEN u.deletion_requested_at IS NOT NULL OR g.deletion_requested_at IS NOT NULL THEN 'Removed' WHEN u.handle IS NOT NULL THEN '@' || u.handle ELSE ${email} END`;
+  `CASE WHEN u.deletion_requested_at IS NOT NULL OR g.deletion_requested_at IS NOT NULL THEN 'Removed' WHEN COALESCE(u.handle, g.handle) IS NOT NULL THEN '@' || COALESCE(u.handle, g.handle) ELSE ${email} END`;
 /** The account a row belongs to: its user_id, or (a visit made before sign-in) the account with that email. */
 const ACCOUNT = (t: string) => `LEFT JOIN users u ON u.id = ${t}.user_id LEFT JOIN users g ON ${t}.user_id IS NULL AND lower(g.email) = lower(${t}.email)`;
 const PERSON = (t: string) => `COALESCE(${t}.user_id, g.id)::text`;
@@ -248,7 +250,7 @@ export async function sharedLinks(d: Desk, range: Range) {
   const links = await asPerson(desk.actor_id, () =>
     q.all<{ id: number }>("SELECT l.id FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE c.user_id = ? ORDER BY l.created_at DESC, l.id DESC LIMIT ?", desk.id, MAX_LINKS + 1),
   );
-  if (!links.length) return { rows: [], truncated: false };
+  if (!links.length) return { rows: [], truncated: false, more: false };
   // Newest links first; past MAX_LINKS the oldest are left out and the page says so.
   const truncated = links.length > MAX_LINKS;
   const ids = links.slice(0, MAX_LINKS).map((l) => Number(l.id));
@@ -266,8 +268,8 @@ export async function sharedLinks(d: Desk, range: Range) {
      SELECT MIN(who) AS who, COUNT(*) FILTER (WHERE kind = 'open')::int AS opened,
        COUNT(DISTINCT track_id) FILTER (WHERE kind = 'listened')::int AS played,
        COUNT(*) FILTER (WHERE kind = 'downloaded')::int AS downloaded
-     FROM ev WHERE person IS NOT NULL AND who IS NOT NULL GROUP BY person ORDER BY opened DESC, played DESC, MIN(who) LIMIT 100`,
-    ...ids, range.from, range.to, ...ids, range.from, range.to,
+     FROM ev WHERE person IS NOT NULL AND who IS NOT NULL GROUP BY person ORDER BY opened DESC, played DESC, MIN(who) LIMIT ?`,
+    ...ids, range.from, range.to, ...ids, range.from, range.to, MAX_ROWS + 1,
   );
-  return { rows: rows.map((r) => ({ who: r.who, opened: Number(r.opened), played: Number(r.played), downloaded: Number(r.downloaded) })), truncated };
+  return { rows: rows.slice(0, MAX_ROWS).map((r) => ({ who: r.who, opened: Number(r.opened), played: Number(r.played), downloaded: Number(r.downloaded) })), truncated, more: rows.length > MAX_ROWS };
 }
