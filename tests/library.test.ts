@@ -227,3 +227,57 @@ test("Projects 1b: Move all moves only the desk's own uploads, stops when Projec
   const kept = await q.get<{ deleted_at: number | null; file_key: string | null }>("SELECT deleted_at, file_key FROM tracks WHERE id = ?", sent);
   assert.deepEqual([kept!.deleted_at, kept!.file_key], [null, `audio/${id}/all-sent.wav`], "the sender's track is untouched");
 });
+
+test("Projects: batch Move to project moves own uploads one by one, skips the rest alike, stops when full, and drops an empty new project", async () => {
+  const { q, USER_COLUMNS } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const lib = await import("../src/lib/library");
+  const t = Date.now();
+  const user = async (handle: string) => {
+    const id = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES (?,'h','N',?,'free','UTC',?,?) RETURNING id", `${handle}@x.io`, handle, t, t))!.id;
+    return { ...(await q.get<Record<string, unknown>>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ?`, id))!, actor_id: id, actor_name: "N", role: "owner" } as never as Parameters<typeof lib.moveManyToProjects>[0] & { id: number };
+  };
+  const desk = await user("batchmove");
+  const other = await user("batchother");
+  const sender = async (d: number, own: boolean) =>
+    (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, account_id, created_at) VALUES (?, ?, 'S', ?, ?) RETURNING id", d, `${d}-${own}@s.io`, own ? d : null, t))!.id;
+  const file = wav();
+  const track = async (d: number, s: number, k: string) => {
+    await (await storage()).put(k, file, "audio/wav");
+    return (await q.get<{ id: number }>(
+      "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at) VALUES (?,?,'T','Me',?,?,'m.wav','audio/wav',?,?) RETURNING id",
+      d, s, `tok-${k}`, k, file.length, t,
+    ))!.id;
+  };
+  const own = await sender(desk.id, true);
+  const [a1, a2, a3] = [await track(desk.id, own, `audio/${desk.id}/b1.wav`), await track(desk.id, own, `audio/${desk.id}/b2.wav`), await track(desk.id, own, `audio/${desk.id}/b3.wav`)];
+  const fromSender = await track(desk.id, await sender(desk.id, false), `audio/${desk.id}/bs.wav`);
+  const othersOwn = await track(other.id, await sender(other.id, true), `audio/${other.id}/bo.wav`);
+  await q.run("UPDATE plans SET library_limit = 10 WHERE id = 'free'");
+
+  // Refusals before anything moves: nothing picked, too many, a bad target (a primitive never throws).
+  assert.deepEqual(await lib.moveManyToProjects(desk, [], { project: null }), { ok: false, error: "Pick at least one track." });
+  assert.match((await lib.moveManyToProjects(desk, Array.from({ length: 101 }, (_, i) => i + 1), { project: null }) as { error: string }).error, /up to 100/);
+  assert.deepEqual(await lib.moveManyToProjects(desk, [a1], "x"), { ok: false, error: "Choose a project." });
+  assert.deepEqual(await lib.moveManyToProjects(desk, [a1], null), { ok: false, error: "Choose a project." });
+
+  // A new project with nothing movable in it is removed again; a sender's track and another desk's look the same.
+  const before = await q.count("SELECT COUNT(*) AS n FROM library_folders WHERE user_id = ?", desk.id);
+  assert.deepEqual(await lib.moveManyToProjects(desk, [fromSender, othersOwn], { newProject: "Empty EP" }), { ok: true, moved: [], skipped: [fromSender, othersOwn], full: false, project: null });
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM library_folders WHERE user_id = ?", desk.id), before, "no empty project left behind");
+
+  // Duplicates count once; own uploads move into the new project; Projects full stops the rest.
+  await q.run("UPDATE plans SET library_limit = 1 WHERE id = 'free'");
+  const r = await lib.moveManyToProjects(desk, [a1, a1, fromSender, a2, othersOwn], { newProject: "Deep EP" });
+  assert.ok(r.ok);
+  assert.deepEqual([r.moved, r.skipped, r.full], [[a1], [fromSender, a2, othersOwn], true]);
+  assert.equal((await q.get<{ name: string }>("SELECT name FROM library_folders WHERE id = ?", r.project))!.name, "Deep EP");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM library_tracks WHERE folder_id = ?", r.project), 1);
+
+  // More room: the rest of the desk's own move into that project; the other desk's track is untouched.
+  await q.run("UPDATE plans SET library_limit = 10 WHERE id = 'free'");
+  const r2 = await lib.moveManyToProjects(desk, [a2, a3, othersOwn], { project: r.project });
+  assert.deepEqual(r2, { ok: true, moved: [a2, a3], skipped: [othersOwn], full: false, project: r.project });
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM tracks WHERE id = ? AND deleted_at IS NULL", othersOwn), 1);
+  assert.deepEqual(await lib.moveManyToProjects(desk, [a1], { project: 999999 }), { ok: false, error: "That project isn't there any more. Choose another." });
+});
