@@ -156,7 +156,6 @@ test("the switches action and page are wired to the fail-closed checks", () => {
 test("from the server: off beats any rule, a rule keeps the feature from accounts outside it, old code still works", async () => {
   const { q } = await import("../src/lib/db");
   const { switchOn, setSwitch, setSwitchRule, switchState, ruleCoverage } = await import("../src/lib/switches");
-  const { canAddCollection } = await import("../src/lib/desk");
   const { teamsOn } = await import("../src/lib/account-members");
   const t = Date.now();
   const user = async (handle: string, email: string, plan: string, kind: string) =>
@@ -165,27 +164,26 @@ test("from the server: off beats any rule, a rule keeps the feature from account
   const outside = await user("outside", "out@x.io", "free", "curator");
   const named = await user("named", "named@x.io", "free", "artist");
   const boss = await user("boss", "boss@x.io", "free", "label");
-  for (const d of [inside, outside]) for (const n of ["One", "Two"]) await q.run("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?)", d, n, t);
 
   // On with a rule: Pro DJs, plus one named account.
-  await setSwitch("more_collections", true, boss);
-  await setSwitchRule("more_collections", rule({ types: ["dj"], plans: ["pro"], accounts: [named] }), boss);
-  assert.equal(await canAddCollection(inside), true, "inside the rule: no beta limit");
-  assert.equal(await canAddCollection(outside), false, "outside the rule: still two collections, enforced on the server");
-  assert.equal(await switchOn("more_collections", named), true, "named account");
-  assert.equal(await switchOn("more_collections", boss), true, "super admin's desk");
-  assert.equal(await switchOn("more_collections", null), false, "no account");
-  assert.deepEqual(await ruleCoverage("more_collections", (await switchState("more_collections")).rule!), { covered: 3, total: 4 });
+  await setSwitch("plan_requests", true, boss);
+  await setSwitchRule("plan_requests", rule({ types: ["dj"], plans: ["pro"], accounts: [named] }), boss);
+  assert.equal(await switchOn("plan_requests", inside), true, "inside the rule");
+  assert.equal(await switchOn("plan_requests", outside), false, "outside the rule, decided on the server");
+  assert.equal(await switchOn("plan_requests", named), true, "named account");
+  assert.equal(await switchOn("plan_requests", boss), true, "super admin's desk");
+  assert.equal(await switchOn("plan_requests", null), false, "no account");
+  assert.deepEqual(await ruleCoverage("plan_requests", (await switchState("plan_requests")).rule!), { covered: 3, total: 4 });
 
   // Old code's flip (no rule column in its SQL) leaves the rule alone, and its read still works.
-  await q.run("INSERT INTO switches (key, on_, admin_id, updated_at) VALUES ('more_collections', 0, ?, ?) ON CONFLICT (key) DO UPDATE SET on_ = excluded.on_, admin_id = excluded.admin_id, updated_at = excluded.updated_at", boss, t);
-  assert.equal(Number((await q.get<{ on: number }>("SELECT on_ AS on FROM switches WHERE key = 'more_collections'"))!.on), 0);
-  assert.ok((await switchState("more_collections")).rule, "rule kept");
+  await q.run("INSERT INTO switches (key, on_, admin_id, updated_at) VALUES ('plan_requests', 0, ?, ?) ON CONFLICT (key) DO UPDATE SET on_ = excluded.on_, admin_id = excluded.admin_id, updated_at = excluded.updated_at", boss, t);
+  assert.equal(Number((await q.get<{ on: number }>("SELECT on_ AS on FROM switches WHERE key = 'plan_requests'"))!.on), 0);
+  assert.ok((await switchState("plan_requests")).rule, "rule kept");
 
   // Off beats the rule, for named accounts and super admins too.
-  assert.equal(await switchOn("more_collections", named), false);
-  assert.equal(await switchOn("more_collections", boss), false);
-  assert.equal(await canAddCollection(inside), false);
+  assert.equal(await switchOn("plan_requests", named), false);
+  assert.equal(await switchOn("plan_requests", boss), false);
+  assert.equal(await switchOn("plan_requests", inside), false);
 
   // Teams: a rule for one desk; the super admin keeps teams with the switch off, as before.
   await setSwitch("teams", true, boss);
@@ -198,26 +196,26 @@ test("from the server: off beats any rule, a rule keeps the feature from account
 
   // What's stored is read on every check: a lost rule reaches only its named accounts and super admins, an unreadable one
   // only super admins, whatever the switch row says.
-  await setSwitch("more_collections", true, boss);
-  await q.run("UPDATE switches SET rule = ? WHERE key = 'more_collections'", JSON.stringify({ accounts: [named], types: ["radio_station"], plans: [], countries: [], percent: 100 }));
-  assert.equal(await switchOn("more_collections", inside), false, "lost rule: plain account");
-  assert.equal(await switchOn("more_collections", outside), false, "lost rule: plain account");
-  assert.equal(await switchOn("more_collections", named), true, "lost rule: named account");
-  assert.equal(await switchOn("more_collections", boss), true, "lost rule: super admin");
-  await q.run("UPDATE switches SET rule = 'not json' WHERE key = 'more_collections'");
-  for (const id of [inside, outside, named]) assert.equal(await switchOn("more_collections", id), false, "unreadable rule: nobody");
-  assert.equal(await switchOn("more_collections", boss), true, "unreadable rule: super admin");
+  await setSwitch("plan_requests", true, boss);
+  await q.run("UPDATE switches SET rule = ? WHERE key = 'plan_requests'", JSON.stringify({ accounts: [named], types: ["radio_station"], plans: [], countries: [], percent: 100 }));
+  assert.equal(await switchOn("plan_requests", inside), false, "lost rule: plain account");
+  assert.equal(await switchOn("plan_requests", outside), false, "lost rule: plain account");
+  assert.equal(await switchOn("plan_requests", named), true, "lost rule: named account");
+  assert.equal(await switchOn("plan_requests", boss), true, "lost rule: super admin");
+  await q.run("UPDATE switches SET rule = 'not json' WHERE key = 'plan_requests'");
+  for (const id of [inside, outside, named]) assert.equal(await switchOn("plan_requests", id), false, "unreadable rule: nobody");
+  assert.equal(await switchOn("plan_requests", boss), true, "unreadable rule: super admin");
 
   // A lost rule is never saved (stripping its marker could store an empty rule, which is everyone), and a saved rule
   // stores only its parts.
   for (const lost of [{ ...rule({ types: ["dj"] }), lost: ["types" as const] }, { ...rule({}), lost: ["rule" as const] }])
-    await assert.rejects(setSwitchRule("more_collections", lost, boss), /lost a part/);
-  assert.equal((await q.get<{ rule: string }>("SELECT rule FROM switches WHERE key = 'more_collections'"))!.rule, "not json", "nothing written");
-  await setSwitchRule("more_collections", rule({ types: ["dj"] }), boss);
-  assert.deepEqual(JSON.parse((await q.get<{ rule: string }>("SELECT rule FROM switches WHERE key = 'more_collections'"))!.rule), rule({ types: ["dj"] }));
+    await assert.rejects(setSwitchRule("plan_requests", lost, boss), /lost a part/);
+  assert.equal((await q.get<{ rule: string }>("SELECT rule FROM switches WHERE key = 'plan_requests'"))!.rule, "not json", "nothing written");
+  await setSwitchRule("plan_requests", rule({ types: ["dj"] }), boss);
+  assert.deepEqual(JSON.parse((await q.get<{ rule: string }>("SELECT rule FROM switches WHERE key = 'plan_requests'"))!.rule), rule({ types: ["dj"] }));
 
   // Cleared: on for everyone again.
-  await setSwitch("more_collections", true, boss);
-  await setSwitchRule("more_collections", null, boss);
-  assert.equal(await canAddCollection(outside), true);
+  await setSwitch("plan_requests", true, boss);
+  await setSwitchRule("plan_requests", null, boss);
+  assert.equal(await switchOn("plan_requests", outside), true);
 });

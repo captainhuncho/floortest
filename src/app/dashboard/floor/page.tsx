@@ -6,7 +6,7 @@ import Link from "next/link";
 import { requireUser, viewingAs } from "@/lib/auth";
 import { switchOn } from "@/lib/switches";
 import { VerifyBanner } from "../VerifyBanner";
-import { activeCollectionForView, calloutBlock, canAddCollection, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
+import { activeCollectionForView, calloutBlock, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { now, q } from "@/lib/db";
 import { atLeast, canApprove, heldReplies, seatsFor, seatsUsed, teamsOn } from "@/lib/account-members";
 import { ago, fmtDay } from "@/lib/format";
@@ -101,7 +101,6 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   // Link health: the one thing to fix, if anything.
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
   const canSend = user.role !== "member" && (await switchOn("send_music", user));
-  const canAdd = !openAlternative && active && isClosed(active) ? await canAddCollection(user.id) : true;
   const problem: { text: string; action?: React.ReactNode } | null = paused
     ? // The Link open switch lives on Account (the sidebar only links there), so the fix points there.
       {
@@ -121,7 +120,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
           ) : (
             <Link href="/dashboard/collections" className={LIME_SM}>
-              {canAdd ? "New collection" : "Open Collections"}
+              New collection
             </Link>
           ),
         }
