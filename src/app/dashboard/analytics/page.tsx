@@ -39,7 +39,7 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
   const thirdOf = (t: { playedOut: number; downloaded: number }) => (dj ? t.playedOut : t.downloaded);
   const t = day.totals;
   const delta = day.prev ? t.in - day.prev.in : null;
-  const empty = t.in === 0 && !callouts.length && !shared.rows.length;
+  const empty = t.in === 0 && !callouts.rows.length && !shared.rows.length;
   const options = PERIODS.map(([k, label]) => ({ label, href: `/dashboard/analytics?p=${k}`, active: k === range.period }));
 
   return (
@@ -91,9 +91,9 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
               ))}
             </List>
 
-            {callouts.length > 0 && (
-              <List id="callouts-h" title="Callout links" count={callouts.length}>
-                {callouts.map((c) => (
+            {callouts.rows.length > 0 && (
+              <List id="callouts-h" title="Callout links" count={callouts.rows.length} more={callouts.more ? `Showing the first ${callouts.rows.length}.` : undefined}>
+                {callouts.rows.map((c) => (
                   <Row key={c.id} name={c.name} href={`/dashboard/collections/${c.id}`} detail={`${n(c.tracks, "track")} · ${n(c.senders, "sender")}`} />
                 ))}
               </List>
@@ -104,7 +104,9 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
                 id="shared-h"
                 title="Shared collections"
                 count={shared.rows.length}
-                more={shared.truncated ? "Only your 500 newest shared links are counted." : undefined}
+                more={
+                  [shared.more && `Showing the first ${shared.rows.length}.`, shared.truncated && "Only your 500 newest shared links are counted."].filter(Boolean).join(" ") || undefined
+                }
               >
                 {shared.rows.map((s, i) => (
                   <Row key={i} name={s.who} detail={`opened ${s.opened} · ${s.played} played${s.downloaded ? ` · ${s.downloaded} downloaded` : ""}`} />
