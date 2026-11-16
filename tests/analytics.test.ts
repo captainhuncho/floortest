@@ -114,7 +114,7 @@ test("whoSent and calloutLinks: names and counts for this desk only, no emails",
   assert.equal((await A.whoSent(desk(a), range, 1)).rows.length, 1, "the limit holds");
   assert.ok(!JSON.stringify(who).includes("@"), "no sender email leaves the server");
 
-  assert.deepEqual(await A.calloutLinks(desk(a), range), [{ id: afro, name: "Afro House", tracks: 2, senders: 1 }]);
+  assert.deepEqual(await A.calloutLinks(desk(a), range), { rows: [{ id: afro, name: "Afro House", tracks: 2, senders: 1 }], more: false });
 });
 
 test("sharedLinks: per person on this desk's links only, in the span", async () => {
@@ -256,4 +256,24 @@ test("analyticsDesk checks the time zone; an erased share recipient leaves Analy
   const sam2 = (await q.get<{ id: number }>("SELECT id FROM users WHERE email = 'sam2@x.io'"))!.id;
   await purgeAccount(sam2);
   assert.equal((await A.sharedLinks(desk(a), range)).rows.filter((r) => r.who === "Removed").length, before - 1, "deleted account: its row is gone");
+});
+
+test("an account holder's visit before sign-in still shows as @username, one row, never the email", async () => {
+  const A = await import("../src/lib/analytics");
+  const { q, desk, a, afro, now } = await setup();
+  const range = A.periodRange("30d", "UTC", now);
+  const uid = (await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES ('1early@acct.io', 'h', 'E', 'earlybird', 'free', 'UTC', ?, ?) RETURNING id",
+    now, now,
+  ))!.id;
+  const link = (await q.get<{ id: number }>("INSERT INTO collection_links (collection_id, created_by, token_hash, permission, generation, created_at) VALUES (?, ?, 'hash-early', 'listen', 1, ?) RETURNING id", afro, a, now))!.id;
+  await q.run(
+    "INSERT INTO link_sessions (link_id, email, token_hash, generation, notice_version, accepted_at, created_at, expires_at) VALUES (?, '1Early@acct.io', 's-early', 1, 'v1', ?, ?, ?)",
+    link, now - 1000, now - 1000, now + DAY,
+  );
+  await q.run("INSERT INTO link_events (link_id, email, user_id, kind, created_at) VALUES (?, '1early@acct.io', ?, 'downloaded', ?)", link, uid, now - 900);
+  const out = await A.sharedLinks(desk(a), range);
+  assert.equal(out.rows.filter((r) => r.who === "@earlybird").length, 1, "one row, by @username");
+  assert.ok(!JSON.stringify(out).toLowerCase().includes("1early@acct.io"), "the account's email never shows");
+  assert.equal(out.more, false);
 });

@@ -70,7 +70,7 @@ export async function sharingOn() {
 }
 
 export async function logLinkEvent(linkId: number, kind: string, who: { email?: string | null; userId?: number | null } = {}, trackId: number | null = null, detail = "") {
-  await q.run("INSERT INTO link_events (link_id, email, user_id, kind, track_id, detail, created_at) VALUES (?,?,?,?,?,?,?)", linkId, who.email ?? null, who.userId ?? null, kind, trackId, detail, now());
+  await q.run("INSERT INTO link_events (link_id, email, user_id, kind, track_id, detail, created_at) VALUES (?,?,?,?,?,?,?)", linkId, who.email ? cleanEmail(who.email) : null, who.userId ?? null, kind, trackId, detail, now());
 }
 
 /* ── The owner's side ── */
@@ -599,11 +599,13 @@ export async function purgeLinkRecords(t = now()) {
  */
 export async function forgetLinkEmail(db: Queryable, email: string) {
   const e = cleanEmail(email);
-  await db.run("DELETE FROM link_recipients WHERE kind = 'email' AND value = ?", e);
-  await db.run("DELETE FROM link_sessions WHERE email = ?", e);
-  await db.run("DELETE FROM link_events WHERE email = ?", e);
-  await db.run("DELETE FROM link_requests WHERE email = ? AND status NOT IN ('declined', 'blocked')", e);
-  await db.run("DELETE FROM link_codes WHERE email = ?", e);
+  if (!e.includes("@")) return; // never an empty or partial match
+  // Case-insensitive: older rows may hold the address as typed.
+  await db.run("DELETE FROM link_recipients WHERE kind = 'email' AND lower(value) = ?", e);
+  await db.run("DELETE FROM link_sessions WHERE lower(email) = ?", e);
+  await db.run("DELETE FROM link_events WHERE lower(email) = ?", e);
+  await db.run("DELETE FROM link_requests WHERE lower(email) = ? AND status NOT IN ('declined', 'blocked')", e);
+  await db.run("DELETE FROM link_codes WHERE lower(email) = ?", e);
 }
 
 /** On account deletion: the account's place on other people's links, and its visits, requests and activity. */
