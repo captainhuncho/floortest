@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import type { ReportState } from "./actions/report";
 
 const REASONS = [
@@ -24,6 +24,7 @@ export function ReportTrack({
   canBlock: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const noteId = useId();
   const [state, submit, pending] = useActionState(action, undefined);
 
   if (state?.ok)
@@ -53,10 +54,10 @@ export function ReportTrack({
           ))}
         </div>
       </fieldset>
-      <label className="label mt-2 mb-1.5 block" htmlFor="report-note">
+      <label className="label mt-2 mb-1.5 block" htmlFor={noteId}>
         Anything we should know (optional)
       </label>
-      <textarea id="report-note" name="note" maxLength={2000} className="input min-h-16 resize-y max-sm:text-base" />
+      <textarea id={noteId} name="note" maxLength={2000} className="input min-h-16 resize-y max-sm:text-base" />
       {canBlock && (
         <label className="mt-2 flex min-h-11 items-center gap-2.5 text-[13px] text-bone">
           <input type="checkbox" name="block" className="size-[18px] shrink-0 accent-lime" />
