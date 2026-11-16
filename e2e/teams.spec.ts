@@ -114,6 +114,10 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await page.goto("/dashboard/settings/security");
   await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
   await expect(page.getByRole("link", { name: "Security" })).toHaveCount(0);
+  // Analytics is for the owner and A&R / Admins (owner, 16 Nov): no menu entry, and the address goes back to the Floor.
+  await expect(page.getByRole("link", { name: "Analytics" })).toHaveCount(0);
+  await page.goto("/dashboard/analytics");
+  await expect(page).toHaveURL(/\/dashboard\/floor/);
   // Calling the link's cover route directly is refused too (the page that offers it is A&R / Admin only).
   expect((await page.request.delete("/api/cover")).status()).toBe(403);
 
