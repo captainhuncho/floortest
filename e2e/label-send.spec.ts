@@ -45,8 +45,11 @@ test("the label's desk shows each choice, and the pick page holds back the evalu
   await logIn(page, "label@floortest.test");
   for (const [title, chip] of [[EVAL(), "Evaluation only: ask before playing it out"], [OK(), "OK to play"]] as const) {
     // The queue view's review card shows the choice; searching by title opens that track's card.
-    await page.goto(`/dashboard/review?view=queue&q=${encodeURIComponent(title)}`);
-    await expect(page.getByRole("complementary", { name: "Review" }).getByText(title).first()).toBeVisible();
+    // Under a full run the list can trail the tab counts by a moment, so the search is loaded again until the card shows.
+    await expect(async () => {
+      await page.goto(`/dashboard/review?view=queue&q=${encodeURIComponent(title)}`);
+      await expect(page.getByRole("complementary", { name: "Review" }).getByText(title).first()).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 60_000 });
     await expect(page.getByText(chip, { exact: true }).locator("visible=true").first()).toBeVisible();
     // Keep it and let the save finish (the card clears at once, before the save lands), then find it under Kept.
     // A click that lands before the page is ready does nothing, so the whole step is tried again.
