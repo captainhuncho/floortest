@@ -36,6 +36,15 @@ test("phone: the menu sits alone, the player joins it, the heart keeps with Undo
     });
   await expect.poll(shape).toEqual({ gap: 8, sameWidth: true, left: 12, playerFirst: true, radii: ["18px", "22px"] });
 
+  // The title is a 44px target: its tap area runs from 14px above the player down to the wave.
+  const title = await mini.evaluate((el) => {
+    const link = el.querySelector("a")!;
+    const r = link.getBoundingClientRect();
+    const hit = (y: number) => document.elementFromPoint(r.left + 20, y)?.closest("a") === link;
+    return { above: hit(r.top - 13), bottom: hit(r.bottom - 1), height: Math.round(r.height) + 14 };
+  });
+  expect(title).toEqual({ above: true, bottom: true, height: 44 });
+
   // Keep from the heart: saved on the server, with Undo.
   const heart = mini.getByRole("button", { name: /^Keep / });
   await heart.click();
