@@ -29,10 +29,10 @@ export default async function Projects() {
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 sm:gap-5">
         <div className="flex flex-col gap-1.5">
-          <PageHead label={`${used} of ${limit} tracks`} title="Collections" />
+          <PageHead label={`${used} of ${limit} tracks`} title="Collections" center />
           <CollectionsTabs on="projects" />
         </div>
-        <p className="-mt-2 text-[13px] text-mute">Your own tracks to keep and listen to, in projects or on their own. They stay until you delete them.</p>
+        <p className="-mt-2 mx-auto w-full max-w-2xl text-center text-[13px] text-mute">Your own tracks to keep and listen to, in projects or on their own. They stay until you delete them.</p>
         {canEdit && inCollections > 0 && <MoveAllToProjects count={inCollections} />}
         {(folders.length > 0 || canEdit) && (
           <ul className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Projects">
