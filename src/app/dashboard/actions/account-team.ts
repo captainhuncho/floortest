@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requirePerson, requireUser, setDesk } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import {
+  setMemberCallouts,
   acceptInvite,
   decideHeld,
   inviteToTeam,
@@ -78,6 +79,18 @@ export async function changeTeamRole(memberId: number, role: "admin" | "member")
   try {
     await setTeamRole(u, memberId, role === "admin" ? "admin" : "member");
     await audit(u.id, "team_role", `member ${memberId} → ${role}`);
+    done();
+    return { ok: "Saved." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function setTeammateCallouts(memberId: number, on: boolean): Promise<TeamState> {
+  const u = await requireUser();
+  try {
+    await setMemberCallouts(u, Number(memberId), on === true);
+    await audit(u.id, on === true ? "team_callouts_on" : "team_callouts_off", `member ${Number(memberId)}`);
     done();
     return { ok: "Saved." };
   } catch (e) {

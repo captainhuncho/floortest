@@ -1,4 +1,5 @@
 import { trackUse } from "@/lib/usage";
+import { canRunCallouts } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
@@ -29,6 +30,8 @@ export default async function Collections() {
   const sharing = await switchOn("sharing");
   const viaLinks = await sharedLinksFor(user);
   const canManage = user.role !== "member";
+  // New collection and Edit: owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov).
+  const callouts = await canRunCallouts(user);
   // The receiving collection first, then open callouts (newest first), then closed ones (newest first).
   const rank = (c: (typeof collections)[number]) => (c.id === user.active_collection_id ? 0 : isClosed(c) ? 2 : 1);
   const ordered = [...collections].sort((a, b) => rank(a) - rank(b) || b.created_at - a.created_at);
@@ -69,13 +72,14 @@ export default async function Collections() {
                   receiving={c.id === user.active_collection_id}
                   closed={isClosed(c)}
                   canManage={canManage}
+                  canEdit={callouts}
                   link={`${APP_URL}/${user.handle}`}
                   card={c.id === receiving?.id ? card : undefined}
                 />
               </li>
             );
           })}
-          {canManage && (
+          {callouts && (
             <li className="contents">
               <NewCollection tile />
             </li>

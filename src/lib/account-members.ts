@@ -97,8 +97,8 @@ export async function teamsFor(personId: number) {
 /** Everyone on the account and the invites still waiting, for the Team page. */
 export async function teamOf(accountId: number) {
   const owner = (await q.get<{ id: number; name: string; email: string }>("SELECT id, name, email FROM users WHERE id = ?", accountId))!;
-  const members = await q.all<{ id: number; user_id: number; name: string; email: string; handle: string; role: "admin" | "member"; twofa: number | null; created_at: number }>(
-    `SELECT m.id, m.user_id, u.name, u.email, u.handle, m.role, u.totp_enabled_at AS twofa, m.created_at FROM account_members m JOIN users u ON u.id = m.user_id
+  const members = await q.all<{ id: number; user_id: number; name: string; email: string; handle: string; role: "admin" | "member"; callouts: boolean; twofa: number | null; created_at: number }>(
+    `SELECT m.id, m.user_id, u.name, u.email, u.handle, m.role, m.callouts, u.totp_enabled_at AS twofa, m.created_at FROM account_members m JOIN users u ON u.id = m.user_id
      WHERE m.account_id = ? ORDER BY m.created_at, m.id`,
     accountId,
   );
@@ -217,8 +217,29 @@ export async function removeFromTeam(desk: Pick<User, "id" | "role" | "actor_id"
 export async function setTeamRole(desk: Pick<User, "id" | "role" | "totp_enabled_at">, memberId: number, role: "admin" | "member") {
   if (desk.role !== "owner") throw new TeamError("Only the owner can change roles.");
   needTwoStep(desk);
-  const r = await q.run("UPDATE account_members SET role = ? WHERE id = ? AND account_id = ?", role, memberId, desk.id);
+  // A role change clears the callout tick: someone made a Member again starts unticked (Safety, 16 Nov).
+  const r = await q.run("UPDATE account_members SET role = ?, callouts = CASE WHEN role = ? THEN callouts ELSE false END WHERE id = ? AND account_id = ?", role, role, memberId, desk.id);
   if (!r.changes) throw new TeamError("Not found");
+}
+
+/**
+ * Who may run callouts (create and edit them, change their artwork) on this desk: the owner and A&R / Admins by role,
+ * a Member only when an owner or admin has ticked them (owner, 16 Nov). Read from the database on every call, so an
+ * untick, a removal or a role change applies on the next click.
+ */
+export async function canRunCallouts(u: Pick<User, "id" | "role" | "actor_id">): Promise<boolean> {
+  if (atLeast(u.role, "admin")) return true;
+  const m = await q.get<{ callouts: boolean }>("SELECT callouts FROM account_members WHERE account_id = ? AND user_id = ? AND role = 'member'", u.id, u.actor_id);
+  return !!m?.callouts;
+}
+
+/** The owner or an A&R / Admin ticks (or unticks) a Member for callouts. One answer for a missing id and another desk's. */
+export async function setMemberCallouts(desk: Pick<User, "id" | "role" | "actor_id" | "totp_enabled_at">, memberId: number, on: boolean) {
+  if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can choose who runs callouts.");
+  needTwoStep(desk);
+  const m = await q.get<{ user_id: number }>("UPDATE account_members SET callouts = ? WHERE id = ? AND account_id = ? AND role = 'member' AND user_id <> ? RETURNING user_id", !!on, memberId, desk.id, desk.actor_id);
+  if (!m) throw new TeamError("Not found");
+  return m;
 }
 
 /** Ops: add-on seats for an account (bought separately while card payments aren't live). */

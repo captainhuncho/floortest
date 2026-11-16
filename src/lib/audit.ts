@@ -65,6 +65,8 @@ export const AUDIT_LABELS = {
   team_removed: "Removed from the team:",
   team_left: "Left the team:",
   team_role: "Changed a role:",
+  team_callouts_on: "Let a member run callouts:",
+  team_callouts_off: "Stopped a member running callouts:",
   team_invite_revoked: "Cancelled an invite to",
   reply_approval_set: "Changed reply approval:",
 } as const;

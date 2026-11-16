@@ -3,6 +3,7 @@ import { discardFiles } from "@/lib/deletion";
 import { NextResponse } from "next/server";
 import { audit } from "@/lib/audit";
 import { currentDeskForChange, currentUser, viewingAs } from "@/lib/auth";
+import { canRunCallouts } from "@/lib/account-members";
 import { q, type Collection } from "@/lib/db";
 import { activeCollection } from "@/lib/desk";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
@@ -22,6 +23,8 @@ async function ownCollection(raw: string) {
   if (await viewingAs()) return null;
   const user = await currentDeskForChange();
   if (user instanceof Response) return user;
+  // Changing artwork is running the callout: an unticked Member is refused (owner, 16 Nov).
+  if (user && user.role === "member" && !(await canRunCallouts(user))) return Response.json({ error: "Ask an A&R / Admin to let you run callouts." }, { status: 403 });
   const c = user ? await collectionOf(raw) : undefined;
   return user && c && c.user_id === user.id ? { user, c } : null;
 }

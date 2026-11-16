@@ -8,7 +8,7 @@ import { ConfirmButton } from "../../ClientBits";
 import { PageTitle, Section } from "../Section";
 import { Chip, initials } from "@/components/Kit";
 import { BTN, BTN_GHOST, Notice, ROW, WELL } from "../ui";
-import { ApprovalForm, CancelInviteForm, InviteForm, RoleSelect } from "./TeamForms";
+import { ApprovalForm, CalloutsTick, CancelInviteForm, InviteForm, RoleSelect } from "./TeamForms";
 import { Fold } from "../Fold";
 
 export const metadata = { title: "Team — FloorTest" };
@@ -94,6 +94,8 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   {user.role === "owner" ? <RoleSelect memberId={m.id} name={m.name} role={m.role} /> : <Chip>{ROLE_LABEL[m.role]}</Chip>}
+                  {/* Owner, 16 Nov: A&R / Admins run callouts by role; a Member only once an owner or admin ticks them. */}
+                  {m.role === "member" && (manage && !self ? <CalloutsTick memberId={m.id} name={m.name} on={!!m.callouts} /> : m.callouts ? <Chip>Runs callouts</Chip> : null)}
                   {canRemove && (
                     <ConfirmButton
                       action={removeTeammate.bind(null, m.id)}

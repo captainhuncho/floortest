@@ -318,7 +318,7 @@ export function Folder({ tab, hatched = false, children }: { tab: React.ReactNod
  * One callout as a card (the mock): cover, name and where it stands; to review, kept and tracks; how full it is if
  * capped; the link while it's receiving; then the one next step. The whole card opens it; ··· has every option.
  */
-export function CollectionTile({ c, receiving, closed, canManage = true, link, card }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** The desk's public link, shown on the receiving card. */ link?: string; /** The callout the link's Share offers as a card. */ card?: ShareCardTarget }) {
+export function CollectionTile({ c, receiving, closed, canManage = true, canEdit = true, link, card }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** May run callouts: owner, A&R / Admin, or a ticked Member (the server checks too). */ canEdit?: boolean; /** The desk's public link, shown on the receiving card. */ link?: string; /** The callout the link's Share offers as a card. */ card?: ShareCardTarget }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
@@ -387,7 +387,7 @@ export function CollectionTile({ c, receiving, closed, canManage = true, link, c
           <span className="text-[11.5px] text-mute tnum">{bpm} BPM</span>
         ) : null}
       </div>
-      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
+      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
       {editing && <EditDialog c={c} receiving={receiving} closed={closed} canManage={canManage} onClose={() => setEditing(false)} />}
     </div>
   );
@@ -420,7 +420,7 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
 }
 
 /** The shared options for one collection. */
-function CollectionOptions({ c, receiving, canManage, onEdit, onClose, showOpen }: { c: C; receiving: boolean; canManage: boolean; onEdit: () => void; onClose: () => void; showOpen: boolean }) {
+function CollectionOptions({ c, receiving, canManage, canEdit, onEdit, onClose, showOpen }: { c: C; receiving: boolean; canManage: boolean; canEdit: boolean; onEdit: () => void; onClose: () => void; showOpen: boolean }) {
   const [pending, start] = useTransition();
   return (
     <OptionsSheet title={c.name} onClose={onClose}>
@@ -439,9 +439,11 @@ function CollectionOptions({ c, receiving, canManage, onEdit, onClose, showOpen 
           Review {c.needsReview} new
         </Link>
       )}
-      <button role="menuitem" onClick={() => { onClose(); onEdit(); }}>
-        Edit collection
-      </button>
+      {canEdit && (
+        <button role="menuitem" onClick={() => { onClose(); onEdit(); }}>
+          Edit collection
+        </button>
+      )}
       <div>
         <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
       </div>
@@ -453,7 +455,7 @@ function CollectionOptions({ c, receiving, canManage, onEdit, onClose, showOpen 
 }
 
 /** A collection page's head, every screen size: back to Collections, cover, name, where it stands, and ··· options. */
-export function CollectionDetailHeader({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
+export function CollectionDetailHeader({ c, receiving, closed, canManage = true, canEdit = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** May run callouts (the server checks too). */ canEdit?: boolean }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   return (
@@ -480,7 +482,7 @@ export function CollectionDetailHeader({ c, receiving, closed, canManage = true 
           <MoreIcon />
         </button>
       </div>
-      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
+      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
       {editing && <EditDialog c={c} receiving={receiving} closed={closed} canManage={canManage} onClose={() => setEditing(false)} />}
     </header>
   );
