@@ -101,9 +101,12 @@ export function CapTicks({ used, limit, cells = 25 }: { used: number; limit: num
   );
 }
 
-function CollectionCard({ c, receiving, closed, canManage = true, startEditing = false }: { c: C; receiving: boolean; closed: boolean; canManage?: boolean; startEditing?: boolean }) {
+function CollectionCard({ c, receiving, closed, canManage = true, startEditing = false, onDone }: { c: C; receiving: boolean; closed: boolean; canManage?: boolean; startEditing?: boolean; /** Called after Save or Cancel, e.g. to close the pop-up the form sits in. */ onDone?: () => void }) {
   const [editing, setEditing] = useState(startEditing);
   const [pending, start] = useTransition();
+  const formId = useId();
+  // Save and Cancel both end editing: in the pop-up that closes it, so nobody has to tap Edit again to get out (owner, 16 Nov).
+  const done = () => (onDone ? onDone() : setEditing(false));
 
   return (
     <div className={`${CARD} p-3 sm:p-4 ${receiving && !closed ? "border-lime/55" : ""}`}>
@@ -156,19 +159,22 @@ function CollectionCard({ c, receiving, closed, canManage = true, startEditing =
               Send new tracks here
             </button>
           )}
-          <button className={GHOST} onClick={() => setEditing((e) => !e)} aria-expanded={editing}>
-            Edit
-          </button>
+          {!editing && (
+            <button className={GHOST} onClick={() => setEditing(true)} aria-expanded={false}>
+              Edit
+            </button>
+          )}
         </div>
       </div>
       {editing && (
         <form
+          id={formId}
           className="mt-4 grid gap-3.5 border-t border-dashed border-line-2 pt-4 sm:grid-cols-[1fr_auto_auto] sm:items-end"
           action={(fd) =>
             start(async () => {
               fd.set("tz", String(new Date().getTimezoneOffset()));
               await updateCollection(c.id, fd);
-              setEditing(false);
+              done();
             })
           }
         >
@@ -190,11 +196,6 @@ function CollectionCard({ c, receiving, closed, canManage = true, startEditing =
               </span>
             </label>
           )}
-          <div className="flex gap-2">
-            <button className={LIME} disabled={pending}>
-              Save
-            </button>
-          </div>
           <p className="text-[12px] text-mute sm:col-span-3">
             After the closing date your link shows “callout closed” and stops taking uploads. Clear the date to reopen.
             {c.canCap && " With a track limit, it shows “callout full” once that many have arrived. Raise or clear the limit to reopen."}
@@ -238,6 +239,17 @@ function CollectionCard({ c, receiving, closed, canManage = true, startEditing =
         </form>
       )}
       {editing && <ArtUpload id={c.id} name={c.name} art={c.art} />}
+      {/* Save comes last, after the brief and the artwork, so the whole form is filled in first (owner, 16 Nov). The artwork saves on its own as soon as it's chosen. */}
+      {editing && (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-dashed border-line-2 pt-4">
+          <button type="submit" form={formId} className={LIME} disabled={pending}>
+            {pending ? "Saving…" : "Save"}
+          </button>
+          <button type="button" className={GHOST} onClick={done} disabled={pending}>
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -501,7 +513,7 @@ function EditDialog({ c, receiving, closed, canManage, onClose }: { c: C; receiv
         <button onClick={onClose} aria-label="Close" className="absolute -top-12 right-0 z-10 grid size-11 place-items-center rounded-full border border-line bg-card text-mute hover:text-bone">
           <Icon name="x" className="size-4" />
         </button>
-        <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
+        <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing onDone={onClose} />
       </div>
     </div>
   );
