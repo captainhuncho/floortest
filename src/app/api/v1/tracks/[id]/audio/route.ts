@@ -1,5 +1,5 @@
 import { fileAccess } from "@/lib/file-access";
-import { appUser } from "@/lib/app-auth";
+import { appUserAgreed } from "@/lib/app-auth";
 import { fail, unauthorized } from "@/lib/api-v1";
 import { storage } from "@/lib/storage";
 
@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 
 /** Plays a track in the app: a short-lived signed link to the original (no storage keys on the phone). */
 export async function GET(req: Request, ctx: RouteContext<"/api/v1/tracks/[id]/audio">) {
-  const u = await appUser(req);
+  const u = await appUserAgreed(req);
+  if (u instanceof Response) return u;
   if (!u) return unauthorized();
   const f = await fileAccess(u, "play", Number((await ctx.params).id));
   if (!f) return fail("Not found", 404);

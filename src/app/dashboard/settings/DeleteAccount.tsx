@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { deleteAccount } from "../actions/settings";
 import { BTN_DANGER, BTN_GHOST, FIELD, HELP, Notice, SettingLine } from "./ui";
 
-export function DeleteAccount({ handle, twoFactor }: { handle: string; twoFactor: boolean }) {
+export function DeleteAccount({ handle, twoFactor, sub = "Want a copy first? Ask for your data from the Account page before you delete." }: { handle: string; twoFactor: boolean; sub?: string }) {
   const [state, onSubmit, pending] = useActionForm(deleteAccount, undefined);
   const dialog = useRef<HTMLDialogElement>(null);
   const [typed, setTyped] = useState("");
@@ -15,7 +15,7 @@ export function DeleteAccount({ handle, twoFactor }: { handle: string; twoFactor
   };
   return (
     <>
-      <SettingLine title="Remove everything" sub="Want a copy first? Ask for your data from the Account page before you delete.">
+      <SettingLine title="Remove everything" sub={sub}>
         <button type="button" className={`${BTN_DANGER} w-full sm:w-auto`} onClick={() => dialog.current?.showModal()}>
           Delete my account…
         </button>

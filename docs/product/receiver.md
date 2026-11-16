@@ -12,7 +12,9 @@ Where: `/signup`, `/login`, `/login/code`, `/signup/google`, `/login/google` **B
 
 The sign-up tick (guided and Google sign-up) reads "I'm 18 or over, and I have read, understood and agree to the Terms, including that music I send may be played by the receiver, and have read the Privacy Policy", with Terms and Privacy Policy linked. Ticking it records the Terms version, the time (UTC) and a fingerprint (SHA-256) of the exact text, and emails a PDF copy stamped "Accepted by {name}, {email}, {date and time UTC}, Terms version {date}". When the Terms text changes, the next visit to the desk opens **Accept the Terms** ("The Terms have changed" if they accepted an older text): one tick, **Accept and continue**, then the Floor.
 
-Where: `/signup`, `/signup/google`, `/accept-terms`, `src/lib/terms-record.ts`
+Nobody uses the desk or the phone app without agreeing to the current Terms (owner, 15 Nov): every desk page, action and API call, and every app request, waits for the tick; when the Terms can't be loaded, nobody gets in until they can. Someone who doesn't want to agree can still ask for a copy of their data or delete their account from the Terms page. Admins tick on their own desk; the ops console is not gated.
+
+Where: `/signup`, `/signup/google`, `/accept-terms`, `src/lib/terms-record.ts`, `src/lib/auth.ts`, `src/lib/app-auth.ts` (`appUserAgreed`), `/api/v1/terms`
 
 ## Floor (home)
 

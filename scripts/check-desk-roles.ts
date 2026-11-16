@@ -4,7 +4,8 @@
  * check would let a Member do an Owner's thing. A new one fails this check until it's added below on purpose.
  * Run: tsx scripts/check-desk-roles.ts (part of `npm run check:perms`).
  *
- *   owner   requireRole("owner"): account security, billing, plan, deleting the account (only on your own desk)
+ *   owner   requireRole("owner"): account security, billing, plan (only on your own desk)
+ *   own     requireOwnAccount(): deleting the account, owner of your own desk, before the Terms tick too (owner, 15 Nov)
  *   admin   requireRole("admin"): links, routing, team tools, deleting, blocking
  *   member  requireUser(): anyone working the desk (review, notes, replies, comments)
  *   lib     requireUser(), with the role checked inside src/lib/account-members.ts (tested in tests/account-teams.test.ts)
@@ -14,7 +15,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-type Need = "owner" | "admin" | "member" | "lib" | "person" | "public";
+type Need = "owner" | "own" | "admin" | "member" | "lib" | "person" | "public";
 const ROLES: Record<string, Record<string, Need>> = {
   "account-team.ts": { inviteTeammate: "lib", cancelTeamInvite: "lib", removeTeammate: "lib", changeTeamRole: "lib", saveReplyApproval: "lib", answerHeldReply: "lib", switchDesk: "person", joinTeam: "person" },
   "batch.ts": { batchTracks: "member" }, // deleting in a batch is refused to members inside the action
@@ -31,13 +32,14 @@ const ROLES: Record<string, Record<string, Need>> = {
   "passkeys.ts": { startAddPasskey: "owner", finishAddPasskey: "owner", deletePasskey: "owner" },
   "settings.ts": {
     updateNotifications: "owner", sendDigestNow: "owner", updateSettings: "owner", updatePublicPage: "admin", setPlan: "owner", confirmBetaUpgrade: "owner",
-    identityCode: "owner", submitIdentity: "owner", deleteAccount: "owner", changeMyEmail: "owner", cancelMyEmailChange: "owner", setTheme: "public",
+    identityCode: "owner", submitIdentity: "owner", deleteAccount: "own", changeMyEmail: "owner", cancelMyEmailChange: "owner", setTheme: "public",
     requestPlan: "owner", withdrawPlanRequest: "owner", setRerouteClosed: "admin",
   },
   "team.ts": { commentOnTrack: "member", deleteComment: "member", shortlistTrack: "member" },
 };
 const GUARD: Record<Need, string | null> = {
   owner: 'requireRole("owner")',
+  own: "requireOwnAccount()",
   admin: 'requireRole("admin")',
   member: "requireUser()",
   lib: "requireUser()",
@@ -47,6 +49,17 @@ const GUARD: Record<Need, string | null> = {
 
 const dir = join(__dirname, "../src/app/dashboard/actions");
 const problems: string[] = [];
+// requireOwnAccount skips the Terms tick (owner, 15 Nov), so only deleteAccount may call it.
+{
+  const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : /\.tsx?$/.test(e.name) ? [join(d, e.name)] : []));
+  for (const f of walk(join(__dirname, "../src"))) {
+    if (f.endsWith(join("lib", "auth.ts"))) continue;
+    for (const part of readFileSync(f, "utf8").split(/^(?=export async function )/m)) {
+      if (!part.includes("requireOwnAccount(")) continue;
+      if (!(f.endsWith(join("actions", "settings.ts")) && part.startsWith("export async function deleteAccount("))) problems.push(`${f}: only deleteAccount may call requireOwnAccount (it skips the Terms tick)`);
+    }
+  }
+}
 for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts"))) {
   const parts = readFileSync(join(dir, file), "utf8").split(/^(?=export async function )/m);
   const listed = ROLES[file] ?? {};
