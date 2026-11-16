@@ -1,5 +1,6 @@
 import "server-only";
-import { asPerson, q } from "./db";
+import { atLeast } from "./account-members";
+import { asPerson, q, type User } from "./db";
 
 /**
  * Analytics (owner, 16 Nov): only what happens on the desk and what the links it shares record. Nothing new is collected:
@@ -22,7 +23,22 @@ export const PERIODS = [
 export type PeriodKey = (typeof PERIODS)[number][0];
 export const pickPeriod = (s: string | undefined): PeriodKey => PERIODS.find(([k]) => k === s)?.[0] ?? "30d";
 
-export type Desk = { id: number; actor_id: number; tz: string };
+/** The signed-in desk as requireRole("admin") returns it. Each helper checks the role again, so a Member never gets numbers. */
+export type Desk = Pick<User, "id" | "actor_id" | "tz" | "role">;
+function deskOf(desk: Desk) {
+  if (!atLeast(desk.role, "admin")) throw new Error("Analytics is for the owner and A&R / Admins.");
+  return desk;
+}
+
+/** A time zone the browser and server both know; anything else (a bad value stored on the account) reads as UTC. */
+export function safeTz(tz: string | null | undefined) {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz || "UTC" });
+    return tz || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
 export type Range = {
   period: PeriodKey;
   /** Chart bars: days for 7 and 30 days, weeks for 3 months, months for This year and Lifetime. */
@@ -75,7 +91,9 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const short = (key: string) => `${Number(key.slice(8, 10))} ${MONTHS[Number(key.slice(5, 7)) - 1]}`;
 
 /** The span for a period, ending now, in the desk's calendar. */
-export function periodRange(period: PeriodKey, tz: string, now = Date.now()): Range {
+export function periodRange(key: string | undefined, rawTz: string, now = Date.now()): Range {
+  const period = pickPeriod(key);
+  const tz = safeTz(rawTz);
   const today = dayKey(now, tz);
   const days = period === "7d" ? 7 : period === "30d" ? 30 : period === "90d" ? 90 : 0;
   if (days) {
@@ -100,7 +118,8 @@ const within = (t: number | null, from: number, to: number): t is number => t !=
  * same totals for the span compared against. Read from the desk's tracks (deleted tracks keep their row, so Lifetime never
  * shrinks). Both played out and downloaded come back; the screen shows the one the desk type uses.
  */
-export async function perDay(desk: Desk, range: Range): Promise<{ bars: Bar[]; totals: Totals; prev: Totals | null }> {
+export async function perDay(d: Desk, range: Range): Promise<{ bars: Bar[]; totals: Totals; prev: Totals | null }> {
+  const desk = deskOf(d);
   const since = range.prev ? range.prev.from : range.from;
   const rows = await asPerson(desk.actor_id, () =>
     q.all<{ sender_id: number; created_at: number; decision: string | null; decided_at: number | null; downloaded_at: number | null; played_out_at: number | null }>(
@@ -163,7 +182,8 @@ export async function perDay(desk: Desk, range: Range): Promise<{ bars: Bar[]; t
 }
 
 /** Who sent what in the span: each sender's name, tracks sent and kept, most tracks first. Names only, never emails. */
-export async function whoSent(desk: Desk, range: Range, limit = 10) {
+export async function whoSent(d: Desk, range: Range, limit = 10) {
+  const desk = deskOf(d);
   const cap = Math.min(Math.max(1, Math.floor(limit)), 200);
   return asPerson(desk.actor_id, async () => {
     const [rows, total] = await Promise.all([
@@ -181,7 +201,8 @@ export async function whoSent(desk: Desk, range: Range, limit = 10) {
 }
 
 /** Each callout that got tracks in the span: its name, tracks sent in and how many different senders, busiest first. */
-export async function calloutLinks(desk: Desk, range: Range) {
+export async function calloutLinks(d: Desk, range: Range) {
+  const desk = deskOf(d);
   const rows = await asPerson(desk.actor_id, () =>
     q.all<{ id: number; name: string; tracks: number; senders: number }>(
       `SELECT c.id, c.name, COUNT(t.id)::int AS tracks, COUNT(DISTINCT t.sender_id)::int AS senders
@@ -197,9 +218,15 @@ export async function calloutLinks(desk: Desk, range: Range) {
 /**
  * Shared collections, per person, in the span: who opened them (signed-in visits), how many tracks each played and how many
  * downloads. Privacy covers this: "The collection owner sees who opened their collection and what each person played and
- * downloaded." The person is shown as their FloorTest name when they have an account, else their email.
+ * downloaded." Someone with a FloorTest account shows as their @username (never the account's email); someone without one,
+ * as the email the link was shared with. An account being deleted shows as "Removed" (an erased account's visits are
+ * already gone: share-links.ts deletes them).
  */
-export async function sharedLinks(desk: Desk, range: Range) {
+/** How a share recipient is named: "Removed" while their account is being deleted, @username with an account, else the email. */
+const WHO = (email: string) => `CASE WHEN u.deletion_requested_at IS NOT NULL THEN 'Removed' WHEN u.handle IS NOT NULL THEN '@' || u.handle ELSE ${email} END`;
+
+export async function sharedLinks(d: Desk, range: Range) {
+  const desk = deskOf(d);
   // The desk's links, found under the per-person rules; their visits and events are then read only for those links.
   const links = await asPerson(desk.actor_id, () =>
     q.all<{ id: number }>("SELECT l.id FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE c.user_id = ? LIMIT ?", desk.id, MAX_LINKS),
@@ -209,11 +236,11 @@ export async function sharedLinks(desk: Desk, range: Range) {
   const marks = ids.map(() => "?").join(",");
   const rows = await q.all<{ who: string; opened: number; played: number; downloaded: number }>(
     `WITH ev AS (
-       SELECT COALESCE(u.name, s.email) AS who, 'open' AS kind, NULL::bigint AS track_id
+       SELECT ${WHO("s.email")} AS who, 'open' AS kind, NULL::bigint AS track_id
        FROM link_sessions s LEFT JOIN users u ON u.id = s.user_id
        WHERE s.link_id IN (${marks}) AND s.created_at >= ? AND s.created_at < ?
        UNION ALL
-       SELECT COALESCE(u.name, e.email, u.email) AS who, e.kind, e.track_id
+       SELECT ${WHO("e.email")} AS who, e.kind, e.track_id
        FROM link_events e LEFT JOIN users u ON u.id = e.user_id
        WHERE e.link_id IN (${marks}) AND e.kind IN ('listened', 'downloaded') AND e.created_at >= ? AND e.created_at < ?
      )

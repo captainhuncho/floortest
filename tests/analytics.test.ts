@@ -50,7 +50,7 @@ async function makeSetup() {
   await track(a, kwame, now - 40 * DAY);
   // Desk B: never in desk A's numbers.
   for (let i = 0; i < 4; i++) await track(b, other, t, { collection: bCallout, decision: "kept" });
-  return { q, now, desk: (id: number) => ({ id, actor_id: id, tz: "UTC" }), a, b, afro, bCallout };
+  return { q, now, desk: (id: number, role: "owner" | "admin" | "member" = "owner") => ({ id, actor_id: id, tz: "UTC", role }), a, b, afro, bCallout };
 }
 
 test("periods: only the five keys, calendar days in the desk's zone, the right comparison span", async () => {
@@ -68,6 +68,8 @@ test("periods: only the five keys, calendar days in the desk's zone, the right c
   const year = A.periodRange("year", "UTC", now);
   assert.equal(year.from, Date.UTC(2026, 0, 1));
   assert.deepEqual(year.prev, { from: Date.UTC(2025, 0, 1), to: Date.UTC(2025, 10, 16, 15, 30) }, "the same span last year");
+  assert.equal(A.periodRange("1 OR 1=1", "UTC", now).period, "30d", "a bad period falls back");
+  assert.equal(A.periodRange("7d", "Not/AZone'; DROP", now).tz, "UTC", "a bad time zone reads as UTC");
   const life = A.periodRange("all", "UTC", now);
   assert.equal(life.from, 0);
   assert.equal(life.prev, null);
@@ -150,4 +152,39 @@ test("sharedLinks: per person on this desk's links only, in the span", async () 
   assert.deepEqual(rows, [{ who: "boss@label.com", opened: 2, played: 2, downloaded: 1 }], "two visits, two tracks played, one download; other desks and old visits left out");
   assert.equal((await A.sharedLinks(desk(a), A.periodRange("all", "UTC", now))).length, 2, "Lifetime includes the old visit");
   assert.deepEqual((await A.sharedLinks(desk(b), A.periodRange("30d", "UTC", now))).map((r) => r.who), ["spy@else.com"]);
+});
+
+test("guards: a Member gets no numbers; an erased sender's name is gone; a share recipient shows as @username, or Removed while their account is being deleted", async () => {
+  const A = await import("../src/lib/analytics");
+  const { eraseSender } = await import("../src/lib/privacy");
+  const { q, desk, a, afro, now } = await setup();
+  const range = A.periodRange("30d", "UTC", now);
+  for (const run of [() => A.perDay(desk(a, "member"), range), () => A.whoSent(desk(a, "member"), range), () => A.calloutLinks(desk(a, "member"), range), () => A.sharedLinks(desk(a, "member"), range)]) {
+    await assert.rejects(run, /owner and A&R \/ Admins/);
+  }
+  assert.ok((await A.perDay(desk(a, "admin"), range)).totals.in >= 0, "an A&R / Admin is let in");
+
+  // Erasing a sender deletes them and their tracks (privacy.ts eraseSender): their name leaves Analytics.
+  const gone = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 'erase@s.io', 'Erase Me', ?) RETURNING id", a, now))!.id;
+  await q.run("INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at) VALUES (?,?,'E','A','tok-erase','audio/e.wav','e.wav','audio/wav',1,?)", a, gone, now - 1000);
+  assert.ok((await A.whoSent(desk(a), range, 200)).rows.some((r) => r.name === "Erase Me"));
+  await eraseSender("erase@s.io");
+  assert.ok(!(await A.whoSent(desk(a), range, 200)).rows.some((r) => r.name === "Erase Me"), "erased: no name");
+
+  // A recipient with an account shows as @username, never the account's email; while that account is being deleted, Removed.
+  const listener = (await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES ('private@acct.io', 'h', 'Lis', 'lisner', 'free', 'UTC', ?, ?) RETURNING id",
+    now, now,
+  ))!.id;
+  const link = (await q.get<{ id: number }>("INSERT INTO collection_links (collection_id, created_by, token_hash, permission, generation, created_at) VALUES (?, ?, 'hash-guard', 'listen', 1, ?) RETURNING id", afro, a, now))!.id;
+  await q.run(
+    "INSERT INTO link_sessions (link_id, email, user_id, token_hash, generation, notice_version, accepted_at, created_at, expires_at) VALUES (?, 'private@acct.io', ?, 's-guard', 1, 'v1', ?, ?, ?)",
+    link, listener, now - 1000, now - 1000, now + DAY,
+  );
+  const named = await A.sharedLinks(desk(a), range);
+  assert.ok(named.some((r) => r.who === "@lisner"));
+  assert.ok(!JSON.stringify(named).includes("private@acct.io"), "the account's email never shows");
+  await q.run("UPDATE users SET deletion_requested_at = ? WHERE id = ?", now, listener);
+  const removed = await A.sharedLinks(desk(a), range);
+  assert.ok(removed.some((r) => r.who === "Removed") && !removed.some((r) => r.who === "@lisner"), "being deleted: Removed");
 });
