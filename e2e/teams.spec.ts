@@ -110,6 +110,10 @@ test("a member switches to the team's desk, can't open owner settings, and their
   const trackDelete = page.getByRole("button", { name: "Delete", exact: true }).and(page.locator(':not([aria-label="Review together"] *)'));
   await expect(trackDelete).toHaveCount(0);
 
+  // Callouts are for members the owner or an A&R / Admin has ticked: an unticked member gets no "+ New" on Callouts.
+  await page.goto("/dashboard/collections");
+  await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
+
   // Owner-only and admin-only pages send members to the Team page instead.
   await page.goto("/dashboard/settings/security");
   await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
@@ -161,4 +165,41 @@ test("the owner approves the held reply from the Team page", async ({ page }) =>
   // The account log names who did each thing: the held reply was the member's.
   await page.goto("/dashboard/activity");
   await expect(page.getByText("by Lena Listener").first()).toBeVisible();
+});
+
+test("a member the owner ticks for callouts can make one; folders stay the owner's", async ({ page, browser }) => {
+  await logInWithTwoStep(page);
+  await page.goto("/dashboard/settings/team");
+  // The people list is folded; open it to reach each member's row.
+  await page.getByRole("button", { name: /^People · / }).click();
+  const tick = page.getByRole("checkbox", { name: "Let Lena Listener run callouts" });
+  // A rerun may find the tick left on by an earlier go; turn it on either way and let the save land.
+  if (!(await tick.isChecked())) {
+    const saved = page.waitForResponse((r) => r.request().method() === "POST");
+    await tick.check();
+    await saved;
+  }
+
+  const member = await browser.newContext();
+  const lena = await member.newPage();
+  try {
+    await logIn(lena, "listener@floortest.test");
+    await lena.getByText("Switch desk").click();
+    await lena.getByRole("button", { name: /Tia Teams/ }).click();
+    await expect(lena.getByText(/On Tia Teams.s desk as a member/)).toBeVisible();
+    await lena.goto("/dashboard/collections");
+    await lena.getByRole("button", { name: "New", exact: true }).click();
+    await expect(lena.getByRole("menuitem", { name: "New callout" })).toBeVisible();
+    await expect(lena.getByRole("menuitem", { name: "New folder" })).toHaveCount(0);
+  } finally {
+    await member.close();
+  }
+
+  // Untick again, so the member test above finds Lena unticked on the next run.
+  await page.reload();
+  await page.getByRole("button", { name: /^People · / }).click();
+  const untick = page.getByRole("checkbox", { name: "Let Lena Listener run callouts" });
+  const saved = page.waitForResponse((r) => r.request().method() === "POST");
+  await untick.uncheck();
+  await saved;
 });
