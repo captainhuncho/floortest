@@ -125,13 +125,13 @@ export function FolderArea({ kind, folder, canEdit, canCreate = canEdit, childre
     if (folder) await (kind === "callout" ? fileCallout(id, folder) : fileProject(id, folder));
   };
   const items: Item[] = [
-    ...(kind === "project" ? [{ label: "Upload audio", icon: "up" as const, run: () => window.dispatchEvent(new Event("ft:add-audio")) }] : []),
+    ...(canCreate && kind === "project" ? [{ label: "Upload audio", icon: "up" as const, run: () => window.dispatchEvent(new Event("ft:add-audio")) }] : []),
     // A new callout can't be filed yet (createCollection doesn't return its id), so inside a callout folder it isn't offered.
     ...(!canCreate || (kind === "callout" && folder) ? [] : [{ label: `New ${NOUN[kind]}`, icon: (kind === "callout" ? "inbox" : "music") as IconName, run: () => setForm("item") }]),
     ...(!canEdit || folder ? [] : [{ label: "New folder", icon: "folder" as const, run: () => setForm("folder") }]),
   ];
 
-  const can = items.length > 0;
+  const can = (canEdit || canCreate) && items.length > 0;
   const onContextMenu = (e: React.MouseEvent) => {
     if (!canEdit && !canCreate) return;
     const t = e.target as HTMLElement;
