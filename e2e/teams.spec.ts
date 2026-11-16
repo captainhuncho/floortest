@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, hydrated, logIn, submitLogin, TEST_PASSWORD, test } from "./fixtures";
+import { expect, hydrated, logIn, preparePage, submitLogin, TEST_PASSWORD, test } from "./fixtures";
 
 /**
  * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). Its own owner, Tia (teams@), has 3 seats
@@ -170,7 +170,7 @@ test("the owner approves the held reply from the Team page", async ({ page }) =>
   await expect(page.getByText("by Lena Listener").first()).toBeVisible();
 });
 
-test("a member the owner ticks for callouts can make one; folders stay the owner's", async ({ page, browser }) => {
+test("a member the owner ticks for callouts can make one; folders stay the owner's", async ({ page, browser, baseURL }) => {
   await logInWithTwoStep(page);
   await page.goto("/dashboard/settings/team");
   // The people list is folded; open it to reach each member's row.
@@ -186,6 +186,11 @@ test("a member the owner ticks for callouts can make one; folders stay the owner
   const member = await browser.newContext();
   const lena = await member.newPage();
   try {
+    // The second browser needs the same set-up as the test's own page: the banner choice and the fake bot check, which a
+    // full run asks for after earlier specs' sign-ins (without it, the sign-in waits for Cloudflare and never lands).
+    await preparePage(lena, baseURL ?? undefined);
+    await lena.goto("/api/health");
+    await lena.bringToFront();
     await logIn(lena, "listener@floortest.test");
     await lena.getByText("Switch desk").click();
     await lena.getByRole("button", { name: /Tia Teams/ }).click();
