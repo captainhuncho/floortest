@@ -93,6 +93,48 @@ export async function moveToProjects(trackId: number, folder: number | null): Pr
   return { ok: true };
 }
 
+/** The most tracks one batch move takes: a full screen of picks, a stop for scripts. */
+const MAX_BATCH = 100;
+
+/**
+ * Moves picked tracks into Projects, into one project, a new one named here, or none. Only the desk's own uploads move
+ * (never a sender's): the rest are counted as skipped. Stops when Projects are full. Owner and admins.
+ */
+export async function moveManyToProjects(
+  trackIds: number[],
+  target: { project: number | null } | { newProject: string },
+): Promise<{ ok: true; moved: number; skipped: number; full: boolean; project: number | null } | { ok: false; error: string }> {
+  const u = await requireRole("admin");
+  const ids = [...new Set((Array.isArray(trackIds) ? trackIds : []).map(recordId))].filter((id): id is number => id !== null);
+  if (!ids.length) return { ok: false, error: "Pick at least one track." };
+  if (ids.length > MAX_BATCH) return { ok: false, error: `Move up to ${MAX_BATCH} tracks at a time.` };
+  let project: number | null;
+  if (target && "newProject" in target) {
+    try {
+      project = await createFolder(u, String(target.newProject ?? ""));
+    } catch (e) {
+      if (e instanceof IntakeError) return { ok: false, error: e.message };
+      throw e;
+    }
+  } else {
+    const f = folderId(target?.project ?? null);
+    if (Number.isNaN(f)) return { ok: false, error: "Choose a project." };
+    project = f;
+  }
+  let moved = 0;
+  let full = false;
+  for (const id of ids) {
+    const r = await moveTrackToProjects(u, id, project);
+    if (r.ok) moved++;
+    else if (r.error.startsWith("Projects are full")) {
+      full = true;
+      break;
+    } else if (r.error.startsWith("That project isn't there")) return { ok: false, error: r.error };
+  }
+  revalidatePath("/dashboard", "layout");
+  return { ok: true, moved, skipped: ids.length - moved, full, project };
+}
+
 /** 1b: moves all the desk's own uploads from its collections into Projects (never a sender's). Owner and admins. */
 export async function moveAllToProjects(): Promise<{ ok: true; moved: number; left: number; full: boolean }> {
   const u = await requireRole("admin");

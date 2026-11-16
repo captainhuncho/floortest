@@ -39,7 +39,7 @@ export type LibraryTrack = {
 };
 
 /** A project: a folder of the desk's own tracks (owner, 13 Nov: "folders like collections"). */
-export type LibraryFolder = { id: number; name: string; count: number; duration: number; created_at: number };
+export type LibraryFolder = { id: number; name: string; count: number; duration: number; created_at: number; /** The project folder it is filed in (desk_folders, kind "project"); null when in none. */ desk_folder_id: number | null };
 
 const COLUMNS = "id, title, artist, genre, mime, size, duration, peaks, folder_id, created_at";
 /** The most projects one desk can have: plenty for real use, a stop for scripts. */
@@ -99,13 +99,13 @@ export async function libraryUsed(desk: Pick<User, "id">) {
 export async function listFolders(desk: Pick<User, "id" | "actor_id">): Promise<LibraryFolder[]> {
   const rows = await asPerson(desk.actor_id, () =>
     q.all<LibraryFolder>(
-      `SELECT f.id, f.name, f.created_at, COUNT(t.id) AS count, COALESCE(SUM(t.duration), 0) AS duration
+      `SELECT f.id, f.name, f.created_at, f.desk_folder_id, COUNT(t.id) AS count, COALESCE(SUM(t.duration), 0) AS duration
        FROM library_folders f LEFT JOIN library_tracks t ON t.folder_id = f.id AND t.user_id = f.user_id
-       WHERE f.user_id = ? GROUP BY f.id, f.name, f.created_at ORDER BY f.created_at, f.id`,
+       WHERE f.user_id = ? GROUP BY f.id, f.name, f.created_at, f.desk_folder_id ORDER BY f.created_at, f.id`,
       desk.id,
     ),
   );
-  return rows.map((r) => ({ id: Number(r.id), name: r.name, count: Number(r.count), duration: Number(r.duration), created_at: Number(r.created_at) }));
+  return rows.map((r) => ({ id: Number(r.id), name: r.name, count: Number(r.count), duration: Number(r.duration), created_at: Number(r.created_at), desk_folder_id: r.desk_folder_id == null ? null : Number(r.desk_folder_id) }));
 }
 
 /** One of the desk's projects, or null when it isn't theirs (or is gone). */
