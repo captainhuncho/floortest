@@ -80,7 +80,7 @@ Review panel: title · one meta line · tags (sets / release / AI / duplicate / 
    Details (closed, remembered) ─► format & size · dates · Download · Move · Delete (confirm) · sender email, links, stats, note, last 3 events · Full history →
 Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
-Floor ─► Collections ─► New collection / Open collection (New and Edit: owner, A&R / Admin, or a ticked Member; owner 16 Nov) ─► Add tracks (owner: choose WAV/MP3s, edit titles, rights tick, upload; they land in Projects, Open Projects) ─► Edit collection · Download collection · Files only · Send new tracks here
+Floor ─► Collections ─► New collection / Open collection ─► Add tracks (owner: choose WAV/MP3s, edit titles, rights tick, upload; they land in Projects, Open Projects) ─► Edit collection · Download collection · Files only · Send new tracks here
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
    /receipt/<token> and /sent/<link> show the sender's email masked (m•••@g•••.com); End this link now still works
@@ -97,7 +97,7 @@ Account ─► About FloorTest ─► Send feedback ─► the same form opens u
    ├─ Not now (first time) ─► closes ─► asked once more after 10 further decisions (users.feedback_snoozed_at)
    └─ Don't ask again · a second Not now ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
 ```
-Mobile tab bar: Floor · Queue · Collections · Prepare · Send (Send since 16 Nov, same rule as the desktop rail: not for members, behind `send_music`). Desktop sidebar adds Contacts, Activity.
+Mobile menu: Floor · Collections · Queue · Prepare · More (a sheet: Send music, Contacts, Activity, How it works). Desktop sidebar lists them all.
 Any menu tap (desk, settings rail, ops): the tapped item lights up at once ─► the page's skeleton (loading.tsx) ─► the page. A thin lime line along the top only if nothing has arrived after 150ms.
 
 ## Plans
