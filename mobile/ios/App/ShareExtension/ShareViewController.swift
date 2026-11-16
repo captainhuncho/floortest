@@ -15,16 +15,39 @@ class ShareViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = ink
         message.textColor = .white
-        message.font = .monospacedSystemFont(ofSize: 16, weight: .semibold)
+        // Dynamic Type: the mono face scales with the reader's text size (body style) and follows changes live.
+        message.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .monospacedSystemFont(ofSize: 16, weight: .semibold))
+        message.adjustsFontForContentSizeCategory = true
         message.numberOfLines = 0
         message.textAlignment = .center
         message.text = "Adding to FloorTest…"
-        button.setTitle("Done", for: .normal)
-        button.titleLabel?.font = .monospacedSystemFont(ofSize: 15, weight: .bold)
-        button.setTitleColor(ink, for: .normal)
-        button.backgroundColor = lime
-        button.layer.cornerRadius = 10
-        button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 28, bottom: 12, right: 28)
+        // UIButton.Configuration (iOS 15+): contentEdgeInsets is ignored and deprecated under it. Same look as before:
+        // lime fill, ink bold mono text, 10pt corners, 12/28 padding.
+        var done = UIButton.Configuration.filled()
+        done.title = "Done"
+        done.baseBackgroundColor = lime
+        done.baseForegroundColor = ink
+        done.background.cornerRadius = 10
+        done.cornerStyle = .fixed
+        done.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 28, bottom: 12, trailing: 28)
+        // Scales with Dynamic Type (headline style); the button re-runs this on a text-size change.
+        done.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var a = attrs
+            a.font = UIFontMetrics(forTextStyle: .headline).scaledFont(for: .monospacedSystemFont(ofSize: 15, weight: .bold))
+            return a
+        }
+        done.titleLineBreakMode = .byTruncatingTail
+        button.configuration = done
+        button.titleLabel?.adjustsFontForContentSizeCategory = true
+        // VoiceOver reads "Done, button"; the colours are fixed (ink on lime, about 16:1), so light and dark look the
+        // same, and nothing here animates, so Reduce Motion has nothing to calm.
+        button.accessibilityLabel = "Done"
+        button.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            // Apple's minimum tap target, whatever the text size.
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+        ])
         button.isHidden = true
         button.addTarget(self, action: #selector(close), for: .touchUpInside)
         let stack = UIStackView(arrangedSubviews: [message, button])
