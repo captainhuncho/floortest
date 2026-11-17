@@ -142,6 +142,41 @@ test("whatHappened: the desk's own newest events in the span, never another desk
   assert.equal((await A.whatHappened(desk(a), range, Number.NaN)).length <= 5, true, "a bad limit falls back to 5");
 });
 
+test("whatHappened: arrivals and downloads show, a deleted track and another desk's track never do, nor another desk's collection name", async () => {
+  const A = await import("../src/lib/analytics");
+  const { q } = await import("../src/lib/db");
+  const { desk, a, b, now } = await setup();
+  const range = A.periodRange("30d", "UTC", now);
+  const live = await q.get<{ id: number; sender_id: number }>("SELECT id, sender_id FROM tracks WHERE user_id = ? AND deleted_at IS NULL ORDER BY id LIMIT 1", a);
+  const gone = await q.get<{ id: number; sender_id: number }>("SELECT id, sender_id FROM tracks WHERE user_id = ? AND deleted_at IS NOT NULL LIMIT 1", a);
+  const theirs = await q.get<{ id: number; sender_id: number }>("SELECT id, sender_id FROM tracks WHERE user_id = ? AND collection_id IS NOT NULL LIMIT 1", b);
+  assert.ok(live && gone && theirs);
+  const event = (track: { id: number; sender_id: number }, type: string, at: number) =>
+    q.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?, ?, ?, ?, '', ?)", a, track.sender_id, track.id, type, at);
+  await event(live, "submitted", now - 400);
+  await event(live, "downloaded", now - 300);
+  await event(gone, "kept", now - 200);
+  // A desk A event pointing at desk B's sender and track can't even be stored.
+  await assert.rejects(event(theirs, "submitted", now - 100), /events_sender_same_desk/);
+  const rows = await A.whatHappened(desk(a), range, 20);
+  const types = rows.map((r) => r.type);
+  assert.ok(types.includes("submitted") && types.includes("downloaded"), "arrivals and downloads show");
+  assert.ok(!rows.some((r) => r.trackId === gone.id), "a deleted track never shows");
+  assert.ok(!rows.some((r) => r.trackId === theirs.id), "another desk's track never shows");
+  const who = await A.whoSent(desk(a), range, 200);
+  assert.ok(!JSON.stringify(rows).includes("B callout") && !JSON.stringify(who).includes("B callout"), "another desk's collection name never shows as a place");
+});
+
+test("ownedSender: another desk's sender is not found", async () => {
+  const { ownedSender } = await import("../src/lib/desk");
+  const { q } = await import("../src/lib/db");
+  const { desk, a, b } = await setup();
+  const senderOfA = await q.get<{ id: number }>("SELECT id FROM senders WHERE user_id = ? LIMIT 1", a);
+  assert.ok(senderOfA);
+  assert.ok(await ownedSender(desk(a), senderOfA.id), "the desk finds its own sender");
+  assert.equal(await ownedSender(desk(b), senderOfA.id), undefined, "desk B gets nothing for desk A's sender");
+});
+
 test("sharedLinks: per person on this desk's links only, in the span", async () => {
   const A = await import("../src/lib/analytics");
   const { q, desk, a, b, afro, bCallout, now } = await setup();
