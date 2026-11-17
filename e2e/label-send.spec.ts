@@ -16,7 +16,7 @@ async function send(page: import("@playwright/test").Page, title: string, play: 
   await page.goto("/dashboard/send?to=lunalabel");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: `${title}.wav`, mimeType: "audio/wav", buffer: wav(4) });
   await expect(page.getByText(/WAV · \d+:\d+/)).toBeVisible({ timeout: 60_000 });
-  await page.getByLabel("Title", { exact: true }).fill(title);
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
   await page.getByLabel("Artist").fill("Lou Sender");
   const genre = page.getByRole("combobox", { name: "Genre" });
   if (await genre.count()) await genre.selectOption({ index: 1 });

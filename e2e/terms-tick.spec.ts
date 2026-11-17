@@ -36,7 +36,7 @@ async function fillFirstSend(page: Page, title: string, email: string) {
   await page.goto("/kitkeys");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: `Tick - ${title}.wav`, mimeType: "audio/wav", buffer: wav(4) });
   await expect(page.getByText(/WAV · \d+:\d+/)).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel("Title", { exact: true }).fill(title);
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
   await page.getByLabel("Artist").fill("First Sender");
   const genre = page.getByRole("combobox", { name: "Genre" });
   if (await genre.count()) await genre.selectOption({ index: 1 });
@@ -92,7 +92,7 @@ test("when the Terms can't be checked, the send stops, says so and keeps the for
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByText(error).first()).toBeVisible({ timeout: 60_000 });
   expect(puts, "no file was uploaded").toBe(0);
-  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Tick Down");
+  await expect(page.getByRole("textbox", { name: "Title", exact: true })).toHaveValue("Tick Down");
   // The confirmed sender is kept as one "Sending as …" line, with the email masked.
   await expect(page.getByText(`Sending as First Sender · ${maskEmail(email)}`)).toBeVisible();
   await expect(page.getByText(/Your receipt is on its way to/)).toHaveCount(0);
