@@ -2,10 +2,11 @@
 
 import { Req } from "@/components/Req";
 import { useState } from "react";
+import { chip } from "./Choice";
 
 const OTHER = "__other";
 
-/** Genre dropdown from the receiver's list, with "Other…" for anything that isn't on it. */
+/** Genre from the receiver's list, with "Other…" for anything that isn't on it. */
 export function GenrePicker({
   genres,
   value,
@@ -36,7 +37,22 @@ export function GenrePicker({
   // A genre typed earlier (e.g. answers restored after the page reloaded) that isn't on the list opens "Other".
   const other = otherPicked || (!!value && !genres.includes(value));
   const selected = other ? OTHER : value;
-  // A receiver's own short list (6 at most) reads best as tappable choices; the long default list stays a dropdown.
+  const otherInput = other && (
+    <label className="block">
+      <span className="sr-only">Your genre</span>
+      <input
+        className={`${inputClass} ${invalid ? "border-danger/60" : ""}`}
+        aria-invalid={invalid || undefined}
+        aria-describedby={issue ? `${id}-issue` : undefined}
+        value={value}
+        maxLength={40}
+        autoFocus
+        placeholder="Type your genre"
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  );
+  // A receiver's own short list (6 at most) reads best as tap choices; the long default list stays a dropdown.
   if (genres.length <= 6 && !dropdown)
     return (
       <div className="space-y-2">
@@ -45,43 +61,29 @@ export function GenrePicker({
             Genre
             <Req />
           </legend>
-          {/* Compact chips (owner, 30 Oct): 36px to look at, a 44px tap area, two rows at phone width. */}
-          <div className="flex flex-wrap gap-x-1.5 gap-y-2">
+          <div className="flex flex-wrap gap-1.5">
             {[...genres, OTHER].map((g, i) => {
               const on = g === OTHER ? other : !other && value === g;
               return (
-                <label
+                <button
                   key={g}
-                  className={`relative inline-flex h-9 cursor-pointer items-center whitespace-nowrap rounded-[10px] border px-3 text-[13px] font-semibold transition-colors duration-150 before:absolute before:-inset-x-[3px] before:-inset-y-1 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lime ${
-                    on
-                      ? "border-lime/45 bg-lime/12 text-lime"
-                      : `bg-well hover:border-line-2 ${g === OTHER ? "border-dashed text-mute" : "text-bone"} ${invalid ? "border-danger/60" : "border-line"}`
-                  }`}
+                  type="button"
+                  id={i === 0 ? id : undefined}
+                  aria-pressed={on}
+                  onClick={() => {
+                    setOther(g === OTHER);
+                    onChange(g === OTHER ? "" : g);
+                  }}
+                  className={`${chip(on, invalid)} ${g === OTHER && !on ? "border-dashed text-mute" : ""}`}
                 >
-                  <input
-                    id={i === 0 ? id : undefined}
-                    type="radio"
-                    name={`${id}-choice`}
-                    checked={on}
-                    onChange={() => {
-                      setOther(g === OTHER);
-                      onChange(g === OTHER ? "" : g);
-                    }}
-                    className="sr-only"
-                  />
                   {g === OTHER ? "Other…" : g}
-                </label>
+                </button>
               );
             })}
           </div>
           {issue}
         </fieldset>
-        {other && (
-          <label className="block">
-            <span className="sr-only">Your genre</span>
-            <input className={`${inputClass} ${invalid ? "border-danger/60" : ""}`} aria-invalid={invalid || undefined} aria-describedby={issue ? `${id}-issue` : undefined} value={value} maxLength={40} autoFocus placeholder="Type your genre" onChange={(e) => onChange(e.target.value)} />
-          </label>
-        )}
+        {otherInput}
       </div>
     );
   return (
@@ -117,21 +119,7 @@ export function GenrePicker({
         </select>
         {issue}
       </label>
-      {other && (
-        <label className="block">
-          <span className="sr-only">Your genre</span>
-          <input
-            className={`${inputClass} ${invalid ? "border-danger/60" : ""}`}
-            aria-invalid={invalid || undefined}
-            aria-describedby={issue ? `${id}-issue` : undefined}
-            value={value}
-            maxLength={40}
-            autoFocus
-            placeholder="Type your genre"
-            onChange={(e) => onChange(e.target.value)}
-          />
-        </label>
-      )}
+      {otherInput}
     </div>
   );
 }
