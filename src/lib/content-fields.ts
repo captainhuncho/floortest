@@ -137,7 +137,7 @@ export const SITE_PAGES = {
     fields: {
       login_title: f("Log-in heading", "Back to the desk"),
       signup_title: f("Sign-up heading", "Claim your link"),
-      login_intro: f("Log-in intro", "Sign in to your music desk."),
+      login_intro: f("Log-in intro", "", { hint: "Empty by default: the log-in screen shows no line under its heading unless one is saved here." }),
       login_code_prompt: f("Log-in: line before the code link", "No password?"),
       login_code_link: f("Log-in: code link", "Email me a sign-in code"),
       signup_intro: text("Sign-up intro", "One link for every callout. Free for up to 20 active tracks."),
