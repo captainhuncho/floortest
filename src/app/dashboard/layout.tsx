@@ -66,6 +66,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             cap={cap}
             pause={pauseState}
             canSend={canSend}
+            canSeeAnalytics={user.role !== "member"}
           />
           <main id="main" className="min-w-0 pb-48 md:overflow-y-auto md:pb-24">
             {/* Phones: the logo floats on top in a frosted bar, always in view (owner, 30 Oct); desktop keeps the slim bar. */}

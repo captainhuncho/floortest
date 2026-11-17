@@ -211,6 +211,7 @@ export default async function Account() {
               <Row href="/dashboard/projects" icon="music" title="Projects" sub="Your own tracks, kept until you delete them" />
               <Row href="/dashboard/contacts" icon="contacts" title="Contacts" />
               <Row href="/dashboard/activity" icon="activity" title="Activity" />
+              {user.role !== "member" && <Row href="/dashboard/analytics" icon="analytics" title="Analytics" sub="What came in, what you kept, who opened your links" />}
               <Row href="/dashboard/emails" icon="mail" title="Emails to senders" sub="Everything FloorTest told them" />
               {referralsOn && <Row href="/dashboard/referrals" icon="plus" title="Referrals" sub="Invite DJs · get more active tracks" />}
             </Group>
