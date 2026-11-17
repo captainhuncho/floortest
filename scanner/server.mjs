@@ -89,6 +89,7 @@ const STOP_GRACE_MS = 20_000;
 const stopNow = (signal) => {
   console.log(`scanner stopping (${signal})`);
   server.close(() => process.exit(0));
+  server.closeIdleConnections();
   setTimeout(() => process.exit(0), STOP_GRACE_MS).unref();
 };
 process.on("SIGTERM", () => stopNow("SIGTERM"));
