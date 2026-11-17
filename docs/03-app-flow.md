@@ -89,9 +89,11 @@ Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days o
                           (same answer every time; 3 an hour per receipt, 5 per email, 20 per connection)
                           ─► 6-digit code (10 min, 5 tries) ─► the whole receipt; this browser remembers it 30 days
                           stems upload / Stop private sharing without proof ─► refused on the server, same answer as an unknown link
-Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
+Avatar ─► Settings (/dashboard/settings; /dashboard/account redirects) ─► rows: Contacts, Played out, Pause your link, Theme, Receiving, Team, Notifications, Sign-in and security, Switch desk, Plan (sheet), Help
+   └─ ••• ─┬─ Sign out ─► "Sign out?" ─┬─ this phone/computer ─► /signed-out
+           │                          └─ Sign out everywhere (own desk) ─► password (+ code with two-step) ─► every session ended ─► /signed-out
+           └─ Delete account (own desk) ─► what goes ─► "Are you sure?" (type the link name, password, + code) ─► deleteAccount
 Feedback (every desk page, phones too: the speech-bubble icon in the top bar) ─► Idea / Bug / Confusing / Love it · text ─► Send ─► ops → Feedback (with the page it came from and the window width, e.g. 390 px) · toast "Thanks. It went straight to the FloorTest team."
-Account ─► About FloorTest ─► Send feedback ─► the same form opens under the row (not the public contact page) ─► Send ─► ops → Feedback
 5th Keep / Not for me by a person (any desk, counted from their own activity) ─► the decision saves as usual ─► a card at the top of the page (in the page, not over it), once: "How's FloorTest working for you?" (no focus taken; shortcuts and the player carry on)
    ├─ Send ─► ops → Feedback ─► not asked again
    ├─ Not now (first time) ─► closes ─► asked once more after 10 further decisions (users.feedback_snoozed_at)

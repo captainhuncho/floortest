@@ -31,7 +31,7 @@ const ROLES: Record<string, Record<string, Need>> = {
     getReplyTemplates: "member", saveReplyTemplate: "member", deleteReplyTemplate: "member", addNote: "member", replyToSender: "member", askForStems: "member",
     savePrep: "member", blockSender: "admin", decideRelease: "member",
   },
-  "security.ts": { changePassword: "owner", signOutOtherDevices: "owner", signOutDevice: "owner", startTwoFactor: "owner", confirmTwoFactor: "owner", disableTwoFactor: "owner", setSigninAlerts: "owner", disconnectGoogle: "owner" },
+  "security.ts": { changePassword: "owner", signOutOtherDevices: "owner", signOutEverywhere: "owner", signOutDevice: "owner", startTwoFactor: "owner", confirmTwoFactor: "owner", disableTwoFactor: "owner", setSigninAlerts: "owner", disconnectGoogle: "owner" },
   "passkeys.ts": { startAddPasskey: "owner", finishAddPasskey: "owner", deletePasskey: "owner" },
   "settings.ts": {
     updateNotifications: "owner", sendDigestNow: "owner", updateSettings: "owner", updatePublicPage: "admin", setPlan: "owner", confirmBetaUpgrade: "owner",
