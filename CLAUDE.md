@@ -60,7 +60,7 @@ Final check: specific to this product, easy to understand, actually works, what 
 sessions; this Mac is for browser and device checks.
 
 ## Checks
-`npm run typecheck`, `npm run lint` (0 errors), `npm test`, `npm run check:perms` before every push; `npm run e2e` when a
+`npm run typecheck`, `npm run lint` (0 errors), `npm test`, `npm run check:perms`, `npm run audit:prod` before every push; `npm run e2e` when a
 change touches sending, review, downloads, receipts or auth (port 3000 must be free).
 
 ## Local data

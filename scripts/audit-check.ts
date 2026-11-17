@@ -57,8 +57,17 @@ export function parseAudit(out: string): AuditJson {
   } catch {
     throw new Error("npm audit gave no report (offline, or the registry didn't answer).");
   }
-  if (!audit || typeof audit !== "object" || ("error" in audit && !("vulnerabilities" in audit))) throw new Error(`npm audit failed: ${JSON.stringify((audit as { error?: unknown })?.error ?? audit).slice(0, 200)}`);
-  return audit as AuditJson;
+  // A registry outage still gives valid JSON ({ message, error }) with nothing in it: only a real report may pass (Safety, 17 Nov).
+  const a = audit as { error?: unknown; vulnerabilities?: unknown; metadata?: { vulnerabilities?: Record<string, unknown> } } | null;
+  const isObject = (x: unknown) => !!x && typeof x === "object" && !Array.isArray(x);
+  if (!isObject(a) || a!.error !== undefined || !isObject(a!.vulnerabilities) || !isObject(a!.metadata?.vulnerabilities))
+    throw new Error(`npm audit failed: ${JSON.stringify(a?.error ?? a).slice(0, 200)}`);
+  // npm's own totals must match the findings listed, so a cut-short or reshaped report can't hide one.
+  const counts = a!.metadata!.vulnerabilities!;
+  const expected = Number(counts.high) + Number(counts.critical);
+  const listed = Object.values(a!.vulnerabilities as Record<string, Vuln>).filter((v) => SERIOUS.has(v?.severity)).length;
+  if (!Number.isInteger(expected) || listed !== expected) throw new Error(`npm audit report doesn't add up: ${listed} high or critical listed, metadata says ${counts.high} high and ${counts.critical} critical.`);
+  return a as AuditJson;
 }
 
 function runAudit(): AuditJson {
