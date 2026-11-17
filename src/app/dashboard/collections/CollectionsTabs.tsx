@@ -1,31 +1,46 @@
+"use client";
+
 import Link from "next/link";
 
 /**
- * One Collections menu with two groups (owner, 15 Nov): Callouts, what senders send to, and Projects, the desk's own
- * tracks. Both pages keep their own address; this row switches between them. Wide and plain so it's seen (owner, 15
- * Nov): two equal halves across the column, each saying what's in it.
+ * The filter over Collections (owner, 17 Nov: option 43): All, Callouts (what senders send to) or Projects (the desk's
+ * own tracks). It replaces the Callouts / Projects switch. Each view keeps its own address, so the tabs are links; the
+ * arrow keys move between them as in any tab list.
  */
-export function CollectionsTabs({ on }: { on: "callouts" | "projects" }) {
-  const tabs = [
-    { key: "callouts", href: "/dashboard/collections", label: "Callouts", hint: "What senders send to" },
-    { key: "projects", href: "/dashboard/projects", label: "Projects", hint: "Your own tracks" },
-  ] as const;
+export type CollectionsFilter = "all" | "callouts" | "projects";
+
+const TABS: { key: CollectionsFilter; href: string; label: string }[] = [
+  { key: "all", href: "/dashboard/collections", label: "All" },
+  { key: "callouts", href: "/dashboard/collections?kind=callouts", label: "Callouts" },
+  { key: "projects", href: "/dashboard/projects", label: "Projects" },
+];
+
+export function CollectionsTabs({ on }: { on: CollectionsFilter }) {
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const tabs = [...e.currentTarget.querySelectorAll<HTMLAnchorElement>("[role=tab]")];
+    const at = tabs.indexOf(document.activeElement as HTMLAnchorElement);
+    if (at < 0) return;
+    e.preventDefault();
+    tabs[(at + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length].focus();
+  };
   return (
-    <nav aria-label="Collections" className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-1 rounded-2xl border border-line bg-well p-1">
-      {tabs.map((t) => {
+    <div role="tablist" aria-label="Show" onKeyDown={onKeyDown} className="flex gap-1">
+      {TABS.map((t) => {
         const current = on === t.key;
         return (
           <Link
             key={t.key}
             href={t.href}
-            aria-current={current ? "page" : undefined}
-            className={`flex min-h-14 flex-col items-center justify-center rounded-xl px-3 py-2 text-center transition-colors ${current ? "bg-lime/15 text-lime ring-1 ring-lime/60" : "text-bone hover:bg-ink-4"}`}
+            role="tab"
+            aria-selected={current}
+            tabIndex={current ? 0 : -1}
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3.5 text-[13px] transition-colors ${current ? "bg-well font-semibold text-bone" : "text-mute hover:text-bone"}`}
           >
-            <span className="text-[15px] font-semibold leading-tight">{t.label}</span>
-            <span className={`text-[11.5px] leading-tight ${current ? "text-lime/80" : "text-mute"}`}>{t.hint}</span>
+            {t.label}
           </Link>
         );
       })}
-    </nav>
+    </div>
   );
 }
