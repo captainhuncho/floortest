@@ -54,6 +54,14 @@ async function playedOutAt(trackId: number) {
   return (await q.get<{ at: number | null }>("SELECT played_out_at AS at FROM tracks WHERE id = ?", trackId))!.at;
 }
 
+/** The signal row and the sender's email a mark leaves behind. */
+async function traces(trackId: number, userId: number) {
+  const { q } = await import("../src/lib/db");
+  const events = (await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM events WHERE track_id = ? AND type = 'played_out'", trackId))!.n;
+  const mail = (await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM outbox WHERE user_id = ?", userId))!.n;
+  return { events: Number(events), mail: Number(mail) };
+}
+
 test("a team Member can't mark a kept track played out; an A&R / Admin on the same desk can", async () => {
   const { q, now } = await import("../src/lib/db");
   await q.run("INSERT INTO switches (key, on_, updated_at) VALUES ('teams', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now());
@@ -66,9 +74,11 @@ test("a team Member can't mark a kept track played out; an A&R / Admin on the sa
 
   assert.equal(await markAs(await signIn(member, owner), track), false, "a Member is refused");
   assert.equal(await playedOutAt(track), null, "nothing marked, so no email to the sender");
+  assert.deepEqual(await traces(track, owner), { events: 0, mail: 0 }, "no signal row, no email");
 
   assert.equal(await markAs(await signIn(admin, owner), track), true, "an A&R / Admin on the same desk can");
   assert.ok(await playedOutAt(track));
+  assert.deepEqual(await traces(track, owner), { events: 1, mail: 1 }, "one signal row, one email to the sender");
 });
 
 test("a desk without the played-out tool can't mark its own kept track played out", async () => {
@@ -76,4 +86,5 @@ test("a desk without the played-out tool can't mark its own kept track played ou
   const track = await keptTrack(label);
   assert.equal(await markAs(await signIn(label), track), false);
   assert.equal(await playedOutAt(track), null);
+  assert.deepEqual(await traces(track, label), { events: 0, mail: 0 });
 });
