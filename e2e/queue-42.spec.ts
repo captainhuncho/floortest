@@ -40,7 +40,8 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await page.keyboard.press("k");
   await page.keyboard.press("x");
   await expect(panel).toBeVisible();
-  await expect(card.getByRole("heading", { level: 2 })).toHaveText(title);
+  // The track's own title: the open panel has a heading of its own.
+  await expect(card.locator('h2[id^="track-h-"]')).toHaveText(title);
   await expect(card.getByRole("button", { name: /Keep/ })).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Escape");
   await expect(replyButton).toBeFocused();
