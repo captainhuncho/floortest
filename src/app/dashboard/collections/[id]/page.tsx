@@ -20,6 +20,7 @@ import { CalloutTools, DeleteCollection, EditCollectionInfo } from "../Collectio
 import { fmtLength, FolderPage, WIDE } from "../FolderPage";
 import { CalloutState, trackCount } from "../FolderRow";
 import { PlayAll } from "../PlayAll";
+import { toPlayer } from "@/lib/player-track";
 import { shareCardTarget } from "../callout-card";
 import { CollapsiblePanel } from "./CollapsiblePanel";
 import { ShareLinks, type ShareLinkView } from "../ShareLinks";
@@ -172,7 +173,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
           {c.max_tracks ? ` · ${c.count} of ${c.max_tracks}` : ""}
         </>,
       ]}
-      play={<PlayAll queue={cards} name={c.name} />}
+      play={<PlayAll queue={cards.map(toPlayer)} name={c.name} />}
       action={
         c.needs_review > 0 && (
           <Link href={`/dashboard/review?view=queue&c=${c.id}`} className={WIDE}>
