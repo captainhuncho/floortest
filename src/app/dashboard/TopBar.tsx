@@ -5,7 +5,7 @@ import { Chip, Icon, IconBox } from "@/components/Kit";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
 import type { Notice } from "@/lib/notifications";
 import { clearNotifications, markNotificationsRead, quickSearch, type SearchHit } from "./actions/desk";
@@ -19,6 +19,10 @@ type Props = {
 };
 
 type Open = null | "search" | "bell";
+
+const noChange = () => () => {};
+/** Apple keyboards have ⌘; everything else opens search with Ctrl. The server can't tell, so it draws ⌘ first. */
+const onApple = () => /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 
 const initials = (name: string) =>
   name
@@ -34,6 +38,7 @@ export function TopBar(p: Props) {
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
+  const apple = useSyncExternalStore(noChange, onApple, () => true);
 
   // One popover at a time; outside click and Escape close it. ⌘K / Ctrl+K opens search.
   useEffect(() => {
@@ -63,8 +68,24 @@ export function TopBar(p: Props) {
   return (
     <div ref={root} className="relative flex items-center justify-end gap-0.5 rounded-[14px] border border-line bg-card p-[3px]">
       {p.lead}
-      <button className={round} onClick={() => toggle("search")} aria-label="Search (⌘K)" aria-expanded={open === "search"}>
-        <Icon name="search" />
+      {/* Under 1024px: the 44px icon. From 1024px: a field beside the bell (owner, 16 Nov), 240px, 360px from 1100px.
+          Either way it opens the same search card, so there is one place to type. */}
+      <button
+        type="button"
+        data-search
+        onClick={() => toggle("search")}
+        aria-keyshortcuts="Meta+K Control+K"
+        aria-haspopup="dialog"
+        aria-expanded={open === "search"}
+        className={`${round} min-[1024px]:flex min-[1024px]:w-[240px] min-[1024px]:items-center min-[1024px]:gap-2.5 min-[1024px]:border min-[1024px]:border-line min-[1024px]:bg-well min-[1024px]:px-3 min-[1024px]:text-left min-[1024px]:text-[13px] min-[1024px]:text-mute min-[1024px]:hover:border-line-2 min-[1024px]:hover:text-bone min-[1100px]:w-[360px]`}
+      >
+        {/* The name is "Search", plus the words on show from 1024px, so saying what you see finds it. */}
+        <span className="sr-only">Search</span>
+        <Icon name="search" className="size-[18px] min-[1024px]:size-4" />
+        <span className="hidden min-w-0 flex-1 truncate min-[1024px]:block">Tracks, artists or contacts</span>
+        <kbd aria-hidden className="hidden rounded-md border border-line bg-card px-1.5 py-0.5 font-sans text-[10.5px] font-semibold min-[1100px]:block">
+          {apple ? "⌘K" : "Ctrl K"}
+        </kbd>
       </button>
 
       <div className="relative">
