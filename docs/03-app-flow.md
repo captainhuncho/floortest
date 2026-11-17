@@ -88,6 +88,8 @@ Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days o
                      └─ link only ─► status and dates, "The receiver …" ─► Show my details ─► "We sent a code to m•••@g•••.com"
                           (same answer every time; 3 an hour per receipt, 5 per email, 20 per connection)
                           ─► 6-digit code (10 min, 5 tries) ─► the whole receipt; this browser remembers it 30 days
+                          layout (17 Nov): status centred on top, then track and steps; the action (Show my details / Send another, Stop private sharing /
+                          the read-only line) in a bar pinned at the bottom on phones, in the page from 640px; the code screen is short and centred
                           stems upload / Stop private sharing without proof ─► refused on the server, same answer as an unknown link
 Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
 Feedback (every desk page, phones too: the speech-bubble icon in the top bar) ─► Idea / Bug / Confusing / Love it · text ─► Send ─► ops → Feedback (with the page it came from and the window width, e.g. 390 px) · toast "Thanks. It went straight to the FloorTest team."

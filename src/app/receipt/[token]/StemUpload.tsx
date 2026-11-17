@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { QUIET } from "./ReceiptParts";
 
 // "checking": the file has landed and is being checked. held: received while the virus scanner sleeps; it's attached
 // to the track after the next check, within about 10 minutes (src/lib/held-uploads.ts).
@@ -50,28 +51,25 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
   }
 
   return (
-    <section aria-labelledby="stems-h" className="flex flex-col gap-3 rounded-xl border border-lime/30 bg-well p-3">
-      <div>
-        <h2 id="stems-h" className="text-[13px] font-semibold">
+    <section aria-labelledby="stems-h" className="flex flex-col gap-2.5">
+      <p className="text-[13px] leading-5 text-mute">
+        <strong id="stems-h" className="block text-[14px] font-semibold text-bone">
           {receiver} asked for the stems
-        </h2>
-        <p className="mt-1 text-[11px] text-faint">
-          One WAV or MP3 per stem, up to {max}. Only {receiver} can hear or download them.
-        </p>
-      </div>
-      {existing.length > 0 && (
-        <ul className="text-[11px] text-mute">
+        </strong>
+        One WAV or MP3 per stem, up to {max}. Only {receiver} can hear or download them.
+      </p>
+      {existing.length + items.length > 0 && (
+        <ul className="flex flex-col text-[13px]">
           {existing.map((n) => (
-            <li key={n}>✓ {n}</li>
+            <li key={n} className="flex min-h-10 items-center justify-between gap-3 border-t border-line py-1.5">
+              <span className="min-w-0 truncate">{n}</span>
+              <span className="shrink-0 text-mute">✓ Sent</span>
+            </li>
           ))}
-        </ul>
-      )}
-      {items.length > 0 && (
-        <ul className="flex flex-col gap-1.5 text-[11px]">
           {items.map((it, i) => (
-            <li key={i} className="flex items-center justify-between gap-3">
+            <li key={i} className="flex min-h-10 items-center justify-between gap-3 border-t border-line py-1.5">
               <span className="min-w-0 truncate">{it.name}</span>
-              <span className={`shrink-0 ${it.status === "error" ? "text-danger" : it.status === "done" ? "text-lime" : "text-mute"}`}>
+              <span className={`text-right ${it.status === "error" ? "text-danger" : it.status === "done" ? "text-bone" : "text-mute"}`}>
                 {it.status === "done" ? (it.held ? "Received, checking for viruses (up to 10 minutes)" : "✓ Sent") : it.status === "error" ? it.error : it.status === "uploading" ? `${Math.round(it.progress * 100)}%` : it.status === "checking" ? "Checking" : "Waiting"}
               </span>
             </li>
@@ -83,7 +81,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
         type="button"
         disabled={busy || done >= max}
         onClick={() => input.current?.click()}
-        className="inline-flex min-h-11 w-fit items-center rounded-[12px] bg-lime px-4 text-[13px] font-semibold text-ink disabled:opacity-50"
+        className={QUIET}
       >
         {busy ? "Uploading…" : done ? "Add more stems" : "Choose stem files"}
       </button>
