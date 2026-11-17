@@ -9,7 +9,7 @@ import { fillFromFile, readTags } from "@/lib/tags";
 import { Icon } from "@/components/Kit";
 import { GHOST, LIME } from "../kitButtons";
 
-// held: stored and waiting for the next virus-check batch while the scanner sleeps; it's added within about 10 minutes.
+// held: stored and waiting for the next virus-check batch while the scanner sleeps; it's added within about 20 minutes.
 type Item = { file: File; title: string; artist: string; status: "ready" | "uploading" | "done" | "error"; progress: number; error?: string; held?: boolean };
 
 /**

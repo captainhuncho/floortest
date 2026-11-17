@@ -73,7 +73,7 @@ export type UploadOptions = {
 
 /**
  * What one upload ended as: a track (its receipt token), held (stored, waiting for the next virus-check batch while
- * the scanner sleeps; the track and its receipt email follow within about 10 minutes), or an error to show.
+ * the scanner sleeps; the track and its receipt email follow within about 20 minutes), or an error to show.
  */
 export type UploadResult = { token: string } | { held: true } | { error: string };
 
