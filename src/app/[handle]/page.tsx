@@ -13,7 +13,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
 import { activeCollection, calloutBlock, capacity, isPaused, NOT_OPEN_YET, pausedMessage, userByHandleForView } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
-import { genresFor } from "@/lib/plans";
+import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { botCheckKey } from "@/lib/turnstile";
@@ -87,14 +87,14 @@ export default async function ReceiverPage({ params }: Props) {
   const shareNote = sharing && !!collection?.allow_sharing ? `${firstName} may share what you send privately with people they name.` : null;
   const brief = closedReason ? null : { heading: <E k="looking_for" />, genres: ownGenres ? genres : [], items: briefRest, shareNote };
   const bpmRange: [number, number] | null = collection?.bpm_min && collection.bpm_max ? [collection.bpm_min, collection.bpm_max] : null;
-  const vars = { receiver: receiver.name };
-  // What happens to the file, under the drop box: who hears it, the receipt, no account. Once a file is picked the form
-  // says it in one line above Send.
-  const bullets = ([team ? "bullet_private_team" : "bullet_private", "bullet_receipt", "bullet_no_account"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
+  const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
+  // What happens to the file, under the drop box: who hears it, deletion, the receipt, no account. Once a file is picked
+  // the form says it above Send, with the deletion line as on the page (owner, 17 Nov: the retention line stays).
+  const bullets = ([team ? "bullet_private_team" : "bullet_private", "bullet_retention", "bullet_receipt", "bullet_no_account"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
 
   const verified = receiver.identity_status === "verified";
   const cover = receiver.cover_key ? `/api/cover/${receiver.handle}?v=${encodeURIComponent(receiver.cover_key)}` : null;
-  const bulletIcon = { bullet_private: "lock", bullet_private_team: "lock", bullet_receipt: "mail", bullet_no_account: "check" } as const;
+  const bulletIcon = { bullet_private: "lock", bullet_private_team: "lock", bullet_retention: "clock", bullet_receipt: "mail", bullet_no_account: "check" } as const;
   const open = collection && !closedReason ? collection : null;
 
   return (
@@ -140,7 +140,7 @@ export default async function ReceiverPage({ params }: Props) {
           <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
         </section>
       ) : (
-        <SendModes folderBytes={folderBytes} brief={brief} receiverFirstName={firstName} bpmRange={bpmRange} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={open ? open.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} termsHash={(await currentTermsOrNull())?.hash} receiverAsksPlay={receiverAsksPlayChoice(receiver.kind)} />
+        <SendModes folderBytes={folderBytes} brief={brief} retention={fill(c.bullet_retention, vars)} receiverFirstName={firstName} bpmRange={bpmRange} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={open ? open.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} termsHash={(await currentTermsOrNull())?.hash} receiverAsksPlay={receiverAsksPlayChoice(receiver.kind)} />
       )}
       {/* Once a file is picked the form says this in one line above Send, so the list steps aside. */}
       {!closedReason && (

@@ -73,7 +73,10 @@ export function SubmitForm({
   termsHash,
   receiverAsksPlay = false,
   folderLink,
+  retention,
 }: {
+  /** On the public link: the deletion promise ("Files that aren't kept are deleted within N days."), shown above Send. */
+  retention?: string;
   /** On the public link, when the receiver takes folders: the "Send a folder" link shown under Choose a track. */
   folderLink?: React.ReactNode;
   handle: string;
@@ -706,7 +709,7 @@ export function SubmitForm({
             )}
             {!account && (
               <p className="text-center text-[12px] text-mute">
-                Only {receiverName}’s desk hears it. You get a receipt.
+                Only {receiverName}’s desk hears it. You get a receipt.{retention && ` ${retention}`}
               </p>
             )}
             <button className="btn-lime min-h-12 w-full rounded-full text-[15px] font-bold" disabled={busy || analyzing || checking || termsWaiting} aria-describedby={termsWaiting ? "terms-wait" : undefined}>
