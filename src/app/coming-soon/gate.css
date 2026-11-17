@@ -157,14 +157,29 @@
   .cs-sheet > .cs-eye { margin-bottom: -8px; }
 }
 @media (prefers-color-scheme: light) and (min-width: 1024px) and (min-height: 500px) {
-  /* by day the words sit straight on the clean photo, no panel (as 54's story), with a soft light halo behind them */
+  /* by day the words sit straight on the clean photo, no panel (as 54's story), with a tight light halo that keeps the letters crisp */
   .af-page.theme-system .cs-sheet { padding-left: 0; background: none; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .af-page.theme-system .cs-eye,
   .af-page.theme-system .cs-line,
   .af-page.theme-system .cs-lab,
   .af-page.theme-system .cs-back,
-  .af-page.theme-system .cs-top .aw-q { font-weight: 600; text-shadow: 0 0 10px rgb(252 250 245 / 0.95), 0 0 3px rgb(252 250 245 / 0.9); }
+  .af-page.theme-system .cs-top .aw-q { font-weight: 600; color: #121310; text-shadow: 0 0 2px rgb(252 250 245 / 0.95), 0 0 12px rgb(252 250 245 / 0.7); }
+  .af-page.theme-system .cs-top .aw-q { font-size: 14px; }
+  /* the line and Log in share one light glass pill, so the words stay 4.5:1 over the grey ceiling */
+  .af-page.theme-system .cs-top .aw-have { padding: 4px 4px 4px 14px; border-radius: 12px; background: rgb(252 250 245 / 0.6); }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .af-page.theme-system .cs-top .aw-have { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .af-page.theme-system .cs-top .aw-have { background: rgb(252 250 245); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
   .af-page.theme-system .cs-sheet .af-btn.aw-alt { background: rgb(252 250 245 / 0.72); border-color: rgb(18 19 16 / 0.14); }
+  /* the field stands off the bright floor: light fill, a dark edge, the sheet's inset highlight (DESIGN, 17 Nov) */
+  /* edge 0.7, not the drawing's 0.18: the floor behind the field is mid-grey, and 0.18 measured 1.1-1.7:1 against it */
+  .af-page.theme-system .cs-sheet .af-fld { background: rgb(252 250 245 / 0.86); border-color: rgb(18 19 16 / 0.7); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9); }
+  .af-page.theme-system .cs-sheet .af-fld.af-bad { border-color: #e5484d; }
+  .af-page.theme-system .cs-sheet .af-fld:focus,
+  .af-page.theme-system .cs-sheet div.af-fld:focus-within { border-color: var(--ag-ink); box-shadow: 0 0 0 1px var(--ag-ink); }
 }
 @media (min-width: 1024px) and (min-height: 500px) and (max-height: 760px) {
   .cs-sheet { gap: 14px; padding: 28px 32px; }
