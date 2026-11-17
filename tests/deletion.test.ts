@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0154
 import { toPositional } from "../src/lib/db/client";
 import { MIGRATIONS } from "../src/lib/db/migrations";
 import { accountKeys, drainDeletions, handOverFolderCovers, queueDeletion, trackKeys } from "../src/lib/deletion-core";
 
 async function setup() {
-  const pg = await PGlite.create();
+  const pg = await PGlite.create({ extensions: { pg_trgm } });
   await pg.exec("create table schema_migrations (id text primary key, applied_at bigint not null)");
   for (const m of MIGRATIONS) await pg.exec(m.sql);
   const db = {

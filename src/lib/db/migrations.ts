@@ -2481,4 +2481,17 @@ alter table library_folders add constraint library_folders_folder_fk foreign key
 create index if not exists library_folders_folder on library_folders(desk_folder_id, user_id, desk_folder_kind) where desk_folder_id is not null;
 grant update (desk_folder_id) on library_folders to ft_person;`,
   },
+  {
+    // Search that forgives typos and ranks the closest match first (owner, 17 Nov: "In-house pg_trgm"), in our own
+    // database: nothing leaves it. The extension in public (on ft_person's search_path, so searches under asPerson can
+    // call it) and trigram indexes on the fields the top bar searches, so `<%` and LIKE use an index, not a scan.
+    // Additive only: no table, column or grant changes. Plain CREATE INDEX blocks writes while it builds: fine at
+    // today's size. Independent of 0152/0153: the runner applies any id not yet in schema_migrations, in list order.
+    id: "0154_search_trgm",
+    sql: `create extension if not exists pg_trgm with schema public;
+create index if not exists tracks_title_trgm on tracks using gin (lower(title) gin_trgm_ops);
+create index if not exists tracks_artist_trgm on tracks using gin (lower(artist) gin_trgm_ops);
+create index if not exists tracks_genre_trgm on tracks using gin (lower(coalesce(genre, '')) gin_trgm_ops);
+create index if not exists senders_name_trgm on senders using gin (lower(name) gin_trgm_ops);`,
+  },
 ];

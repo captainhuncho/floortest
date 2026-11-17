@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0154
 import { MIGRATIONS } from "../src/lib/db/migrations";
 
 test("every foreign key has an index that starts with its columns", async () => {
-  const pg = await PGlite.create();
+  const pg = await PGlite.create({ extensions: { pg_trgm } });
   await pg.exec("create table schema_migrations (id text primary key, applied_at bigint not null)");
   for (const m of MIGRATIONS) await pg.exec(m.sql);
   const missing = await pg.query<{ fk: string }>(`

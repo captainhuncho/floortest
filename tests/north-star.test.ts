@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0154
 import { toPositional } from "../src/lib/db/client";
 import { MIGRATIONS } from "../src/lib/db/migrations";
 import { DECIDE_WITHIN, northStar } from "../src/lib/north-star";
@@ -8,7 +9,7 @@ import { DECIDE_WITHIN, northStar } from "../src/lib/north-star";
 const DAY = 86_400_000;
 
 test("north star: decided within 7 days, only for tracks whose 7 days are over, split by plan and desk size", async () => {
-  const pg = await PGlite.create();
+  const pg = await PGlite.create({ extensions: { pg_trgm } });
   await pg.exec("create table schema_migrations (id text primary key, applied_at bigint not null)");
   for (const m of MIGRATIONS) await pg.exec(m.sql);
   const db = {
