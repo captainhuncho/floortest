@@ -34,7 +34,7 @@ async function proveWithCode(page: Page, email: string, masked: string) {
   const ask = page.getByRole("button", { name: "Show my details" });
   await hydrated(ask);
   await ask.click();
-  await expect(page.getByRole("status").filter({ hasText: `We sent a code to ${masked}` })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: `We sent a 6-digit code to ${masked}` })).toBeVisible();
   await page.getByLabel("6-digit code").fill(await codeFor(page.request, email, since));
   await page.getByRole("button", { name: "Show my details" }).click();
 }
@@ -146,6 +146,21 @@ test.describe("receipt details need proof", () => {
     await page.reload();
     await expect(page.getByText(LINKS.other.title)).toBeVisible();
     await expect(page.getByRole("button", { name: "Stop private sharing" })).toHaveCount(0);
+  });
+
+  test("an unknown receipt link answers 200 with the not-available screen, kept out of search and caches", async ({ page }) => {
+    // The loading skeleton starts the page before the link is looked up, so the answer is 200, not 404 (owner, 17 Nov):
+    // the same status a closed receipt gives. The headers keep it out of search and caches.
+    const path = `/receipt/e2eNoSuchReceipt${Date.now().toString(36)}`;
+    const res = await page.request.get(path);
+    expect(res.status()).toBe(200);
+    expect(res.headers()["x-robots-tag"]).toContain("noindex");
+    expect(res.headers()["cache-control"]).toContain("no-store");
+    const html = await res.text();
+    for (const secret of PRIVATE) expect(html, secret).not.toContain(secret);
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1, name: "This receipt isn't available" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Email me my sends" })).toBeVisible();
   });
 
   test("a closed receipt shows only that it closed, and every route answers as for an unknown link", async ({ page, browser }) => {
