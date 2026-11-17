@@ -38,9 +38,9 @@ test("phone: the menu sits alone, the player joins it, the heart keeps with Undo
 
   // The title is a 44px target: its tap area runs from 14px above the player down to the wave.
   const title = await mini.evaluate((el) => {
-    const link = el.querySelector("a")!;
+    const link = el.querySelector("[data-open-player]")!;
     const r = link.getBoundingClientRect();
-    const hit = (y: number) => document.elementFromPoint(r.left + 20, y)?.closest("a") === link;
+    const hit = (y: number) => document.elementFromPoint(r.left + 20, y)?.closest("[data-open-player]") === link;
     return { above: hit(r.top - 13), bottom: hit(r.bottom - 1), height: Math.round(r.height) + 14 };
   });
   expect(title).toEqual({ above: true, bottom: true, height: 44 });

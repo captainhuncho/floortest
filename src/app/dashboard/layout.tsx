@@ -15,6 +15,7 @@ import { FeedbackAsk, FeedbackButton } from "./FeedbackButton";
 import { MobileTabBar } from "./MobileTabBar";
 import { BottomPair } from "./BottomPair";
 import { MiniPlayer, PlayerBar } from "./PlayerBars";
+import { PlayerExpanded } from "./PlayerExpanded";
 import { TopBar } from "./TopBar";
 import { DeskBar } from "./DeskBar";
 import { PageFrame } from "./PageFrame";
@@ -128,6 +129,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <MiniPlayer />
           <MobileTabBar needsReview={collections.reduce((n, c) => n + c.needs_review, 0)} canSend={canSend} />
         </BottomPair>
+        {/* The expanded player: one dialog for the laptop bar and the phone's mini player. */}
+        <PlayerExpanded />
       </ToastProvider>
     </PlayerProvider>
     </div>
