@@ -41,4 +41,4 @@ the commit id blank. The parents are right (`222aa04a`, `e00640cc`); it was not 
 - Follow-up (Backend): `scannerHealth()` can wake the container while it is "stopping" or "unknown" (found by Safety;
   Build's branch `build/scanner-sigterm`, `9523b39e`).
 - Report-only releases since the last code release: #605 (`fe7a0757`, deploy 7851768225), #607 (`a7c80021`, deploy
-  7853617308), #608 (`28d7ec13`, deploy 7854738204). Test-only: #612 (`14b8f13b`, deploy 7853529198).
+  7853617308), #608 (`28d7ec13`, deploy 7854738204). #612 (test-only) has its own report.
