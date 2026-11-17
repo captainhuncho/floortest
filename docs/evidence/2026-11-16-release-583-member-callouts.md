@@ -35,6 +35,7 @@ it until ticked). "try it #583" in the desk session. `lane:standard`; the merge 
 | check:perms | `dd4c4c52` | passed (86 tables with row-level security) |
 | npm audit --omit=dev | `dd4c4c52` | passed (0 vulnerabilities) |
 | e2e (full) | `dd4c4c52` | passed (119 passed, 1 skipped, 0 failed) |
+| Typecheck, lint (0 errors), unit (963/963), check:perms after `main` `97213b66` (#598) was merged in | `a57b1d52` | passed |
 | e2e (full), earlier head | `eac12f79` | failed: `teams.spec.ts:173` stuck at the bot check (fixed in `29b27f18`) |
 | Safety review | `46e770f3`, `d7e1f9a4`, `8da3b450`, `29b27f18` | passed |
 | Owner test on the test link | `mobile-next` `d604ac33` (holds `8da3b450`, all of #583's app code) | passed: owner's words in the desk session, "#583 works" |
