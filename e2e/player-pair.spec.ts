@@ -38,12 +38,20 @@ test("phone: the menu sits alone, the player joins it, the heart keeps with Undo
 
   // The title is a 44px target: its tap area runs from 14px above the player down to the wave.
   const title = await mini.evaluate((el) => {
-    const link = el.querySelector("a")!;
+    const link = el.querySelector("[data-open-player]")!;
     const r = link.getBoundingClientRect();
-    const hit = (y: number) => document.elementFromPoint(r.left + 20, y)?.closest("a") === link;
+    const hit = (y: number) => document.elementFromPoint(r.left + 20, y)?.closest("[data-open-player]") === link;
     return { above: hit(r.top - 13), bottom: hit(r.bottom - 1), height: Math.round(r.height) + 14 };
   });
   expect(title).toEqual({ above: true, bottom: true, height: 44 });
+  // The volume note sits over the title's right end; hidden or showing, a tap there still reaches the title.
+  expect(
+    await mini.evaluate((el) => {
+      const link = el.querySelector("[data-open-player]")!;
+      const r = link.getBoundingClientRect();
+      return document.elementFromPoint(r.right - 8, r.bottom - 8)?.closest("[data-open-player]") === link;
+    }),
+  ).toBe(true);
 
   // Keep from the heart: saved on the server, with Undo.
   const heart = mini.getByRole("button", { name: /^Keep / });

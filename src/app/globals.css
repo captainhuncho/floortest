@@ -159,6 +159,18 @@ dialog[open]::backdrop {
   .ft-dialog-panel { padding: 0.5rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
 }
 @media (prefers-reduced-transparency: reduce) { .ft-dialog::backdrop { backdrop-filter: none; background: rgb(0 0 0 / 0.8); } }
+/* The expanded player (dashboard/PlayerExpanded.tsx; owner's pick 16 Nov, option 30). From 1024px a centred card over
+   the page, dimmed 40% and blurred 6px; under 1024px the whole window, inside the safe areas. The solid glass fill. */
+.ft-player {
+  margin: auto; padding: 0; border: 1px solid var(--glass-line); border-radius: 22px; overflow: hidden;
+  width: min(calc((100vw - 64px) * 0.84), 874px); max-width: none; max-height: calc(100dvh - 4rem);
+  background: var(--glass-solid); color: var(--color-bone); box-shadow: var(--shadow-pop);
+}
+.ft-player::backdrop { background: rgb(0 0 0 / 0.4); backdrop-filter: blur(6px); }
+@media (max-width: 63.99rem) {
+  .ft-player { margin: 0; width: 100vw; height: 100dvh; max-height: none; border: 0; border-radius: 0; }
+}
+@media (prefers-reduced-transparency: reduce) { .ft-player::backdrop { backdrop-filter: none; background: rgb(0 0 0 / 0.8); } }
 /* Toasts (src/components/Toast.tsx): bottom centre, clear of whatever floats at the bottom. Phones: above the tab bar,
    and above the mini player or the batch bar when they're up. Desktop: above the player bar or the batch bar. */
 [data-toast-region] { bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 72px); }

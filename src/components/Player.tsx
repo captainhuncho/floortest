@@ -46,6 +46,8 @@ type Ctx = {
   skip: (by: 1 | -1) => void;
   hasNext: boolean;
   hasPrev: boolean;
+  /** The tracks after the loaded one in the list it was started from, for the expanded player's Up next. */
+  upNext: PlayerTrack[];
   /** A list or the bar decided a track: the loaded track and its queue take the new answer, so every heart agrees. */
   markDecision: (id: number, decision: "kept" | "passed" | null) => void;
   /** Goes up by one each time a track won't play (no connection, or the file is gone), so the bar can say so. */
@@ -140,11 +142,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const queue = useRef<PlayerTrack[]>([]);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrev, setHasPrev] = useState(false);
+  const [upNext, setUpNext] = useState<PlayerTrack[]>([]);
   // Which neighbours the loaded track has in its queue, for the bar's Previous and Next.
   const syncNeighbours = useCallback((id: number) => {
     const i = queue.current.findIndex((t) => t.id === id);
     setHasPrev(i > 0);
     setHasNext(i >= 0 && i < queue.current.length - 1);
+    setUpNext(i >= 0 ? queue.current.slice(i + 1) : []);
   }, []);
   // "Listened" is counted by the server: the player says when a track starts or resumes ("play") and checks in about
   // every 10 s of sound actually heard ("beat"; seeks excluded). The server credits real time only (src/lib/review.ts).
@@ -382,8 +386,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // visible one (1 Nov; scratchpad dupe probe). Hydrating the server HTML also shows the page sooner. The time is not
   // in it (its own store, usePlayerTime), so playing changes this only on play, pause, buffering or a new track.
   const value = useMemo(
-    () => ({ current, playing, buffering, duration, play, toggle, seek, seekBy, skip: step, hasNext, hasPrev, markDecision, failures, volume, muted, setVolume: changeVolume, volumeTouched }),
-    [current, playing, buffering, duration, play, toggle, seek, seekBy, step, hasNext, hasPrev, markDecision, failures, volume, muted, changeVolume, volumeTouched],
+    () => ({ current, playing, buffering, duration, play, toggle, seek, seekBy, skip: step, hasNext, hasPrev, upNext, markDecision, failures, volume, muted, setVolume: changeVolume, volumeTouched }),
+    [current, playing, buffering, duration, play, toggle, seek, seekBy, step, hasNext, hasPrev, upNext, markDecision, failures, volume, muted, changeVolume, volumeTouched],
   );
   return (
     <PlayerContext.Provider value={value}>

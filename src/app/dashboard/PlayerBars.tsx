@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useTransition } from "react";
 import { BufferRing, PlayIcon, PlayerClock, PlayerWaveform, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
@@ -8,14 +7,15 @@ import { VolumeNote } from "@/components/VolumeNote";
 import { fmtTime } from "@/lib/format";
 import { useRenderProbe } from "@/lib/render-probe";
 import { clearDecision, decideTrack, undoDecision } from "./actions/review";
+import { setPlayerExpanded } from "./playerExpandedStore";
 
 /** Where the title leads: the track in the Queue, or Projects for the desk's own music. */
-const trackHref = (t: PlayerTrack) => (t.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${t.id}`);
+export const trackHref = (t: PlayerTrack) => (t.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${t.id}`);
 
 /** A control in a floating bar: a 44px target, quiet until pressed. */
-const CONTROL = "grid size-11 shrink-0 place-items-center rounded-full text-mute transition-colors duration-100 hover:text-bone disabled:opacity-35 disabled:hover:text-mute";
+export const CONTROL = "grid size-11 shrink-0 place-items-center rounded-full text-mute transition-colors duration-100 hover:text-bone disabled:opacity-35 disabled:hover:text-mute";
 
-function SkipIcon({ back = false }: { back?: boolean }) {
+export function SkipIcon({ back = false }: { back?: boolean }) {
   return (
     <svg viewBox="0 0 16 16" className={`size-4 ${back ? "-scale-x-100" : ""}`} fill="currentColor" aria-hidden>
       <path d="M2.5 3.2v9.6a.7.7 0 0 0 1.1.6l6.6-4.8a.7.7 0 0 0 0-1.2L3.6 2.6a.7.7 0 0 0-1.1.6Z" />
@@ -28,7 +28,7 @@ function SkipIcon({ back = false }: { back?: boolean }) {
  * Keep, as a heart, for the loaded track. The same server actions as the Queue's Keep (actions/review.ts): the screen
  * changes at once and goes back, with a message, if the server says no. Kept: pressing again takes it out of Kept.
  */
-function KeepHeart({ track }: { track: PlayerTrack }) {
+export function KeepHeart({ track }: { track: PlayerTrack }) {
   const { markDecision } = usePlayer();
   const toast = useToast();
   const [busy, start] = useTransition();
@@ -99,7 +99,7 @@ const THUMB_PX = 16;
  * The same volume the keys change (Shift+↑ / Shift+↓, M), remembered on this device. Phones have none: they use their
  * own buttons, and iOS ignores a page's volume.
  */
-function VolumeControl() {
+export function VolumeControl() {
   const { volume, muted, setVolume } = usePlayer();
   const level = muted ? 0 : volume;
   const percent = `${Math.round(level * 100)}%`;
@@ -163,7 +163,7 @@ function CoverPlay() {
 
 /**
  * Phones: the top half of the bottom pair (BottomPair.tsx), over the menu. Cover plays and pauses; the title opens the
- * track and the wave under it only seeks, so one tap never does both; then Keep and Next.
+ * expanded player (PlayerExpanded.tsx) and the wave under it only seeks, so one tap never does both; then Keep and Next.
  */
 export function MiniPlayer() {
   const { current, duration, seek, skip, hasNext, volume, muted, volumeTouched } = usePlayer();
@@ -176,17 +176,22 @@ export function MiniPlayer() {
         <span className="relative flex">
           {/* A 44px target with the wave left where it is: the link's own box reaches the player's top edge, and its
               ::before carries the target 14px above the player. */}
-          <Link
-            href={trackHref(current)}
-            className="relative -mt-2.5 block min-w-0 flex-1 pt-2.5 text-[13px] leading-5 text-mute before:absolute before:inset-x-0 before:-top-3.5 before:h-3.5"
+          <button
+            type="button"
+            data-open-player
+            onClick={() => setPlayerExpanded(true)}
+            aria-haspopup="dialog"
+            aria-label={`Open the player: ${current.title}${current.artist ? `, ${current.artist}` : ""}`}
+            className="relative -mt-2.5 block min-w-0 flex-1 pt-2.5 text-left text-[13px] leading-5 text-mute before:absolute before:inset-x-0 before:-top-3.5 before:h-3.5"
           >
             <span className="block truncate">
               <span className="font-semibold tracking-[-0.2px] text-bone">{current.title}</span>
               {current.artist && <> · {current.artist}</>}
             </span>
-          </Link>
-          {/* Over the end of the title for the moment it shows, so the title keeps the whole line the rest of the time. */}
-          <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="absolute right-0 top-0.5 rounded bg-card px-1" />
+          </button>
+          {/* Over the end of the title for the moment it shows, so the title keeps the whole line the rest of the time.
+              It never takes a tap: the title under it stays tappable. */}
+          <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="pointer-events-none absolute right-0 top-0.5 rounded bg-card px-1" />
         </span>
         <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={18} label={`Seek ${current.title}`} />
       </div>
@@ -223,10 +228,17 @@ export function PlayerBar() {
         className="glass glass-float absolute inset-x-5 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 mx-auto hidden w-fit items-center gap-2 rounded-[18px] py-[7px] pl-[7px] pr-2 md:flex"
       >
         <CoverPlay />
-        <Link href={trackHref(current)} className="ml-1 flex h-11 w-[150px] min-w-0 shrink-0 flex-col justify-center">
-          <p className="truncate text-sm font-medium">{current.title}</p>
-          <p className="truncate text-[13px] text-mute">{current.artist}</p>
-        </Link>
+        <button
+          type="button"
+          data-open-player
+          onClick={() => setPlayerExpanded(true)}
+          aria-haspopup="dialog"
+          aria-label={`Open the player: ${current.title}${current.artist ? `, ${current.artist}` : ""}`}
+          className="ml-1 flex h-11 w-[150px] min-w-0 shrink-0 flex-col justify-center text-left"
+        >
+          <span className="w-full truncate text-sm font-medium">{current.title}</span>
+          <span className="w-full truncate text-[13px] text-mute">{current.artist}</span>
+        </button>
         <div className="hidden w-[220px] shrink-0 min-[1024px]:block">
           <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={28} label={`Seek ${current.title}`} />
         </div>
@@ -243,8 +255,13 @@ export function PlayerBar() {
         </span>
         {current.decision !== undefined && <KeepHeart track={current} />}
         {/* The words say the level for a moment after a volume key, over the speaker so the bar keeps its width. */}
-        <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="absolute -top-7 right-2 rounded-md bg-card px-1.5 py-0.5" />
+        <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="pointer-events-none absolute -top-7 right-2 rounded-md bg-card px-1.5 py-0.5" />
         <VolumeControl />
+        <button type="button" onClick={() => setPlayerExpanded(true)} aria-haspopup="dialog" aria-label="Open the player" className={CONTROL}>
+          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="m6 15 6-6 6 6" />
+          </svg>
+        </button>
       </section>
     </>
   );
