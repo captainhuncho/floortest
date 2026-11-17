@@ -14,6 +14,7 @@ export function PanelDetails({ summary, children }: { summary: React.ReactNode; 
   const [open, setOpen] = useDeviceState(() => stored(KEY) === "1", false);
   return (
     <details
+      data-panel-details
       open={open}
       onToggle={(e) => {
         const now = e.currentTarget.open;

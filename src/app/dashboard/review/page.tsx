@@ -21,6 +21,9 @@ import { CARD, Icon, SectionHead } from "@/components/Kit";
 
 export const metadata = { title: "Review Queue — FloorTest" };
 
+/** The list query's LIMIT below (kept as a literal there: tests/list-columns.test.ts finds the query by it). The playlist says so when a view is cut off. */
+const LIST_LIMIT = 500;
+
 const STATUSES = TRACK_STATUSES;
 type StatusKey = TrackStatus;
 
@@ -246,6 +249,9 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
                     selectedId={selected?.id ?? null}
                     hrefFor={Object.fromEntries(rows.map((r) => [r.id, href({ t: String(r.id) })]))}
                   />
+                  {tracks.length >= LIST_LIMIT && (
+                    <p className="mt-2 px-0.5 text-[11.5px] text-mute">Showing the first {LIST_LIMIT} tracks. Sorting works within these.</p>
+                  )}
                   <p className="mt-2.5 flex items-start gap-1.5 border-t border-dashed border-line px-0.5 pt-2.5 text-[11.5px] text-mute">
                     <Icon name="lock" className="mt-px size-3" />
                     Decisions stay private. Senders see Listened, Downloaded, Played out and your replies.

@@ -1,0 +1,85 @@
+import { expect, logIn, test } from "./fixtures";
+
+// The final Queue (Design option 42): the open track decides, the playlist plays, the floating player shows progress.
+
+test("laptop: Now reviewing has no wave or play button, the playlist plays and sorts, typing never decides", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await logIn(page, "demo@floortest.test");
+  await page.goto("/dashboard/review?view=queue");
+  const card = page.locator("#review-card");
+  const list = page.getByRole("table", { name: "Up next" });
+  await expect(card.getByText(/^Now reviewing · 1 of \d+$/)).toBeVisible();
+  await expect(card.getByRole("slider")).toHaveCount(0);
+  await expect(card.locator("[data-card-play]")).toBeHidden();
+
+  // Keep is first and the only filled button; Reply, Download and More sit beside the decision.
+  const decision = card.getByRole("group", { name: "Decision" }).getByRole("button");
+  await expect(decision.first()).toHaveText(/Keep/);
+  await expect(decision.nth(1)).toHaveText(/Not for me/);
+  await expect(card.getByRole("link", { name: "Download", exact: true })).toHaveAttribute("href", /^\/api\/tracks\/\d+\/download$/);
+
+  // Letter keys typed into the reply box are text, never a decision.
+  const title = await card.getByRole("heading", { level: 2 }).innerText();
+  await card.getByRole("button", { name: "Reply", exact: true }).click();
+  const box = page.locator("[data-reply] textarea");
+  await expect(box).toBeFocused();
+  await page.keyboard.type("kx");
+  await expect(box).toHaveValue("kx");
+  await expect(card.getByRole("heading", { level: 2 })).toHaveText(title);
+  await expect(card.getByRole("button", { name: /Keep/ })).toHaveAttribute("aria-pressed", "false");
+  await box.fill("");
+  await page.keyboard.press("Escape");
+
+  // More opens Details, where move, report and delete live.
+  await card.getByRole("button", { name: "More", exact: true }).click();
+  await expect(page.locator("details[data-panel-details]")).toHaveAttribute("open", "");
+
+  // The BPM head sorts the rows on the page, up then down.
+  const bpms = async () => (await list.locator('[role="row"][aria-current], [role="row"]:has(a)').evaluateAll((rows) => rows.map((r) => Number(r.querySelectorAll('[role="cell"]')[4]?.textContent)))).filter((n) => n > 0);
+  const bpmHead = list.getByRole("columnheader", { name: "BPM" });
+  await bpmHead.getByRole("button").click();
+  await expect(bpmHead).toHaveAttribute("aria-sort", "ascending");
+  const up = await bpms();
+  expect(up.length).toBeGreaterThan(1);
+  expect(up).toEqual(up.toSorted((a, b) => a - b));
+  await bpmHead.getByRole("button").click();
+  await expect(bpmHead).toHaveAttribute("aria-sort", "descending");
+  const down = await bpms();
+  expect(down).toEqual(down.toSorted((a, b) => b - a));
+
+  // A row plays its track: the floating bar comes up with it.
+  await list.getByRole("link", { name: /^Play / }).first().click();
+  await expect(page.locator("[data-player-bar]").getByRole("button", { name: /^Pause / })).toBeVisible();
+});
+
+test("phone: story bars, cover taps step between tracks clear of the decision, and the card starts playback", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await logIn(page, "demo@floortest.test");
+  await page.goto("/dashboard/review?view=queue");
+  const card = page.locator("#review-card");
+  await expect(card.getByText(/^1 of \d+$/)).toBeVisible();
+  await expect(card.getByRole("slider")).toHaveCount(0);
+
+  // Every control on the card is at least 44px.
+  for (const b of await card.getByRole("group", { name: "Playback" }).getByRole("button").all()) {
+    const box = (await b.boundingBox())!;
+    expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(44);
+  }
+
+  // The tap zones sit on the cover only: neither reaches Keep or Not for me.
+  const nextZone = (await card.locator('[data-cover-step="next"]').boundingBox())!;
+  const keep = (await card.getByRole("button", { name: /Keep/ }).boundingBox())!;
+  expect(nextZone.y + nextZone.height).toBeLessThanOrEqual(keep.y);
+
+  const first = await card.getByRole("heading", { level: 2 }).innerText();
+  await card.locator('[data-cover-step="next"]').click();
+  await expect(card.getByRole("heading", { level: 2 })).not.toHaveText(first);
+  await expect(card.getByText(/^2 of \d+$/)).toBeVisible();
+  await card.locator('[data-cover-step="prev"]').click();
+  await expect(card.getByRole("heading", { level: 2 })).toHaveText(first);
+
+  await card.locator("[data-card-play]").click();
+  await expect(card.locator("[data-card-play]")).toHaveAccessibleName(/^Pause /);
+});
