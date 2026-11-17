@@ -62,7 +62,7 @@ export function SentForm({ botCheckKey }: { botCheckKey: string | null }) {
     <div className="mt-7 flex flex-col">
       <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.02em]">Everything you&apos;ve sent</h1>
       <p className="mt-2 text-[13px] leading-5 text-mute">
-        See every track you&apos;ve sent through FloorTest and what happened to it. No account or password: we&apos;ll email you a private link.
+        We&apos;ll email you a private link to every track you&apos;ve sent and what happened to it. No account or password.
       </p>
       <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">

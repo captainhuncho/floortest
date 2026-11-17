@@ -1,16 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { CARD, Icon } from "@/components/Kit";
-import { groupSends, SENT_FILTERS, type SentFilter } from "@/lib/sent-groups";
+import { dayLabel, groupSends, SENT_FILTERS, type SentFilter } from "@/lib/sent-groups";
+
+// The sender's time zone is their device's (senders have no account to keep one in). The server can't know it, so it
+// renders in UTC; React hydrates with that same answer, then renders again with the browser's zone. Nothing to listen to.
+const noChange = () => () => {};
+const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const serverZone = () => "UTC";
 
 /** One send as the list shows it. Only what a row prints, plus the three values the grouping and chips read. */
 export type SentRow = {
   /** The receipt this row opens. */
   href: string;
   title: string;
-  sub: string;
+  receiver: string;
   /** The strongest thing that has happened, and whether its dot is lit. */
   label: string;
   lit: boolean;
@@ -24,12 +30,13 @@ export type SentRow = {
 /**
  * The sender's sends, grouped by when they were sent (This week, then months), under three chips that narrow the rows
  * already on the page. Nothing is fetched and the choice isn't saved. `now` comes from the server, so the first render
- * in the browser groups the rows exactly as the server did.
+ * in the browser groups the rows exactly as the server did. Months and each row's date are in the sender's own time zone.
  */
 export function SentList({ rows, now }: { rows: SentRow[]; now: number }) {
   const [filter, setFilter] = useState<SentFilter>("all");
   const id = useId();
-  const groups = groupSends(rows, filter, now);
+  const zone = useSyncExternalStore(noChange, browserZone, serverZone);
+  const groups = groupSends(rows, filter, now, zone);
   return (
     <>
       <div role="group" aria-label="Show" className="mt-3 flex gap-1.5">
@@ -62,7 +69,9 @@ export function SentList({ rows, now }: { rows: SentRow[]; now: number }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-bold">{r.title}</span>
-                    <span className="block text-[12px] leading-[1.4] text-mute">{r.sub}</span>
+                    <span className="block truncate text-[12px] leading-[1.4] text-mute">
+                      to {r.receiver} · {dayLabel(r.sentAt, now, zone)}
+                    </span>
                   </span>
                   <span className={`flex max-w-[9.5rem] shrink-0 items-start gap-1.5 text-right text-[12px] sm:max-w-none ${r.lit ? "font-semibold text-bone" : "text-dim"}`}>
                     <span aria-hidden className={`mt-[5px] size-[7px] shrink-0 rounded-full ${r.lit ? "bg-(--color-lime)" : "border border-line-2"}`} />

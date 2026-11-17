@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { countsLine, groupLabel, groupSends, isListened, isWaiting } from "../src/lib/sent-groups";
+import { countsLine, dayLabel, groupLabel, groupSends, isListened, isWaiting } from "../src/lib/sent-groups";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 17, 12); // Tue 17 Nov 2026, noon UTC
@@ -81,5 +81,33 @@ test("the counts line is the totals, whatever chip is on", () => {
   assert.equal(groupSends(MIXED, "waiting", NOW).flatMap((g) => g.rows).length, 1);
   assert.equal(countsLine(MIXED), "5 tracks sent · 2 listened to");
   assert.equal(countsLine([row("a", NOW)]), "1 track sent · 0 listened to");
-  assert.equal(countsLine([]), "0 tracks sent · 0 listened to");
+  assert.equal(countsLine([]), "0 tracks sent");
+});
+
+test("months are read in the sender's time zone: late on the 31st in UTC+13 is still October there", () => {
+  // 31 Oct 2026, 23:30 in Auckland (UTC+13) is 10:30 UTC the same day; an hour later there is 1 Nov, still 31 Oct in UTC.
+  const lateOct = Date.UTC(2026, 9, 31, 10, 30);
+  const earlyNov = Date.UTC(2026, 9, 31, 11, 30);
+  const now = Date.UTC(2026, 10, 20);
+  assert.equal(groupLabel(lateOct, now, "Pacific/Auckland"), "October");
+  assert.equal(groupLabel(earlyNov, now, "Pacific/Auckland"), "November");
+  assert.equal(groupLabel(earlyNov, now, "UTC"), "October");
+  // West of UTC it goes the other way: 02:00 UTC on 1 Nov is still the evening of 31 Oct in Los Angeles.
+  assert.equal(groupLabel(Date.UTC(2026, 10, 1, 2), now, "America/Los_Angeles"), "October");
+  assert.deepEqual(groupSends([row("nov", earlyNov), row("oct", lateOct)], "all", now, "Pacific/Auckland").map((g) => [g.label, g.rows.map((r) => r.id)]), [["November", ["nov"]], ["October", ["oct"]]]);
+});
+
+test("the year boundary follows the time zone too", () => {
+  // 31 Dec 2025, 12:00 UTC is already 1 Jan 2026 in Auckland.
+  const ts = Date.UTC(2025, 11, 31, 12);
+  assert.equal(groupLabel(ts, NOW, "UTC"), "December 2025");
+  assert.equal(groupLabel(ts, NOW, "Pacific/Auckland"), "January");
+});
+
+test("a row's date is weekday, day and short month in the sender's zone, with the year only when it isn't this year", () => {
+  assert.equal(dayLabel(Date.UTC(2026, 10, 16, 9), NOW), "Mon 16 Nov");
+  assert.equal(dayLabel(Date.UTC(2026, 8, 2, 9), NOW), "Wed 2 Sep");
+  assert.equal(dayLabel(Date.UTC(2025, 10, 16, 9), NOW), "Sun 16 Nov 2025");
+  assert.equal(dayLabel(Date.UTC(2026, 9, 31, 11, 30), NOW, "Pacific/Auckland"), "Sun 1 Nov");
+  assert.equal(dayLabel(Date.UTC(2026, 9, 31, 11, 30), NOW, "UTC"), "Sat 31 Oct");
 });

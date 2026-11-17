@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { Icon } from "@/components/Kit";
 import { q } from "@/lib/db";
-import { ago, fmtDay } from "@/lib/format";
+import { ago } from "@/lib/format";
 import { redirect } from "next/navigation";
 import { readSenderLink, revokeSenderLink } from "@/lib/senderLink";
 import { RETAIN_UNREVIEWED_DAYS, unheardAfterWindow } from "@/lib/plans";
@@ -60,7 +60,7 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
     return {
       href: receiptPath(r),
       title: r.title,
-      sub: `${r.artist} · to ${r.receiver} · sent ${fmtDay(r.created_at)}`,
+      receiver: r.receiver,
       label,
       lit,
       when: lit ? ago(at, now) : null,
