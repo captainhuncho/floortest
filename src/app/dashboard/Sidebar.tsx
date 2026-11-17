@@ -21,6 +21,7 @@ const RAIL_PATHS = {
   pin: "M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z",
   alert: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01",
   pause: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 9v6M14 9v6",
+  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M6 18l1.4-1.4M16.6 7.4 18 6",
 } as const;
 function RailIcon({ name }: { name: keyof typeof RAIL_PATHS }) {
   return (
@@ -42,22 +43,24 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
 
   const nav = [
     { href: "/dashboard/floor", label: "Floor", icon: "floor", active: path === "/dashboard/floor", tab: true },
-    { href: "/dashboard/review", label: "Review Queue", icon: "queue", active: path === "/dashboard/review", badge: needsReview, tab: true },
     // One Collections menu: callouts and projects (owner, 15 Nov).
     { href: "/dashboard/collections", label: "Collections", icon: "collections", active: path.startsWith("/dashboard/collections") || path.startsWith("/dashboard/projects"), tab: true },
+    { href: "/dashboard/review", label: "Review Queue", icon: "queue", active: path === "/dashboard/review", badge: needsReview, tab: true },
     { href: "/dashboard/prepare", label: "Prepare", icon: "prepare", active: path === "/dashboard/prepare" || path.startsWith("/dashboard/prepare/"), tab: true },
-    ...(canSend ? [{ href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") }] : []),
-    { href: "/dashboard/contacts", label: "Contacts", icon: "contacts", active: path.startsWith("/dashboard/contacts") },
-    { href: "/dashboard/activity", label: "Activity", icon: "activity", active: path.startsWith("/dashboard/activity") },
-    { href: "/dashboard/how-it-works", label: "How it works", icon: "help", active: path === "/dashboard/how-it-works" },
+    ...(canSend ? [{ href: "/dashboard/send", label: "Send music", icon: "send", active: path.startsWith("/dashboard/send") }] : []),
   ];
+  // The foot of the menu (option 47): How it works, then Settings (the same page the avatar opens).
+  const foot = [
+    { href: "/dashboard/how-it-works", label: "How it works", icon: "help", active: path === "/dashboard/how-it-works" },
+    { href: "/dashboard/settings", label: "Settings", icon: "gear", active: path.startsWith("/dashboard/settings") },
+  ] as const;
 
   // Labels stay in the page when folded (screen readers and tests read them); they only fade out of sight.
   const label = `min-w-0 flex-1 truncate whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none ${expanded ? "opacity-100" : "opacity-0"}`;
   const notice = cap.full
     ? { href: "/dashboard/plans", icon: "alert" as const, tone: "text-danger", text: `Your desk is full (${cap.used}/${cap.limit.toLocaleString("en-US")}), so your link has stopped taking new tracks. Delete tracks you're done with, or see plans →` }
     : pause.on
-      ? { href: "/dashboard/account", icon: "pause" as const, tone: "text-mute", text: "Your link is paused. Turn it back on in Account →" }
+      ? { href: "/dashboard/settings", icon: "pause" as const, tone: "text-mute", text: "Your link is paused. Turn it back on in Settings →" }
       : null;
 
   return (
@@ -113,8 +116,14 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
           ))}
         </nav>
 
-        {/* Bottom: the desk's state (full, paused) and the choice to keep the menu open. */}
+        {/* Bottom: How it works and Settings, the desk's state (full, paused) and the choice to keep the menu open. */}
         <div className="mx-3 flex shrink-0 flex-col gap-1">
+          {foot.map((n) => (
+            <Link key={n.href} href={n.href} aria-current={n.active ? "page" : undefined} className={`${ITEM} ${n.active ? "border-line bg-card font-semibold text-bone" : IDLE}`}>
+              {n.icon === "gear" ? <RailIcon name="gear" /> : <NavIcon name={n.icon} className="size-[1.375rem]" />}
+              <span className={label}>{n.label}</span>
+            </Link>
+          ))}
           {notice && (
             <Link href={notice.href} className={`${ROW} min-h-12 items-start gap-3.5 border-transparent py-3 pl-[0.8125rem] hover:bg-card ${notice.tone}`}>
               <RailIcon name={notice.icon} />
