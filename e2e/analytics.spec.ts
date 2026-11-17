@@ -37,8 +37,8 @@ test("the owner opens Analytics, switches period, and sees the desk's own number
   await page.goto("/dashboard/analytics?p=forever");
   await expect(page.getByRole("button", { name: /Period: Last 30 days/ })).toBeVisible();
 
-  // On a phone it sits with Activity on the Account page.
+  // On a phone it is a row under Your desk on Settings.
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/dashboard/account");
-  await expect(page.getByRole("link", { name: /^Analytics/ })).toBeVisible();
+  await page.goto("/dashboard/settings");
+  await expect(page.getByRole("region", { name: "Your desk" }).getByRole("link", { name: /^Analytics/ })).toBeVisible();
 });

@@ -58,6 +58,8 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/conversations", destination: "/dashboard/contacts", permanent: true },
       { source: "/dashboard/conversations/:id", destination: "/dashboard/contacts/:id", permanent: true },
       { source: "/dashboard/home", destination: "/dashboard/floor", permanent: true },
+      // Profile, account and settings are one page now (option 47).
+      { source: "/dashboard/account", destination: "/dashboard/settings", permanent: true },
       // Preserve links shared from the pre-beta prototype. Authenticated destinations
       // still pass through the normal session checks, so these aliases do not bypass access control.
       { source: "/dj", destination: "/dashboard/floor", permanent: true },

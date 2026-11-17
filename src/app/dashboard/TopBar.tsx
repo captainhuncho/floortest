@@ -114,7 +114,7 @@ export function TopBar(p: Props) {
 
       <div className="relative">
         <button
-          onClick={() => router.push("/dashboard/account")}
+          onClick={() => router.push("/dashboard/settings")}
           className="flex min-h-11 items-center gap-2 rounded-[11px] transition-colors hover:bg-well sm:pl-3"
         >
           <span className="hidden items-center gap-1.5 text-[13px] font-semibold text-bone sm:inline-flex">

@@ -108,7 +108,7 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await expect(week.getByRole("link")).toHaveCount(0);
   await expect(week).toHaveText(/^Your week · \d+ tracks? in · \d+ kept$/);
   // Members can't send as the account, so Send isn't offered; nor are the owner's setup checklist or link controls.
-  await expect(page.getByRole("link", { name: /^Send$/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Send music$/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Hide this" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Getting started" })).toHaveCount(0);
   await page.goto("/dashboard/review");

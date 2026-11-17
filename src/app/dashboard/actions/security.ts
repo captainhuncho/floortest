@@ -2,13 +2,14 @@
 
 /** Security: password, other devices, two-factor and sign-in alerts. */
 import { allow } from "@/lib/ratelimit";
-import { stepUp } from "@/lib/step-up";
+import { endEverySession, stepUp } from "@/lib/step-up";
 import { checkSecondFactor } from "@/lib/security";
 import { passwordStrength } from "@/lib/password-strength";
-import { changePasswordTo, currentSessionHash, verifyPassword, requireRole } from "@/lib/auth";
+import { changePasswordTo, currentSessionHash, destroySession, verifyPassword, requireRole } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { deviceId, endSession, revokeAllSessions } from "@/lib/sessions";
 import QRCode from "qrcode";
+import { redirect } from "next/navigation";
 import { env } from "@/lib/env";
 import { newTotpSecret, otpauthUri, sealSecret } from "@/lib/totp";
 import { q } from "@/lib/db";
@@ -60,6 +61,28 @@ export async function signOutOtherDevices(password: string, code: string): Promi
   const n = await revokeAllSessions(u.id, { keep: await currentSessionHash() });
   await audit(u.id, "signed_out_others", `${n} device${n === 1 ? "" : "s"}`);
   return { n };
+}
+
+/**
+ * Settings → ••• → Sign out → "Sign out everywhere": this device and every other one. The same check as
+ * signOutOtherDevices first (the password, and the two-step code when it's on), so a borrowed session can't sign the
+ * owner out of everything. Ends on the signed-out page; only a failed check comes back.
+ */
+export async function signOutAllMyDevices(password: string, code: string): Promise<{ error: string }> {
+  const u = await requireRole("owner");
+  // Browsers, the app and the ops area alike; nothing is kept, so this session's row goes with the rest.
+  const denied = await endEverySession(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
+  if (denied) return { error: denied };
+  // Logged only once the sessions are gone, so a failed revoke never reads as a sign-out. A log line that can't be
+  // written must not keep this browser's cookie alive: note it on the server and carry on.
+  try {
+    await audit(u.id, "signed_out_others", "every device, this one too");
+    await audit(u.id, "signed_out");
+  } catch (e) {
+    console.error("[security] signOutAllMyDevices: audit failed for user", u.id, e instanceof Error ? e.message : "unknown error");
+  }
+  await destroySession();
+  redirect("/signed-out");
 }
 
 /** Step 1: a fresh secret, held (encrypted) but not active until a code proves the app has it. */
