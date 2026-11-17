@@ -69,6 +69,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             cap={cap}
             pause={pauseState}
             canSend={canSend}
+            canSeeAnalytics={user.role !== "member"}
           />
           {/* The page column. On laptops the player bar floats inside it, so it never runs under the menu rail. */}
           <div className="relative min-w-0 md:h-dvh">

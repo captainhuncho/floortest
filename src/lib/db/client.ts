@@ -171,8 +171,10 @@ export async function openPostgres(url: string): Promise<Db> {
 
 export async function openPglite(dir: string): Promise<Db> {
   const { PGlite, types } = await import("@electric-sql/pglite");
+  // Typo-tolerant search (migration 0155): the trigram extension ships inside the PGlite package, as on Neon.
+  const { pg_trgm } = await import("@electric-sql/pglite/contrib/pg_trgm");
   await mkdir(dir, { recursive: true }); // first run on a fresh install
-  const pg = await PGlite.create(dir, { parsers: { [types.INT8]: (v: string) => Number(v) } });
+  const pg = await PGlite.create(dir, { parsers: { [types.INT8]: (v: string) => Number(v) }, extensions: { pg_trgm } });
   const rawOf = (q: { query: typeof pg.query }): Raw => ({
     async query(text, params) {
       const res = await q.query<Row>(text, params);

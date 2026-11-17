@@ -13,6 +13,8 @@ type Props = {
   pause: PauseState;
   /** On a team desk, Members can't send as the account, so Send isn't offered. */
   canSend?: boolean;
+  /** Analytics is for the owner and A&R / Admin only (owner, 16 Nov); the page checks it again on the server. */
+  canSeeAnalytics?: boolean;
 };
 
 /** The few icons the rail needs beyond the nav set (same 24px grid, 1.8 stroke). */
@@ -36,7 +38,7 @@ const ROW = "relative flex shrink-0 rounded-[0.75rem] border pr-3 transition-col
 const ITEM = `${ROW} h-[clamp(2.75rem,6dvh,3rem)] items-center gap-3.5 text-left pl-[0.8125rem] text-[0.875rem]`;
 const IDLE = "border-transparent text-mute hover:bg-card hover:text-bone";
 
-export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
+export function Sidebar({ needsReview, cap, pause, canSend = true, canSeeAnalytics = false }: Props) {
   const path = useNavPath();
   const { expanded, pinned, setPinned, tapOpen, toggleTap, panelProps } = useRail(path);
 
@@ -49,6 +51,7 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
     ...(canSend ? [{ href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") }] : []),
     { href: "/dashboard/contacts", label: "Contacts", icon: "contacts", active: path.startsWith("/dashboard/contacts") },
     { href: "/dashboard/activity", label: "Activity", icon: "activity", active: path.startsWith("/dashboard/activity") },
+    ...(canSeeAnalytics ? [{ href: "/dashboard/analytics", label: "Analytics", icon: "analytics", active: path.startsWith("/dashboard/analytics") }] : []),
     { href: "/dashboard/how-it-works", label: "How it works", icon: "help", active: path === "/dashboard/how-it-works" },
   ];
 
