@@ -18,6 +18,8 @@ import { Icon } from "@/components/Kit";
 const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };
 
 type Props = {
+  /** The other calls on the track (Reply, Download, More), set beside the decision on laptops and under it on phones. */
+  children?: React.ReactNode;
   track: PlayerTrack & { decision: "kept" | "passed" | null };
   senderName: string;
   selfHref: string;
@@ -29,7 +31,7 @@ type Props = {
  * Keep and Not for me, their shortcuts, and the swipe between tracks. The reply box is its own card now
  * (review/ReplyCard, redesign 30 Oct), and R jumps into it from there.
  */
-export function DecisionRail({ track, selfHref, next, prev }: Props) {
+export function DecisionRail({ track, selfHref, next, prev, children }: Props) {
   const router = useRouter();
   const player = usePlayer();
   useRenderProbe("DecisionRail");
@@ -223,41 +225,44 @@ export function DecisionRail({ track, selfHref, next, prev }: Props) {
     };
   }, [next, prev, step, setSwiped]);
 
-  // Redesign (30 Oct): two big buttons, Keep the page's one lime button; the shortcut sits beside each word where
-  // there's a keyboard.
-  const btn = "inline-flex min-h-13 items-center justify-center gap-2 rounded-[15px] px-3 text-[14.5px] font-semibold transition-colors disabled:opacity-40";
+  // Queue, final (option 42): Keep is the page's one lime button and comes first; the shortcut sits beside each word
+  // where there's a keyboard. Phones: two big buttons, the other calls in a row under them. Laptops: one row.
+  const btn = "inline-flex min-h-13 items-center justify-center gap-2 rounded-[15px] px-3 text-[14.5px] font-semibold transition-colors disabled:opacity-40 md:min-h-11 md:rounded-[13px] md:px-5 md:text-[13px]";
   const key = "rounded-[5px] border border-current px-1.5 font-mono text-[10px] font-semibold opacity-55 [@media(pointer:coarse)]:hidden";
   return (
     <div data-player-keys className="flex flex-col gap-2.5">
-      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Decision">
-        <button
-          onClick={() => decide("passed")}
-          disabled={busy}
-          aria-pressed={track.decision === "passed"}
-          aria-keyshortcuts="X"
-          className={`${btn} border text-bone ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line-2 bg-well hover:border-mute"}`}
-        >
-          <Icon name="x" className="size-4" />
-          Not for me <kbd className={key}>X</kbd>
-        </button>
-        <button
-          onClick={() => decide("kept")}
-          disabled={busy}
-          aria-pressed={track.decision === "kept"}
-          aria-keyshortcuts="K"
-          className={`${btn} border border-transparent bg-lime text-ink hover:bg-[#e2ff7a]`}
-        >
-          <Icon name="heart" className="size-4" />
-          {track.decision === "kept" ? "Kept ✓" : "Keep"} <kbd className={key}>K</kbd>
-        </button>
+      <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+        <div className="grid grid-cols-2 gap-2 md:flex" role="group" aria-label="Decision">
+          <button
+            onClick={() => decide("kept")}
+            disabled={busy}
+            aria-pressed={track.decision === "kept"}
+            aria-keyshortcuts="K"
+            className={`${btn} border border-transparent bg-lime text-ink hover:bg-[#e2ff7a]`}
+          >
+            <Icon name="heart" className="size-4" />
+            {track.decision === "kept" ? "Kept ✓" : "Keep"} <kbd className={key}>K</kbd>
+          </button>
+          <button
+            onClick={() => decide("passed")}
+            disabled={busy}
+            aria-pressed={track.decision === "passed"}
+            aria-keyshortcuts="X"
+            className={`${btn} border text-bone ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line-2 bg-well hover:border-mute"}`}
+          >
+            <Icon name="x" className="size-4" />
+            Not for me <kbd className={key}>X</kbd>
+          </button>
+        </div>
+        {children}
       </div>
 
-      <p className="text-center text-[11.5px] text-mute">
+      <p className="text-center text-[11.5px] text-mute md:text-left">
         {next ? "Keep or Not for me moves to the next track." : "Last track in this view."}
         {!swiped && <span className="[@media(pointer:fine)]:hidden"> Swipe left for the next track, right for the previous one.</span>}
       </p>
       {/* One faint line; the full list of shortcuts opens from it. */}
-      <details className="hidden text-center text-[11px] text-faint [@media(pointer:fine)]:block">
+      <details className="hidden text-center text-[11px] text-faint md:text-left [@media(pointer:fine)]:block">
         <summary className="inline-flex min-h-8 w-fit cursor-pointer list-none items-center hover:text-mute [&::-webkit-details-marker]:hidden">
           Space play · K keep · X not for me · R reply · more shortcuts
         </summary>

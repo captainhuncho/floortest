@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useState } from "react";
 import { usePlayer, type PlayerTrack } from "@/components/Player";
 import { fmtTime } from "@/lib/format";
-import { DetailPlayer } from "../DetailPlayer";
 import { CARD, Cover, initials } from "@/components/Kit";
 
 /**
@@ -108,11 +107,10 @@ export function ShownPanel({ servedId, children }: { servedId: number; children:
         </div>
       </div>
       {meta && <p className="font-mono text-[11.5px] text-mute tnum">{meta}</p>}
-      <DetailPlayer track={shown} />
       {/* Same place and size as the real buttons, so nothing moves when they arrive a moment later. */}
       <div className="grid grid-cols-2 gap-2" aria-hidden="true">
-        <span className={`${btn} border-line-2 bg-well text-bone`}>Not for me</span>
         <span className={`${btn} border-transparent bg-lime text-ink`}>Keep</span>
+        <span className={`${btn} border-line-2 bg-well text-bone`}>Not for me</span>
       </div>
     </div>
   );

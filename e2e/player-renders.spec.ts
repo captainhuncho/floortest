@@ -15,7 +15,8 @@ test("while a track plays, components that don't show time don't re-render", asy
   });
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/review");
-  await page.getByRole("button", { name: /^Play / }).first().click();
+  // A row of the Queue's playlist plays its track.
+  await page.getByRole("table", { name: "Up next" }).getByRole("link", { name: /^Play / }).first().click();
   const bar = page.locator("[data-player-bar]");
   await expect(bar.getByRole("button", { name: /^Pause / })).toBeVisible();
   await expect(bar.getByRole("button", { name: /^Pause / })).not.toHaveAttribute("aria-busy", "true");
@@ -32,8 +33,8 @@ test("while a track plays, components that don't show time don't re-render", asy
   // Still playing at the end (a stop would also stop the re-renders and make this pass for the wrong reason).
   await expect(bar.getByRole("button", { name: /^Pause / })).toBeVisible();
   expect(counts.PlayerClock ?? 0, "the bar's clock shows the time, so it does follow it").toBeGreaterThanOrEqual(2);
-  for (const name of ["PlayerBar", "DecisionRail", "TrackList", "ListRows"]) {
+  for (const name of ["PlayerBar", "DecisionRail", "TrackList", "UpNext", "ListRows"]) {
     if (name in counts) expect(counts[name], `${name} re-renders`).toBeLessThanOrEqual(1);
   }
-  expect(["DecisionRail", "TrackList", "ListRows"].some((k) => k in counts), "a non-time consumer is on the page").toBe(true);
+  expect(["DecisionRail", "TrackList", "UpNext", "ListRows"].some((k) => k in counts), "a non-time consumer is on the page").toBe(true);
 });
