@@ -330,7 +330,7 @@ The heart of the desk: play button, title and artist, a waveform, the Listened t
 - **Don't** add shadows to page cards or nest a card inside a card.
 - **Don't** introduce a second typeface outside the home-page serif accent.
 - **Don't** add a second accent colour or a gradient for decoration.
-  One exception, the owner's pick (Floor, final, option 41, 16 Nov): a still, soft green glow (#1d9e75, about 0.22 opacity) behind the top of the Floor. No other page gets one without the owner's word.
+  The owner (17 Nov): no coloured glow or shade behind any page; the background stays plain near-black. Glass stays for the player and menu.
 - **Don't** repeat on the page what it already says (no status chip matching the selected tab, no stat shown twice).
 - **Don't** animate keyboard-driven actions (K, X, U, Space) or start anything from scale 0.
 
