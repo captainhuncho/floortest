@@ -21,6 +21,26 @@
 }
 .cs-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding-inline: 8px; }
 .cs-logo { min-height: 44px; }
+/* Log in: one small glass button at every size, night and day (DESIGN, 17 Nov, drawing v136 #combo48) */
+.cs-top .aw-have { gap: 8px; }
+.cs-top .aw-login {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-decoration: none;
+  color: #f2f1ec;
+  background: rgb(16 17 15 / 0.55);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  box-shadow: none;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .cs-top .aw-login { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+}
+.cs-top .aw-login:focus-visible { outline: 2px solid #f2f1ec; outline-offset: 2px; }
+@media (prefers-reduced-transparency: reduce) {
+  .cs-top .aw-login { background: rgb(16 17 15); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
 
 /* the sheet (phones) */
 .cs-sheet {
@@ -71,9 +91,16 @@
 @media (prefers-color-scheme: light) {
   .af-page.theme-system .cs-sheet {
     background: rgb(252 250 245 / 0.84);
-    border-color: rgb(255 255 255 / 0.7);
-    box-shadow: 0 0 0 4px rgb(255 255 255 / 0.16), 0 0 0 5px rgb(255 255 255 / 0.4), 0 24px 50px -24px rgb(48 38 22 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.9);
+    border-color: rgb(18 19 16 / 0.1);
+    box-shadow: 0 24px 50px -24px rgb(48 38 22 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.9);
   }
+  .af-page.theme-system .cs-top .aw-login {
+    color: #121310;
+    background: rgb(252 250 245 / 0.78);
+    border-color: rgb(255 255 255 / 0.7);
+    box-shadow: 0 10px 24px -14px rgb(48 38 22 / 0.5);
+  }
+  .af-page.theme-system .cs-top .aw-login:focus-visible { outline-color: #121310; }
   .af-page.theme-system .cs-eye,
   .af-page.theme-system .cs-line,
   .af-page.theme-system .cs-back,
