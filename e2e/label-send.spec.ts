@@ -58,7 +58,9 @@ test("the label's desk shows each choice, and the pick page holds back the evalu
       await page.goto(`/dashboard/review?view=queue&q=${encodeURIComponent(title)}`);
       const keep = card.getByRole("button", { name: /^Keep/ });
       if (await keep.isVisible()) {
-        const saved = page.waitForResponse((r) => r.request().method() === "POST", { timeout: 10_000 });
+        // The Keep save itself, not any POST: the reply box loads its templates with a POST of its own, and going on
+        // when that one answers would leave the page before the save lands.
+        const saved = page.waitForResponse((r) => r.request().method() === "POST" && (r.request().postData() ?? "").includes('"kept"'), { timeout: 10_000 });
         await keep.click();
         await saved;
       }
