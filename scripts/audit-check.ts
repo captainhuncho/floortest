@@ -14,7 +14,7 @@ export const ALLOW: Allowed[] = [
   {
     id: "GHSA-fc5q-39xc-vjpf",
     reason:
-      "picomatch <=4.0.7 ReDoS, reached only through @sentry/nextjs > @rollup/plugin-commonjs at build time; no user input reaches a glob. Owner's yes 17 Nov 2026 (SECURITY.md).",
+      "picomatch <=4.0.7 ReDoS, reached only through Sentry's build-time wrappingLoader > @rollup/plugin-commonjs; in no server trace, no user input reaches a glob. Owner's yes 17 Nov 2026 (SECURITY.md).",
     expires: "2026-12-17",
   },
 ];
@@ -49,6 +49,18 @@ export function checkAudit(audit: AuditJson, allow: Allowed[] = ALLOW, today = n
   return { failed, allowed };
 }
 
+/** The audit's JSON report; throws when it isn't one (npm offline, the registry didn't answer), so the check fails closed. */
+export function parseAudit(out: string): AuditJson {
+  let audit: unknown;
+  try {
+    audit = JSON.parse(out);
+  } catch {
+    throw new Error("npm audit gave no report (offline, or the registry didn't answer).");
+  }
+  if (!audit || typeof audit !== "object" || ("error" in audit && !("vulnerabilities" in audit))) throw new Error(`npm audit failed: ${JSON.stringify((audit as { error?: unknown })?.error ?? audit).slice(0, 200)}`);
+  return audit as AuditJson;
+}
+
 function runAudit(): AuditJson {
   let out: string;
   try {
@@ -58,9 +70,9 @@ function runAudit(): AuditJson {
     out = (e as { stdout?: string }).stdout ?? "";
   }
   try {
-    return JSON.parse(out) as AuditJson;
-  } catch {
-    console.error("npm audit gave no report (offline, or the registry didn't answer). Failing rather than passing unchecked.");
+    return parseAudit(out);
+  } catch (e) {
+    console.error(`${(e as Error).message} Failing rather than passing unchecked.`);
     process.exit(1);
   }
 }
