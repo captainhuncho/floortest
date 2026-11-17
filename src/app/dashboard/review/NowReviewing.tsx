@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { isTyping, PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
 import { Icon } from "@/components/Kit";
-import { overlayOpen } from "@/components/useShortcuts";
+import { overlayOpen, shortcutsOn } from "@/components/useShortcuts";
 import type { ReplyResult } from "../actions/review";
 import { MoreMenu } from "./MoreMenu";
 import { useStep, type Step } from "./QueueState";
@@ -125,6 +125,8 @@ export function PanelCalls({ trackId, href, senderName, onReply }: { trackId: nu
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || e.key.toLowerCase() !== "r") return;
+      // Single-key shortcuts are switched off in this browser (Settings → Account).
+      if (!shortcutsOn()) return;
       // Another layer is open (More, a confirm): R belongs to it.
       if (overlayOpen()) return;
       e.preventDefault();
