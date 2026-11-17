@@ -17,7 +17,7 @@ test("phone: the menu sits alone, the player joins it, the heart keeps with Undo
   await expect(mini).toHaveCount(0);
   await expect(menu.getByRole("link", { name: /^Queue/ })).toHaveAttribute("aria-current", "page");
 
-  const play = page.getByRole("button", { name: /^Play / }).first();
+  const play = page.locator('a[aria-label^="Play "], button[aria-label^="Play "]').locator("visible=true").first();
   await hydrated(play);
   await play.click();
   await expect(mini).toBeVisible();
@@ -78,7 +78,7 @@ test("laptop: a compact bar floats centred in the page column, and the volume le
   test.setTimeout(180_000);
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/review");
-  const play = page.getByRole("button", { name: /^Play / }).first();
+  const play = page.locator('a[aria-label^="Play "], button[aria-label^="Play "]').locator("visible=true").first();
   await hydrated(play);
   await play.click();
   const bar = page.getByRole("region", { name: "Now playing" }).and(page.locator("[data-player-bar]"));

@@ -11,7 +11,7 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   await page.goto("/dashboard/review");
   // Nothing playing: no bar, so no way in.
   await expect(page.locator("[data-player-bar]")).toHaveCount(0);
-  const play = page.getByRole("button", { name: /^Play / }).first();
+  const play = page.locator('a[aria-label^="Play "], button[aria-label^="Play "]').locator("visible=true").first();
   await hydrated(play);
   await play.click();
   const bar = page.locator("[data-player-bar]");
@@ -66,7 +66,7 @@ test("phone: the mini player's title opens the player full window, and the heart
   await page.setViewportSize({ width: 375, height: 812 });
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/review");
-  const play = page.getByRole("button", { name: /^Play / }).first();
+  const play = page.locator('a[aria-label^="Play "], button[aria-label^="Play "]').locator("visible=true").first();
   await hydrated(play);
   await play.click();
   const mini = page.locator("[data-mini-player]");
