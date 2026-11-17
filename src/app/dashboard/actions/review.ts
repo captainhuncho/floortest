@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import { trackUse } from "@/lib/usage";
 import { allow } from "@/lib/ratelimit";
 import { claimOnce } from "@/lib/once";
-import { requireUser, requireRole } from "@/lib/auth";
-import { ownedSender, ownedTrack } from "@/lib/desk";
+import { requireUser, requireRole, viewingAs } from "@/lib/auth";
+import { ownedSender, ownedTrack, playerTrackState as trackStateFor } from "@/lib/desk";
 import { clearDecision as clearTrackDecision, decide, decisionLocked, deleteTrack as removeTrack, markPlayedOut, reply, setBlocked, undoDecision as restoreDecision } from "@/lib/review";
 import { asPerson, asSystem, isDecision, logEvent, now, q, type Decision } from "@/lib/db";
 import { audit, trackLabel } from "@/lib/audit";
@@ -90,6 +90,16 @@ export async function clearKept() {
   );
   await audit(u.id, "set_cleared", `${r.changes} track${r.changes === 1 ? "" : "s"}`);
   done();
+}
+
+/**
+ * Read-only, for the expanded player: whether Played out can be offered on this track. Null for anything not on the desk,
+ * and in ops View as (read-only: no Played out there). The one source for these flags; the player track itself stays lean.
+ */
+export async function playerTrackState(trackId: number) {
+  if (await viewingAs()) return null;
+  const u = await requireUser();
+  return (await trackStateFor(u, Number(trackId))) ?? null;
 }
 
 /** Kept tracks only: tells the sender it was played in a set. */
