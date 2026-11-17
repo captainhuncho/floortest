@@ -19,7 +19,7 @@ owner had tried it on `mobile-next`.
 | CI: checks, Analyze, CodeQL, dependency-review, Vercel | `bd75d55c` | passed (ran before advisory GHSA-fc5q-39xc-vjpf was updated at 15:56 UTC) |
 | Full e2e | `bd75d55c` | 121 passed, 1 skipped, 0 failed |
 | Renders (Build) | `bd75d55c` | 18 of 18: ask, history, expired × 375 / 768 / 1440 × night and day |
-| Safety review, two blind reviewers | `bd75d55c` | cleared |
+| Safety review (one pass, UI only; no santa) | `d0e5382c`, then merge-only checks to `bd75d55c` | cleared |
 | Owner's try on `mobile-next` | `df82be41` (same patch) | tried before the ship |
 | Health `/api/health`, `/sent` | production | 200, 200 |
 
