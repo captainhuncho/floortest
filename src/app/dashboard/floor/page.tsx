@@ -102,12 +102,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
   const canSend = user.role !== "member" && (await switchOn("send_music", user));
   const problem: { text: string; action?: React.ReactNode } | null = paused
-    ? // The Link open switch lives on Account (the sidebar only links there), so the fix points there.
+    ? // The Pause your link switch lives on Settings (the sidebar only links there), so the fix points there.
       {
-        text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until)}` : ""}. Turn it back on in Account when you're ready.`,
+        text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until)}` : ""}. Turn it back on in Settings when you're ready.`,
         action: user.role === "member" ? undefined : (
-          <Link href="/dashboard/account" className={GHOST}>
-            Open Account
+          <Link href="/dashboard/settings" className={GHOST}>
+            Open Settings
           </Link>
         ),
       }
@@ -170,7 +170,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const contactCount = Number(contacts?.n ?? 0);
   const nearLimit = cap.used >= cap.limit * 0.8;
   // Near the limit with kept tracks, the way out is downloading and clearing them (Prepare), before any upgrade.
-  const capHref = nearLimit && kept > 0 ? "/dashboard/prepare" : "/dashboard/account";
+  const capHref = nearLimit && kept > 0 ? "/dashboard/prepare" : "/dashboard/settings";
   const passed = Math.max(0, cap.used - stats.waiting - kept);
   const free = Math.max(0, cap.limit - cap.used);
   const deskLinks: { key: string; href: string; text: string; urgent?: boolean }[] = [

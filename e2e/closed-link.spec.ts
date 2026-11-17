@@ -24,9 +24,9 @@ test.afterAll(async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   await logIn(page);
-  await page.goto("/dashboard/account");
-  const sw = page.getByRole("switch", { name: "Link open" });
-  if ((await sw.getAttribute("aria-checked")) === "false") {
+  await page.goto("/dashboard/settings");
+  const sw = page.getByRole("switch", { name: "Pause your link" });
+  if ((await sw.getAttribute("aria-checked")) === "true") {
     await sw.click();
     await expect(page.getByText("Link open again")).toBeVisible();
   }
@@ -35,9 +35,9 @@ test.afterAll(async ({ browser }) => {
 
 test("the receiver pauses their link", async ({ page }) => {
   await logIn(page);
-  await page.goto("/dashboard/account");
-  const sw = page.getByRole("switch", { name: "Link open" });
-  await expect(sw).toHaveAttribute("aria-checked", "true");
+  await page.goto("/dashboard/settings");
+  const sw = page.getByRole("switch", { name: "Pause your link" });
+  await expect(sw).toHaveAttribute("aria-checked", "false");
   await sw.click();
   await expect(page.getByText("Link paused")).toBeVisible();
 });
@@ -57,8 +57,8 @@ test("resuming the link emails no one who hasn't confirmed", async ({ page }) =>
   // The request only sent a confirmation link (H76): until it's opened, a typed address gets no reopen email, so the
   // form can't be used to mail strangers. Confirmed requests get exactly one (tests/reopen-confirm.test.ts).
   await logIn(page);
-  await page.goto("/dashboard/account");
-  await page.getByRole("switch", { name: "Link open" }).click();
+  await page.goto("/dashboard/settings");
+  await page.getByRole("switch", { name: "Pause your link" }).click();
   await expect(page.getByText("Link open again")).toBeVisible();
   await page.goto("/dashboard/emails");
   await expect(page.locator("summary", { hasText: `to ${email}` })).toHaveCount(0);
