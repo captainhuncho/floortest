@@ -5,7 +5,7 @@ import { markBell } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
 import { receiverLookup } from "@/lib/receiver-lookup";
 import { requirePerson, requireUser, requireRole } from "@/lib/auth";
-import { likeContains, now, q } from "@/lib/db";
+import { now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { closeFeedbackAskFor, fileFeedback, markFeedbackAsked } from "@/lib/feedback";
 import { sendReopenAlerts } from "@/lib/reopen";
@@ -13,6 +13,8 @@ import { done } from "./common";
 import { markTourSeenFor } from "@/lib/tour-seen";
 import { dismissNoticeFor } from "@/lib/site-notices";
 import { noteLinkShared } from "@/lib/getting-started";
+import { searchDesk, type SearchHit } from "@/lib/search";
+import { allow } from "@/lib/ratelimit";
 
 /** Beta feedback, signed by the person who sent it (src/lib/feedback.ts). */
 export async function sendFeedback(kind: string, message: string, path: string, fromAsk = false, viewport?: number) {
@@ -75,32 +77,26 @@ export async function markNotificationsRead() {
   done();
 }
 
-export type SearchHit = { kind: "track" | "contact"; id: number; title: string; detail: string; href: string };
+export type { SearchHit } from "@/lib/search";
 
-/** Type-ahead for the search dialog: a few tracks and contacts matching the query. */
+/** Searches per person per window before quickSearch answers nothing (typing at full speed is about 7 a second after the debounce). */
+const SEARCH_LIMIT = 30;
+const SEARCH_WINDOW_MS = 10_000;
+
+/**
+ * Type-ahead for the search dialog: a few tracks and contacts that match the query or come close (typos). Over the
+ * per-person limit, or if the search fails (the 2 s timeout), it answers no results; the error goes to the server log
+ * without the search words.
+ */
 export async function quickSearch(query: string): Promise<SearchHit[]> {
   const u = await requireUser();
-  const text = String(query ?? "").trim().slice(0, 100);
-  if (!text) return [];
-  const like = likeContains(text);
-  const tracks = await q.all<{ id: number; title: string; artist: string; sender: string }>(
-    `SELECT t.id, t.title, t.artist, s.name AS sender FROM tracks t JOIN senders s ON s.id = t.sender_id
-     WHERE t.user_id = ? AND t.deleted_at IS NULL AND (t.title ILIKE ? OR t.artist ILIKE ? OR t.genre ILIKE ?) ORDER BY t.created_at DESC LIMIT 6`,
-    u.id,
-    like,
-    like,
-    like,
-  );
-  const contacts = await q.all<{ id: number; name: string; email: string }>(
-    "SELECT id, name, email FROM senders WHERE user_id = ? AND (name ILIKE ? OR email ILIKE ?) ORDER BY lower(name) LIMIT 4",
-    u.id,
-    like,
-    like,
-  );
-  return [
-    ...tracks.map((t) => ({ kind: "track" as const, id: t.id, title: `${t.artist} - ${t.title}`, detail: `from ${t.sender}`, href: `/dashboard/review?view=queue&s=all&t=${t.id}` })),
-    ...contacts.map((c) => ({ kind: "contact" as const, id: c.id, title: c.name, detail: c.email, href: `/dashboard/contacts/${c.id}` })),
-  ];
+  if (!(await allow("quick_search", String(u.actor_id), SEARCH_LIMIT, SEARCH_WINDOW_MS))) return [];
+  try {
+    return await searchDesk(u, query);
+  } catch (e) {
+    console.error("[search] quickSearch failed", u.actor_id, e instanceof Error ? e.message : "unknown error");
+    return [];
+  }
 }
 
 export async function pauseLink(form: FormData) {

@@ -16,6 +16,10 @@ delete process.env.RESEND_API_KEY;
 const SITE = "https://floortest.app";
 
 async function gate() {
+  // Open the throwaway database first: its first read builds every table (seconds on a busy machine), and the gate
+  // counts any read over 1.5 s as unreadable. Production reads an open database, so only the test needs this.
+  const { q } = await import("../src/lib/db");
+  await q.get("SELECT 1 AS warm");
   const g = await import("../src/lib/site-gate");
   g.forgetGateLock();
   return g;
