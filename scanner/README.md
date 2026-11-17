@@ -23,7 +23,11 @@ secret (`cloudflare/routes.js`; `/health` too since 28 Oct, when the repository 
 anyone keep the container awake and billed). **Sleeps after 10 idle minutes**
 (owner, 26 Oct; it cost about $20 a month always on): `/wake` (with the secret) starts it for the app's batch of held uploads (within a daily budget, `src/lib/scan-budget.ts`),
 `/scan` waits up to 90 s for it to be ready, `/status` says whether it's running without waking it. Cold start measured
-26 Oct: 16–18 s locally (amd64 image under emulation on an Apple Silicon Mac) plus 1–3 s for Cloudflare to place it. Fly.io is only a fallback, for if Cloudflare can't keep up
+26 Oct: 16–18 s locally (amd64 image under emulation on an Apple Silicon Mac) plus 1–3 s for Cloudflare to place it.
+Until 17 Nov it never actually slept: the idle stop is a SIGTERM, `server.mjs` runs as PID 1 and had no handler, so
+Linux dropped the signal and the container ran about 94% of the time. Now `server.mjs` exits on SIGTERM, and the Worker
+forces the container off (SIGKILL) if it is still running at the next idle check (`tests/scanner-sleep.test.ts`). It takes
+effect only after the Worker is redeployed (owner). Fly.io is only a fallback, for if Cloudflare can't keep up
 (see the end of this file).
 
 Cost: Workers Paid $5 a month, plus memory and disk billed as provisioned **only while it runs** (1 vCPU, 3 GiB: about
