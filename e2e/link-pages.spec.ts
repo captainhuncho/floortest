@@ -114,6 +114,28 @@ test.describe("private link pages", () => {
     await page.waitForURL(/\/dashboard\//, { timeout: 60_000 });
   });
 
+  // Before the End this link test: that one ends the link for the rest of the file.
+  test("the sender history groups sends by when and its chips narrow the rows, the counts staying on the totals", async ({ page }) => {
+    await gotoSent(page);
+    const chips = page.getByRole("group", { name: "Show" });
+    const row = page.getByRole("link", { name: new RegExp(LINKS.sender.title) });
+    const counts = await page.getByText(/tracks? sent · \d+ listened to/).textContent();
+    await expect(chips.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+    // Sent a day ago and listened to: under This week, in a list named by that heading.
+    await expect(page.getByRole("heading", { name: "This week" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "This week" }).getByRole("link", { name: new RegExp(LINKS.sender.title) })).toBeVisible();
+    await hydrated(chips.getByRole("button", { name: "Waiting" }));
+    await chips.getByRole("button", { name: "Waiting" }).click();
+    await expect(chips.getByRole("button", { name: "Waiting" })).toHaveAttribute("aria-pressed", "true");
+    await expect(chips.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
+    await expect(row).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "This week" })).toHaveCount(0);
+    await expect(page.getByText(counts!)).toBeVisible();
+    await chips.getByRole("button", { name: "Listened" }).click();
+    await expect(row).toBeVisible();
+    await expect(page.getByText(counts!)).toBeVisible();
+  });
+
   test("the sender history's End this link action still works", async ({ page }) => {
     await gotoSent(page);
     await page.getByRole("button", { name: "End this link now" }).click();

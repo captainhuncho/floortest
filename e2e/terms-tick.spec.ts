@@ -1,3 +1,4 @@
+import { maskEmail } from "../src/lib/mask-email";
 import type { Page } from "@playwright/test";
 import { expect, test, wav } from "./fixtures";
 
@@ -34,15 +35,15 @@ const MAIL = `http://127.0.0.1:${Number(process.env.E2E_MAIL_PORT || 3212)}/mail
 async function fillFirstSend(page: Page, title: string, email: string) {
   await page.goto("/kitkeys");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: `Tick - ${title}.wav`, mimeType: "audio/wav", buffer: wav(4) });
-  await expect(page.getByText(/WAV · \d+ KB · \d+:\d+/)).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel("Track title").fill(title);
+  await expect(page.getByText(/WAV · \d+:\d+/)).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
   await page.getByLabel("Artist").fill("First Sender");
   const genre = page.getByRole("combobox", { name: "Genre" });
   if (await genre.count()) await genre.selectOption({ index: 1 });
-  else await page.getByRole("group", { name: /^Genre/ }).getByRole("radio").first().check({ force: true });
-  await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
-  await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
-  await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
+  else await page.getByRole("group", { name: /^Genre/ }).getByRole("button").first().click();
+  await page.getByRole("group", { name: /^Mix/ }).getByRole("button", { name: "Mixed, not mastered" }).click();
+  await page.getByRole("group", { name: /^Release/ }).getByRole("button", { name: "Unreleased" }).click();
+  await page.getByRole("group", { name: /^AI use/ }).getByRole("button", { name: "None", exact: true }).click();
   await page.getByLabel(/^Your name/).fill("First Sender");
   await page.getByLabel(/^Your email/).fill(email);
   await page.getByLabel(/^Instagram/).fill("@firstsender");
@@ -65,9 +66,9 @@ test("a first-time sender confirms the code, ticks the Terms and the track goes 
     }, { timeout: 30_000 })
     .toMatch(/^\d{6}$/);
   await page.getByLabel("6-digit code").fill(code);
-  await page.getByRole("button", { name: /^Confirm and send to / }).click();
+  await page.getByRole("button", { name: "Send", exact: true }).click();
   // Accepted and recorded: the send goes through instead of being refused for a missing tick.
-  await expect(page.getByText(/Nothing else to do/)).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText(/Your receipt is on its way to/)).toBeVisible({ timeout: 90_000 });
   await expect(page.getByText(/accept the Terms/)).toHaveCount(0);
 });
 
@@ -88,11 +89,11 @@ test("when the Terms can't be checked, the send stops, says so and keeps the for
   await expect.poll(async () => (await box()).filter((m) => m.at >= since).length, { timeout: 30_000 }).toBeGreaterThan(0);
   const code = (await box()).filter((m) => m.at >= since).at(-1)?.body.match(/\b(\d{6})\b/)?.[1] ?? "";
   await page.getByLabel("6-digit code").fill(code);
-  await page.getByRole("button", { name: /^Confirm and send to / }).click();
+  await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByText(error).first()).toBeVisible({ timeout: 60_000 });
   expect(puts, "no file was uploaded").toBe(0);
-  await expect(page.getByLabel("Track title")).toHaveValue("Tick Down");
-  // The confirmed sender is kept as one "Sending as …" line, with the email.
-  await expect(page.getByText(new RegExp(`Sending as .*${email.replace(".", "\\.")}`))).toBeVisible();
-  await expect(page.getByText(/Nothing else to do/)).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Title", exact: true })).toHaveValue("Tick Down");
+  // The confirmed sender is kept as one "Sending as …" line, with the email masked.
+  await expect(page.getByText(`Sending as First Sender · ${maskEmail(email)}`)).toBeVisible();
+  await expect(page.getByText(/Your receipt is on its way to/)).toHaveCount(0);
 });
