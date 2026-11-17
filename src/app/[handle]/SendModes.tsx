@@ -9,9 +9,11 @@ import { SEG, segTab } from "@/components/Kit";
 
 type FormProps = React.ComponentProps<typeof SubmitForm>;
 
+const SWITCH_LINK = "inline-flex min-h-11 items-center self-center text-[13px] text-mute underline underline-offset-4 hover:text-bone";
+
 /**
- * The link page's send area: the receiver's brief (a genre tapped there carries into the form), then tracks (up to 3),
- * plus a folder when the receiver's plan accepts folders.
+ * The link page's send area: the receiver's brief (a genre tapped there carries into the form), then tracks (up to 3).
+ * When the receiver's plan accepts folders, one quiet link under Choose a track switches to sending a folder, and back.
  */
 export function SendModes({
   folderBytes,
@@ -23,27 +25,34 @@ export function SendModes({
 }) {
   const [mode, setMode] = useState<"tracks" | "folder">("tracks");
   const [picked, setPicked] = useState("");
-  const tracks = <SubmitForm {...form} presetGenre={picked} />;
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-1 flex-col gap-3.5">
       {brief && <Brief {...brief} picked={picked} onPick={setPicked} />}
-      {!folderBytes ? (
-        tracks
+      {mode === "tracks" || !folderBytes ? (
+        <SubmitForm
+          {...form}
+          presetGenre={picked}
+          folderLink={
+            folderBytes > 0 && (
+              <button type="button" onClick={() => setMode("folder")} className={SWITCH_LINK}>
+                Sending an EP? Send a folder
+              </button>
+            )
+          }
+        />
       ) : (
-        <div className="space-y-3">
-          <SendModeTabs mode={mode} setMode={setMode} className="group-has-[[data-picked]]/page:hidden" />
-          {mode === "tracks" ? (
-            tracks
-          ) : (
-            <FolderSend handle={form.handle} receiverName={form.receiverName} genres={form.genres} folderBytes={folderBytes} botCheckKey={form.botCheckKey} callout={form.callout} trackArt={form.trackArt} presetGenre={picked} receiverAsksPlay={form.receiverAsksPlay} />
-          )}
-        </div>
+        <>
+          <FolderSend handle={form.handle} receiverName={form.receiverName} genres={form.genres} folderBytes={folderBytes} botCheckKey={form.botCheckKey} callout={form.callout} trackArt={form.trackArt} presetGenre={picked} receiverAsksPlay={form.receiverAsksPlay} />
+          <button type="button" onClick={() => setMode("tracks")} className={SWITCH_LINK}>
+            Sending single tracks? Send up to 3 tracks
+          </button>
+        </>
       )}
     </div>
   );
 }
 
-/** "Single tracks" or "Folder": a slim switch; each mode's drop box states its own limits. Shared by the link page and the dashboard Send page. */
+/** "Single tracks" or "Folder": a slim switch; each mode's drop box states its own limits. Used by the dashboard Send page. */
 export function SendModeTabs({ mode, setMode, className = "" }: { mode: "tracks" | "folder"; setMode: (m: "tracks" | "folder") => void; className?: string }) {
   return (
     <div className={className}>

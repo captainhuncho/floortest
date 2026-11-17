@@ -21,6 +21,29 @@ import { refusal } from "./routes.js";
 export class Scanner extends Container {
   defaultPort = 8080;
   sleepAfter = "10m";
+  /** Set once a polite stop was sent for this run; cleared when the container starts again. */
+  stopSent = false;
+
+  onStart() {
+    this.stopSent = false;
+  }
+
+  /**
+   * After 10 idle minutes: a polite stop (SIGTERM, which server.mjs handles). If it is still running at the next check,
+   * 10 minutes later, it is forced off (SIGKILL), so a process that ignores SIGTERM can never keep it billed all day
+   * (17 Nov: it ran about 94% of the time because the stop signal was ignored). No scan is running at either point:
+   * the library only calls this with no request in flight.
+   */
+  async onActivityExpired() {
+    if (!this.container.running) return;
+    if (this.stopSent) {
+      console.log("Still running 10 minutes after the stop signal: forcing it off");
+      await this.destroy();
+      return;
+    }
+    this.stopSent = true;
+    await this.stop();
+  }
 
   constructor(ctx, env) {
     super(ctx, env);

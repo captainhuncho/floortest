@@ -158,6 +158,7 @@ export const SITE_PAGES = {
       bullet_private_team: f("Note: who hears it (with a team)", "Only {receiver} and the people on their FloorTest team can hear or download your file.", { vars: ["receiver"] }),
       bullet_retention: f("Note: deletion", "Files that aren't kept are deleted within {days} days.", { vars: ["days"] }),
       bullet_receipt: f("Note: receipt", "You'll get a private receipt and an email when it's listened to, downloaded or replied to."),
+      bullet_no_account: f("Note: no account", "No account. We email you a code to send."),
       closed_note: f("When the link is closed", "This link stays the same. Check back soon."),
       impersonation_prompt: f("Footer: impersonation question", "Not sure this is really {receiver}?", { vars: ["receiver"] }),
       impersonation_link: f("Footer: impersonation link", "Report impersonation"),
