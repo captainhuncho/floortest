@@ -72,3 +72,23 @@ test("covers come from the desk's own live tracks, and their artwork stays behin
   assert.equal(await fileAccess(null, "art", d), null, "nor someone signed out");
   assert.equal(await fileAccess(mine, "art", gone), null, "nor the art of a deleted track");
 });
+
+test("rows and tiles get a small WebP of the artwork, not the full image", async () => {
+  const sharp = (await import("sharp")).default;
+  const { storage } = await import("../src/lib/storage");
+  const { thumbResponse, THUMB_SIDE } = await import("../src/lib/art-thumb");
+  const store = await storage();
+  const big = await sharp({ create: { width: 1000, height: 800, channels: 3, background: "#b4f" } }).webp().toBuffer();
+  await store.put("collection-art/thumb-test.webp", new Uint8Array(big), "image/webp");
+  const r = await thumbResponse("collection-art/thumb-test.webp", 600);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("content-type"), "image/webp");
+  assert.equal(r.headers.get("cache-control"), "private, max-age=600", "kept no longer than access lasts");
+  assert.equal(r.headers.get("x-content-type-options"), "nosniff");
+  const out = Buffer.from(await r.arrayBuffer());
+  const meta = await sharp(out).metadata();
+  assert.equal(meta.format, "webp");
+  assert.ok(Math.max(meta.width ?? 0, meta.height ?? 0) <= THUMB_SIDE, `at most ${THUMB_SIDE}px`);
+  assert.ok(out.byteLength < big.byteLength, "smaller than the stored artwork");
+  assert.equal((await thumbResponse("collection-art/missing.webp", 600)).status, 404, "no file: not found");
+});

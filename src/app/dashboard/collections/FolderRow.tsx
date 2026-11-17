@@ -68,10 +68,13 @@ export const trackCount = (n: number) => `${n} ${n === 1 ? "track" : "tracks"}`;
  * One folder in the list. The whole row (or tile) opens it; `menu` is its ··· button, above the link.
  * `spoken` is what a screen reader hears: "Open Night set, callout, 12 tracks".
  */
+/** Rows and tiles draw art at 56 to about 96 px, so they ask the art routes for the small copy (?size=thumb, 192 px). */
+const thumb = (url: string) => `${url}${url.includes("?") ? "&" : "?"}size=thumb`;
+
 export function FolderRow({ href, name, spoken, covers, empty, line, menu, children }: { href: string; name: string; spoken: string; /** Up to four art URLs (FolderCover). */ covers: string[]; /** Nothing inside: the dashed cover. */ empty?: boolean; line: React.ReactNode; menu?: React.ReactNode; /** The row's own sheets and dialogs. */ children?: React.ReactNode }) {
   return (
     <div data-card className="relative flex items-center gap-3 md:flex-col md:items-stretch md:gap-2">
-      <FolderCover covers={covers} empty={empty} className="h-14 w-14 rounded-[10px] md:aspect-square md:h-auto md:w-full md:rounded-[14px]" />
+      <FolderCover covers={covers.map(thumb)} empty={empty} className="h-14 w-14 rounded-[10px] md:aspect-square md:h-auto md:w-full md:rounded-[14px]" />
       <div className="flex min-w-0 flex-1 items-center gap-1">
         <div className="min-w-0 flex-1">
           <Link href={href} aria-label={spoken} className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-bone after:absolute after:inset-0 after:rounded-[14px]">
