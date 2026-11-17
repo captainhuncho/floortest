@@ -83,19 +83,23 @@ test("laptop: a compact bar floats centred in the page column, and the volume le
   await play.click();
   const bar = page.getByRole("region", { name: "Now playing" }).and(page.locator("[data-player-bar]"));
   await expect(bar).toBeVisible();
-  const box = await bar.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const rail = document.querySelector("aside")!.getBoundingClientRect();
-    const column = document.querySelector("#main")!.getBoundingClientRect();
-    return {
-      clearOfRail: r.left >= rail.right + 20,
-      centred: Math.abs((r.left + r.right) / 2 - (column.left + column.right) / 2) <= 1,
-      compact: r.width < 820,
-      fromBottom: Math.round(innerHeight - r.bottom),
-      radius: getComputedStyle(el).borderRadius,
-    };
-  });
-  expect(box).toEqual({ clearOfRail: true, centred: true, compact: true, fromBottom: 20, radius: "18px" });
+  // The bar rises in over 220ms, so its place is read until it has settled.
+  await expect
+    .poll(() =>
+      bar.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const rail = document.querySelector("aside")!.getBoundingClientRect();
+        const column = document.querySelector("#main")!.getBoundingClientRect();
+        return {
+          clearOfRail: r.left >= rail.right + 20,
+          centred: Math.abs((r.left + r.right) / 2 - (column.left + column.right) / 2) <= 1,
+          compact: r.width < 820,
+          fromBottom: Math.round(innerHeight - r.bottom),
+          radius: getComputedStyle(el).borderRadius,
+        };
+      }),
+    )
+    .toEqual({ clearOfRail: true, centred: true, compact: true, fromBottom: 20, radius: "18px" });
   await expect(bar.getByRole("button", { name: "Next track" })).toBeVisible();
   await expect(bar.getByRole("button", { name: "Previous track" })).toBeVisible();
 
