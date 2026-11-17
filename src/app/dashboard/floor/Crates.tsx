@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/Kit";
 
-/** The Floor's quiet button: a hairline box, 44px at every size, so the lime one stays the only fill on the screen. */
+/** The Floor's quiet button: a hairline box, 44px at every size, so lime stays for the one or two things to do next. */
 export const QUIET =
   "inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[12px] border border-line px-3 text-[13px] font-medium text-bone transition hover:border-mute hover:bg-well disabled:cursor-not-allowed disabled:opacity-40";
 

@@ -7,7 +7,7 @@ import { LABEL, QUIET } from "./Crates";
 
 /**
  * Monday and Tuesday on DJ desks: one question about last week's kept tracks. Answering closes it for the week.
- * "Mark what I played" is the Floor's one lime button (Design, 16 Nov). `readOnly` (an admin's View as) leaves out
+ * "Mark what I played" is lime; on phones it is the Floor's only lime button (option 41, 16 Nov). `readOnly` (an admin's View as) leaves out
  * "None this weekend", which would answer for the desk.
  */
 export function PlayedOutCard({ titles, readOnly = false }: { titles: string[]; readOnly?: boolean }) {
