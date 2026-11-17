@@ -45,7 +45,7 @@ test("a sleeping scanner: the track is received and held without waking it, then
   await scannerMode(page, { asleepMs: 600_000 });
   await send(page, "Night Bus");
   await expect(page.getByRole("heading", { name: /“Night Bus” is received\./ })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/We're checking it for viruses, which can take up to 10 minutes/)).toBeVisible();
+  await expect(page.getByText(/We're checking it for viruses, which can take up to 20 minutes/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Open your receipt" })).toHaveCount(0);
   expect(await seen(page)).not.toContain("POST /wake");
   expect(await seen(page)).not.toContain("POST /scan");

@@ -37,7 +37,7 @@ export const UPLOAD_TTL = 2 * HOUR;
  * the scanner was asleep or couldn't be reached. Nothing reaches the desk until it passes; the routes answer 202.
  */
 export const UPLOAD_HELD =
-  "Received. We're checking it for viruses, which can take up to 10 minutes. It reaches the desk as soon as it passes, and your receipt follows by email.";
+  "Received. We're checking it for viruses, which can take up to 20 minutes. It reaches the desk as soon as it passes, and your receipt follows by email.";
 /**
  * Why it's held: "scanner" (asleep, down or too slow: the rest of a batch waits too), "file" (the scanner is up but
  * couldn't check this file: tried again, up to HELD_MAX_TRIES), or "budget" / "budget_all" (this sender's or everyone's
@@ -395,7 +395,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
     throw new IntakeError(check.reason, 415);
   }
   // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk. A sleeping
-  // scanner isn't woken for one file: the upload is held and the next batch (every 5 minutes) checks it.
+  // scanner isn't woken for one file: the upload is held and the next batch (every 15 minutes) checks it.
   const from = opts.from ?? "request";
   const asleep = from === "request" && (await scannerAwake()) === false;
   // Every scan keeps the billed scanner running: it's charged to the day's budget first, or the upload is held for the
