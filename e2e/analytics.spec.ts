@@ -2,13 +2,14 @@ import { expect, logIn, test } from "./fixtures";
 
 /**
  * Analytics (owner, 16 Nov): the desk's own numbers and its shared links, for a period picked from one menu. The owner
- * reaches it from the menu and from Account; it never shows visits to the link.
+ * reaches it from the Analytics row under Your desk on Settings (option 47: no longer in the side menu); it never shows
+ * visits to the link.
  */
 test("the owner opens Analytics, switches period, and sees the desk's own numbers", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/dashboard/floor");
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Analytics" }).click();
+  await page.goto("/dashboard/settings");
+  await page.getByRole("region", { name: "Your desk" }).getByRole("link", { name: /^Analytics/ }).click();
   await page.waitForURL(/\/dashboard\/analytics/);
   await expect(page.getByRole("heading", { name: "Analytics", level: 1 })).toBeVisible();
 
