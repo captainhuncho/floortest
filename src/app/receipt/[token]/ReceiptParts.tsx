@@ -59,7 +59,7 @@ export function Disc({ status, strong = true }: { status: string; strong?: boole
  */
 export function PinnedBar({ children, lift }: { children: ReactNode; lift?: number }) {
   return (
-    <div style={lift ? { bottom: lift } : undefined} className="sticky bottom-0 z-10 order-last -mx-3.5 mt-auto flex flex-col items-center gap-1 bg-[linear-gradient(to_bottom,transparent,var(--color-ink)_1.5rem)] px-3.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-8 sm:static sm:order-none sm:mx-0 sm:mt-1 sm:bg-none sm:p-0 [@media(max-height:499px)]:static [@media(max-height:499px)]:bg-none [@media(max-height:499px)]:pt-3">
+    <div style={lift ? { bottom: lift } : undefined} className="sticky bottom-0 z-10 order-last -mx-3.5 flex flex-col items-center gap-1 bg-[linear-gradient(to_bottom,transparent,var(--color-ink)_1.5rem)] px-3.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-8 sm:static sm:order-none sm:mx-0 sm:bg-none sm:p-0 [@media(max-height:499px)]:static [@media(max-height:499px)]:bg-none [@media(max-height:499px)]:pt-3">
       {children}
     </div>
   );

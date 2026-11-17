@@ -260,7 +260,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
     </>
   );
   const foot = (
-    <footer className="flex justify-center pt-5 sm:mt-auto sm:pt-8">
+    <footer className="mt-auto flex justify-center pt-5 sm:pt-8">
       <Logo small />
     </footer>
   );
