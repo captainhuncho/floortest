@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { CARD, Icon } from "@/components/Kit";
+import { Icon } from "@/components/Kit";
 import { q } from "@/lib/db";
-import { ago, fmtDay } from "@/lib/format";
+import { ago } from "@/lib/format";
 import { redirect } from "next/navigation";
 import { readSenderLink, revokeSenderLink } from "@/lib/senderLink";
 import { RETAIN_UNREVIEWED_DAYS, unheardAfterWindow } from "@/lib/plans";
 import { maskEmail } from "@/lib/mask-email";
 import { receiptPath } from "@/lib/receipt-token";
+import { countsLine, isListened, isWaiting } from "@/lib/sent-groups";
+import { Disc, QUIET, SENT_MAIN } from "../parts";
+import { SentList, type SentRow } from "./SentList";
 
 export const metadata = { title: "Your sends — FloorTest", robots: { index: false } };
 
@@ -23,16 +26,16 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
   }
   if (!email)
     return (
-      <main className="theme-system flex min-h-dvh flex-col items-center justify-center bg-ink px-3.5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-bone sm:px-6">
-        <div className="flex w-full max-w-[520px] flex-col items-center gap-5">
-        <Logo />
-        <section className={`${CARD} flex w-full flex-col gap-3 p-4`}>
-          <h1 className="text-[24px] font-semibold leading-tight tracking-[-0.03em]">This link has expired</h1>
-          <p className="text-[13px] leading-5 text-mute">Links work for 24 hours, or until they&apos;re ended.</p>
-          <Link href="/sent" className="btn-lime min-h-12 w-fit rounded-[13px] px-5 text-[13.5px]">
+      <main className={SENT_MAIN}>
+        <Logo className="self-center" />
+        {/* One centred group, the way back right under the words. */}
+        <div className="flex flex-1 flex-col items-center justify-center gap-3.5 pb-10 text-center">
+          <Disc icon="clock" dim />
+          <h1 className="text-[28px] font-semibold leading-[1.1] tracking-[-0.02em] text-dim">This link has expired</h1>
+          <p className="max-w-[30ch] text-[13px] leading-5 text-mute">Links work for 24 hours, or until they&apos;re ended.</p>
+          <Link href="/sent" className="btn-lime min-h-12 min-w-[220px] rounded-full px-[22px] text-[14.5px] font-bold">
             Email me a new link
           </Link>
-        </section>
         </div>
       </main>
     );
@@ -49,50 +52,46 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
   // 90 days stays dim.
   const status = (r: (typeof rows)[number]): [string, boolean, number] =>
     r.played_out_at ? ["Played out", true, r.played_out_at] : r.replied_at ? ["Replied", true, r.replied_at] : r.downloaded_at ? ["Downloaded", true, r.downloaded_at] : r.played_at ? ["Listened", true, r.played_at] : unheardAfterWindow(r) ? [`Not listened to in ${RETAIN_UNREVIEWED_DAYS} days`, false, r.created_at] : ["Delivered", true, r.created_at];
-  const heard = rows.filter((r) => r.played_at).length;
+  // What the list in the browser gets: the words each row prints and the three values its grouping and chips read.
+  // No track id, sealed token or raw timestamps of what the receiver did.
+  const now = Date.now();
+  const sends: SentRow[] = rows.map((r) => {
+    const [label, lit, at] = status(r);
+    return {
+      href: receiptPath(r),
+      title: r.title,
+      receiver: r.receiver,
+      label,
+      lit,
+      when: lit ? ago(at, now) : null,
+      sentAt: r.created_at,
+      listened: isListened(r),
+      waiting: isWaiting(r, unheardAfterWindow(r, now)),
+    };
+  });
 
   return (
-    // Light or dark with the visitor's device, one ~600px column of cards (owner, 30 Oct).
-    <main className="theme-system mx-auto flex min-h-dvh w-full max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-16">
-      <Logo className="mb-2 self-center" />
-      <section aria-labelledby="history-h" className={`${CARD} flex flex-col p-3`}>
-        <p className="flex items-center gap-1.5 text-[11.5px] text-mute">
-          <Icon name="lock" className="size-[15px]" />
+    <main className={SENT_MAIN}>
+      <header className="flex flex-col gap-1.5 px-0.5 pt-3">
+        <p className="flex items-center gap-1.5 text-[12px] text-mute">
+          <Icon name="lock" className="size-3.5" />
           {/* Masked: the link gets forwarded and screenshotted; the address it came to is enough for the sender to recognise it. */}
           <span className="min-w-0 truncate">Private · {maskEmail(email)}</span>
         </p>
-        <h1 id="history-h" className="mt-2 text-[24px] font-semibold leading-tight tracking-[-0.03em] sm:text-[28px]">Everything you&apos;ve sent</h1>
-        <p className="mt-1 text-[12.5px] text-mute tnum">
-          {rows.length} track{rows.length === 1 ? "" : "s"} sent · {heard} listened to
-        </p>
-        <ul className="mt-2.5 flex flex-col">
-          {rows.map((r) => {
-            const [label, good, at] = status(r);
-            return (
-              <li key={r.id} className="border-t border-line first:border-t-0">
-                <Link href={receiptPath(r)} className="-mx-2 flex min-h-14 items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-well">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold">{r.title}</span>
-                    <span className="block text-[11.5px] leading-[1.4] text-mute">
-                      {r.artist} · to {r.receiver} · sent {fmtDay(r.created_at)}
-                    </span>
-                  </span>
-                  <span className={`flex shrink-0 items-center gap-1.5 text-right text-[11.5px] ${good ? "font-semibold text-bone" : "text-dim"}`}>
-                    <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${good ? "bg-(--color-lime)" : "border border-line-2"}`} />
-                    <span className="max-w-[9.5rem] sm:max-w-none">{label}</span>
-                    {good && <span className="hidden font-normal text-dim sm:inline">{ago(at)}</span>}
-                  </span>
-                  <Icon name="chev" className="size-[15px] shrink-0 text-dim" />
-                </Link>
-              </li>
-            );
-          })}
-          {!rows.length && <li className="py-6 text-[13px] text-mute">Nothing sent yet. Send a track through a receiver&apos;s link and it will show here.</li>}
-        </ul>
-      </section>
-      <form action={endLink} className={`${CARD} flex flex-col gap-2 p-3`}>
-        <button className="inline-flex min-h-11 w-fit items-center rounded-[11px] border border-line bg-well px-3.5 text-[12.5px] font-semibold text-bone hover:bg-ink-4">End this link now</button>
-        <p className="text-[11.5px] text-dim">It stops working straight away. You can always email yourself a new one.</p>
+        <h1 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">Everything you&apos;ve sent</h1>
+        <p className="text-[13px] text-mute tnum">{countsLine(sends)}</p>
+      </header>
+      {sends.length ? (
+        <SentList rows={sends} now={now} />
+      ) : (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <Disc icon="music" dim small />
+          <p className="max-w-[30ch] text-[13px] leading-5 text-mute">Nothing sent yet. Send a track through a receiver&apos;s link and it will show here.</p>
+        </div>
+      )}
+      <form action={endLink} className="flex flex-col items-center gap-1.5 pb-1.5 pt-3.5 text-center">
+        <button className={QUIET}>End this link now</button>
+        <p className="text-[12px] text-dim">It stops working straight away. You can always email yourself a new one.</p>
       </form>
     </main>
   );
