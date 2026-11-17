@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { cancelTeamInvite, changeTeamRole, inviteTeammate, saveReplyApproval, type TeamState } from "../../actions/account-team";
+import { cancelTeamInvite, changeTeamRole, inviteTeammate, saveReplyApproval, setTeammateCallouts, type TeamState } from "../../actions/account-team";
 import { BTN, BTN_GHOST, FIELD, HELP, Notice } from "../ui";
 
 export function InviteForm({ canInviteAdmins, full }: { canInviteAdmins: boolean; full: boolean }) {
@@ -108,6 +108,43 @@ export function RoleSelect({ memberId, name, role }: { memberId: number; name: s
       {error && (
         <span role="alert" className="max-w-56 text-right text-[11.5px] text-danger">
           {error} Their role hasn&apos;t changed.
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** The owner or an A&R / Admin lets a Member run callouts (create and edit them). A refusal puts the tick back and says why. */
+export function CalloutsTick({ memberId, name, on }: { memberId: number; name: string; on: boolean }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <span className="flex flex-col items-end gap-1">
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-[12px] text-bone">
+        <input
+          type="checkbox"
+          aria-label={`Let ${name} run callouts`}
+          defaultChecked={on}
+          disabled={pending}
+          onChange={(e) => {
+            const el = e.currentTarget;
+            const next = el.checked;
+            setError(null);
+            start(async () => {
+              const r = await setTeammateCallouts(memberId, next);
+              if (r?.error) {
+                el.checked = !next;
+                setError(r.error);
+              }
+            });
+          }}
+          className="size-5 accent-lime"
+        />
+        Runs callouts
+      </label>
+      {error && (
+        <span role="alert" className="max-w-56 text-right text-[11.5px] text-danger">
+          {error} Nothing changed.
         </span>
       )}
     </span>

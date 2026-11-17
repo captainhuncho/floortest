@@ -4,7 +4,7 @@
 import { redirect } from "next/navigation";
 import { addCollection, canCapCallouts, routeToCollection } from "@/lib/desk";
 import { revalidatePath } from "next/cache";
-import { requireUser, requireRole } from "@/lib/auth";
+import { requireCallouts, requireRole } from "@/lib/auth";
 import { asPerson, asSystem, now, q } from "@/lib/db";
 import { cleanGenre, MAX_COLLECTION_GENRES } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
@@ -14,7 +14,7 @@ import { sendReopenAlerts } from "@/lib/reopen";
 import { done, ownCollection } from "./common";
 
 export async function createCollection(form: FormData) {
-  const u = await requireUser();
+  const u = await requireCallouts();
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
   // No cap on callouts (owner, 16 Nov). The desk comes from the session, never from the request.
@@ -42,7 +42,7 @@ export async function setActiveCollection(id: number) {
 }
 
 export async function updateCollection(id: number, form: FormData) {
-  const u = await requireUser();
+  const u = await requireCallouts();
   // Every collection and track query below runs as the person (B8); switches and the audit log are the app's own.
   const asMe = <T,>(fn: () => Promise<T>) => asPerson(u.actor_id, fn);
   const c = await asMe(() => ownCollection(u.id, id));

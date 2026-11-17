@@ -1,5 +1,5 @@
 import { trackUse } from "@/lib/usage";
-import { atLeast } from "@/lib/account-members";
+import { atLeast, canRunCallouts } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import { notFound } from "next/navigation";
@@ -38,6 +38,8 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const genres = genresFor(c);
   // Team and link controls are for the owner and admins (their actions check this too).
   const admin = atLeast(user.role, "admin");
+  // Editing a callout: owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov).
+  const callouts = await canRunCallouts(user);
   // Share links (behind the "sharing" switch): only while sharing is switched on.
   const links = admin && (await sharingOn()) ? await linksFor(user, c.id) : null;
   // Track and sender reads run under the per-person rules (B8) as well as the desk filter; share links stay the app's.
@@ -140,7 +142,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} />
       </div>
       <div className="flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:flex-1">
-        <EditCollectionInfo c={editable} receiving={receiving} closed={closed} />
+        {callouts && <EditCollectionInfo c={editable} receiving={receiving} closed={closed} />}
         {/* No Add tracks on a callout (owner, 16 Nov: "keep it for Projects only"): senders send through the link, and
             your own tracks are added on a project's page. */}
       </div>
@@ -150,7 +152,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   return (
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 sm:gap-5">
-        <CollectionDetailHeader c={editable} receiving={receiving} closed={closed} canManage={admin} />
+        <CollectionDetailHeader c={editable} receiving={receiving} closed={closed} canManage={admin} canEdit={callouts} />
         {/* Phones: the details first, then the tracks. From lg the tracks on the left and the details beside them. */}
         <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
           <aside aria-label="Collection details" className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-1">
