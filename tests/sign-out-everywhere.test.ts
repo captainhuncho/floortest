@@ -113,3 +113,67 @@ test("the action: a Member on a team desk and an admin's View as are refused; th
   assert.equal(done.redirect, "/signed-out");
   assert.deepEqual(await owner.left(), { sessions: 0, ops: 0 });
 });
+
+test("after sign out everywhere, this browser's session cookie is gone too", async () => {
+  const { sessionCookie } = await import("../src/lib/sessions");
+  const { signOutAllMyDevices } = await import("../src/app/dashboard/actions/security");
+  const owner = await person("soe-cookie@x.io", "soecookie");
+  await agreeTerms(owner.id);
+  const jar = await signedIn(owner.id);
+  assert.ok(jar.has(sessionCookie(false)), "signed in to begin with");
+  const done = await inRequest(jar, "203.0.113.48", () => signOutAllMyDevices(PASSWORD, ""), { dropAfter: true });
+  assert.equal(done.redirect, "/signed-out");
+  assert.equal(jar.has(sessionCookie(false)), false, "the cookie is cleared, not only the session row");
+});
+
+test("if the account log can't be written, sign out everywhere still ends every session and the cookie", async () => {
+  // audit() never throws on its own (src/lib/audit.ts); a broken account log is the real failure it guards against.
+  const { q } = await import("../src/lib/db");
+  const { sessionCookie } = await import("../src/lib/sessions");
+  const { signOutAllMyDevices } = await import("../src/app/dashboard/actions/security");
+  const owner = await person("soe-nolog@x.io", "soenolog");
+  await agreeTerms(owner.id);
+  const jar = await signedIn(owner.id);
+  await q.run("ALTER TABLE account_log RENAME TO account_log_away");
+  try {
+    const done = await inRequest(jar, "203.0.113.49", () => signOutAllMyDevices(PASSWORD, ""), { dropAfter: true });
+    assert.equal(done.redirect, "/signed-out");
+  } finally {
+    await q.run("ALTER TABLE account_log_away RENAME TO account_log");
+  }
+  assert.deepEqual(await owner.left(), { sessions: 0, ops: 0 });
+  assert.equal(jar.has(sessionCookie(false)), false);
+});
+
+test("the password check stops after 10 tries an hour, even when the 11th is right", async () => {
+  const { endEverySession } = await import("../src/lib/step-up");
+  const me = await person("soe-limit@x.io", "soelimit");
+  for (let i = 0; i < 10; i++) assert.equal(await endEverySession(me.id, "not-the-password", ""), "That password isn't right.", `try ${i + 1}`);
+  assert.equal(await endEverySession(me.id, PASSWORD, ""), "Too many tries. Wait an hour and try again.");
+  assert.deepEqual(await me.left(), { sessions: 3, ops: 1 }, "nothing ended");
+});
+
+test("Settings reads the Analytics numbers for the owner and never for a Member on the same desk", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const { DESK_COOKIE, requireUser } = await import("../src/lib/auth");
+  const { settingsWeek } = await import("../src/lib/analytics");
+  await q.run("INSERT INTO switches (key, on_, updated_at) VALUES ('teams', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now());
+  const owner = await person("soe-an-owner@x.io", "soeanowner");
+  const member = await person("soe-an-member@x.io", "soeanmember");
+  for (const p of [owner, member]) await agreeTerms(p.id);
+  await q.run("UPDATE users SET plan = 'team' WHERE id = ?", owner.id);
+  await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)", owner.id, member.id, now());
+
+  const asOwner = await signedIn(owner.id);
+  const ownerWeek = await inRequest(asOwner, "203.0.113.50", async () => settingsWeek(await requireUser()), { dropAfter: true });
+  assert.equal(typeof (ownerWeek.answer as { in?: unknown })?.in, "number", "the owner gets this week's totals");
+
+  const asMember = await signedIn(member.id);
+  asMember.set(DESK_COOKIE, String(owner.id));
+  const memberWeek = await inRequest(asMember, "203.0.113.50", async () => {
+    const u = await requireUser();
+    assert.equal(u.role, "member", "working the owner's desk as a Member");
+    return settingsWeek(u);
+  }, { dropAfter: true });
+  assert.equal(memberWeek.answer, null, "a Member gets no numbers, so no Analytics row");
+});
