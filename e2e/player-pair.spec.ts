@@ -65,6 +65,9 @@ test("phone: the menu sits alone, the player joins it, the heart keeps with Undo
   await menu.getByRole("button", { name: "More" }).click();
   await expect(page.getByRole("dialog", { name: "More" }).getByRole("link")).toHaveText(["Send music", "Contacts", "Activity", "How it works"]);
   await page.keyboard.press("Escape");
+  // The sheet hands focus back to More as it closes: wait for that, or it lands after the search field is focused.
+  await expect(page.getByRole("dialog", { name: "More" })).toBeHidden();
+  await expect(menu.getByRole("button", { name: "More" })).toBeFocused();
 
   // A text field in use: the pair steps aside, and comes back after.
   const search = page.getByPlaceholder(/Search/).first();
