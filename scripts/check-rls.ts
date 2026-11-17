@@ -7,7 +7,7 @@
  * Run: tsx scripts/check-rls.ts
  */
 import { PGlite } from "@electric-sql/pglite";
-import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0154
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0155
 import { MIGRATIONS } from "../src/lib/db/migrations";
 
 /** Column names that hold sign-in secrets, as a Postgres regular expression. */

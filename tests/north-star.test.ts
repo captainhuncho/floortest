@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
-import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0154
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0155
 import { toPositional } from "../src/lib/db/client";
 import { MIGRATIONS } from "../src/lib/db/migrations";
 import { DECIDE_WITHIN, northStar } from "../src/lib/north-star";

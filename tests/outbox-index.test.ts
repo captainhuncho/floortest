@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
-import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0154
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0155
 import { MIGRATIONS } from "../src/lib/db/migrations";
 
 // 1 Nov: the daily email caps count the outbox by status and send time on every email. The planner must be able to
