@@ -103,8 +103,10 @@ test("on the live site a missing scanner refuses uploads instead of letting them
 
 test("the scanner's health check: ok, down when it answers wrongly, down when nothing answers", async () => {
   let healthy = true;
-  const server = http.createServer((_req, res) => {
+  const server = http.createServer((req, res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
+    // An awake container: /health is asked only of one /status says is running (Safety, 17 Nov).
+    if (req.url === "/status") return res.end(JSON.stringify({ worker: true, container: "healthy" }));
     res.end(JSON.stringify({ clamd: healthy }));
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
