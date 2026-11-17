@@ -28,3 +28,31 @@ test("the readiness check sends the scanner's secret to /health, so an awake sca
     server.close();
   }
 });
+
+test("only a running scanner is asked /health: stopping reads asleep, unknown reads down, neither wakes it", async () => {
+  let container: string | null = "stopping";
+  const seen: string[] = [];
+  const server = http.createServer((req, res) => {
+    seen.push(`${req.method} ${req.url}`);
+    res.setHeader("Content-Type", "application/json");
+    if (req.url === "/status") return res.end(JSON.stringify(container === null ? { worker: true } : { worker: true, container }));
+    res.end(JSON.stringify({ clamd: true }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  process.env.SCAN_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  process.env.SCAN_SECRET = SECRET;
+  try {
+    const { scannerHealth } = await import("../src/lib/scan");
+    assert.equal(await scannerHealth(), "asleep", "stopping");
+    container = "unknown";
+    assert.equal(await scannerHealth(), "down", "unknown");
+    container = null;
+    assert.equal(await scannerHealth(), "down", "no state");
+    assert.deepEqual(seen, ["GET /status", "GET /status", "GET /status"], "/health (which wakes it) never asked");
+    container = "running";
+    assert.equal(await scannerHealth(), "ok", "running");
+    assert.equal(seen.at(-1), "GET /health");
+  } finally {
+    server.close();
+  }
+});

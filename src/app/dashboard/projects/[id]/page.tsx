@@ -3,12 +3,20 @@ import { requireUser } from "@/lib/auth";
 import { getFolder, listFolders, listLibrary } from "@/lib/library";
 import { fmtDay } from "@/lib/format";
 import { OwnerUpload } from "../../collections/OwnerUpload";
+import { fmtLength, FolderPage } from "../../collections/FolderPage";
+import { trackCount } from "../../collections/FolderRow";
+import { PlayAll } from "../../collections/PlayAll";
 import { MusicList } from "../MusicList";
-import { ProjectHeader } from "../ProjectsUI";
+import { musicToPlayer } from "@/lib/player-track";
+import { ProjectTools } from "../ProjectsUI";
 
 export const metadata = { title: "Project — FloorTest" };
 
-/** One project (a folder in Projects): its tracks, adding to it, and moving tracks on to another project. */
+/**
+ * A project's folder page (owner, 17 Nov: option 43; the same page as a callout's): the folder shape for a cover
+ * (projects have no artwork), its name, its tracks and length in one line, shuffle and play, "Add tracks", then its
+ * tracks, numbered.
+ */
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const id = Number((await params).id);
@@ -16,27 +24,30 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!project) notFound();
   const [tracks, folders] = await Promise.all([listLibrary(user, id), listFolders(user)]);
   const canEdit = user.role !== "member";
+  const items = tracks.map((t) => ({ id: t.id, title: t.title, artist: t.artist, duration: t.duration, peaks: t.peaks, added: fmtDay(t.created_at, user.tz) }));
   return (
-    <div className="page-gutter py-4 sm:py-7">
-      <div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 sm:gap-5">
-        <ProjectHeader p={{ id: project.id, name: project.name, count: project.count, duration: project.duration }} canEdit={canEdit} />
-        {canEdit && (
-          <OwnerUpload
-            api="/api/music/upload"
-            fields={{ folderId: id }}
-            heading={`Add tracks to ${project.name}`}
-            note="WAV or MP3. Each file is checked as real audio and for viruses, then kept here until you delete it."
-            startOpen={tracks.length === 0}
-          />
-        )}
-        <MusicList
-          canEdit={canEdit}
-          folders={folders.map((f) => ({ id: f.id, name: f.name }))}
-          here={id}
-          empty="No tracks in this project yet."
-          tracks={tracks.map((t) => ({ id: t.id, title: t.title, artist: t.artist, duration: t.duration, peaks: t.peaks, added: fmtDay(t.created_at, user.tz) }))}
-        />
-      </div>
-    </div>
+    <FolderPage
+      back={{ href: "/dashboard/projects", label: "Projects" }}
+      tools={canEdit && <ProjectTools p={{ id: project.id, name: project.name, count: project.count, duration: project.duration }} />}
+      art={null}
+      name={project.name}
+      lines={[project.count ? `Project · ${trackCount(project.count)}${project.duration ? ` · ${fmtLength(project.duration)}` : ""}` : "Project · no tracks yet"]}
+      play={<PlayAll queue={items.map(musicToPlayer)} name={project.name} />}
+      action={
+        canEdit && (
+          // The upload's own "Add tracks" button, stretched to the page's one wide button.
+          <div className="[&>button]:min-h-12 [&>button]:w-full [&>button]:rounded-[14px] [&>button]:text-[14px]">
+            <OwnerUpload
+              api="/api/music/upload"
+              fields={{ folderId: id }}
+              heading={`Add tracks to ${project.name}`}
+              note="WAV or MP3. Each file is checked as real audio and for viruses, then kept here until you delete it."
+            />
+          </div>
+        )
+      }
+    >
+      <MusicList canEdit={canEdit} folders={folders.map((f) => ({ id: f.id, name: f.name }))} here={id} numbered empty={canEdit ? "Add your own tracks here: WAV or MP3." : "No tracks in this project yet."} tracks={items} />
+    </FolderPage>
   );
 }

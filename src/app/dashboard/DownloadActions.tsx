@@ -5,7 +5,8 @@ import { GHOST, GHOST_TALL, LIME, LIME_SM } from "./kitButtons";
  * The same download choices wherever tracks can be downloaded (Prepare for set, a collection page, collection cards):
  * the main download (a new named folder with a playlist, Rekordbox XML optional), named for what you get
  * ("Download collection" or "Download kept"), and Files only (just the originals).
- * `extra` adds a page's own action in the same style (Prepare's Clear kept).
+ * `extra` adds a page's own action in the same style (Prepare's Clear kept). `quiet` draws the main download without
+ * lime (a folder's page and menu, where lime is kept for Create folder, Receiving and Waiting).
  */
 export function DownloadActions({
   collectionId = null,
@@ -13,12 +14,14 @@ export function DownloadActions({
   crateName,
   size = "md",
   extra,
+  quiet = false,
 }: {
   collectionId?: number | null;
   count: number;
   crateName?: string;
   size?: "md" | "sm";
   extra?: React.ReactNode;
+  quiet?: boolean;
 }) {
   // The kit's buttons. Phones fit three across in a grid, so the regular size trims its side padding there.
   const box = size === "md" ? "px-2! md:px-4!" : "";
@@ -34,7 +37,7 @@ export function DownloadActions({
         label={collectionId ? "Download collection" : "Download kept"}
         align="start"
         showCount={false}
-        buttonClassName={`${size === "md" ? LIME : LIME_SM} w-full ${box}`}
+        buttonClassName={`${size === "md" ? (quiet ? GHOST_TALL : LIME) : quiet ? GHOST : LIME_SM} w-full ${box}`}
       />
       {count > 0 ? (
         <a href={filesHref} className={files} title="The original audio files, no playlist or XML">
