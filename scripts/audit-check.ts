@@ -64,7 +64,8 @@ export function parseAudit(out: string): AuditJson {
     throw new Error(`npm audit failed: ${JSON.stringify(a?.error ?? a).slice(0, 200)}`);
   // npm's own totals must match the findings listed, so a cut-short or reshaped report can't hide one.
   const counts = a!.metadata!.vulnerabilities!;
-  const expected = Number(counts.high) + Number(counts.critical);
+  if (typeof counts.high !== "number" || typeof counts.critical !== "number") throw new Error(`npm audit report has no high and critical totals: ${JSON.stringify(counts).slice(0, 200)}`);
+  const expected = counts.high + counts.critical;
   const listed = Object.values(a!.vulnerabilities as Record<string, Vuln>).filter((v) => SERIOUS.has(v?.severity)).length;
   if (!Number.isInteger(expected) || listed !== expected) throw new Error(`npm audit report doesn't add up: ${listed} high or critical listed, metadata says ${counts.high} high and ${counts.critical} critical.`);
   return a as AuditJson;

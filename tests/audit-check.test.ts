@@ -69,6 +69,10 @@ test("a registry error, a missing findings list or totals that don't match fail 
   assert.throws(() => parseAudit(JSON.stringify({ message: "request to http://127.0.0.1:9/-/npm/v1/security/advisories/bulk failed, reason: connect ECONNREFUSED", error: { code: "ECONNREFUSED" } })), /npm audit failed/);
   assert.throws(() => parseAudit(JSON.stringify({ metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 } } })), /npm audit failed/, "no vulnerabilities key");
   assert.throws(() => parseAudit(JSON.stringify({ vulnerabilities: {} })), /npm audit failed/, "no metadata");
+  assert.throws(() => parseAudit("{}"), /npm audit failed/, "empty object");
+  assert.throws(() => parseAudit(JSON.stringify({ message: "Not Found", statusCode: 404 })), /npm audit failed/, "a proxy or registry 404");
+  assert.throws(() => parseAudit(JSON.stringify({ vulnerabilities: {}, metadata: { vulnerabilities: { high: "0", critical: "0" } } })), /no high and critical totals/, "totals that aren't numbers");
+  assert.throws(() => parseAudit(JSON.stringify({ vulnerabilities: {}, metadata: { vulnerabilities: {} } })), /no high and critical totals/, "totals missing");
   assert.throws(() => parseAudit(JSON.stringify({ ...today, metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 6, critical: 0, total: 6 } } })), /doesn't add up/, "metadata says one more than listed");
   assert.throws(() => parseAudit(JSON.stringify({ ...today, metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 5, critical: 1, total: 6 } } })), /doesn't add up/, "a critical not listed");
   assert.throws(() => parseAudit(JSON.stringify({ ...today, error: { code: "E500" }, metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 5, critical: 0, total: 5 } } })), /npm audit failed/, "an error key fails even with findings");
