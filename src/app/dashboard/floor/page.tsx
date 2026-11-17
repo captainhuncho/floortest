@@ -99,7 +99,13 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const analyst = atLeast(user.role, "admin");
   const [stats, week, weekend] = await Promise.all([
     homeStats(user.id, prefs.tz),
-    analyst ? perDay(user, periodRange("7d", user.tz)) : null,
+    // If the Analytics read fails, the Floor still loads with its own week figures instead of the error screen.
+    analyst
+      ? perDay(user, periodRange("7d", user.tz)).catch((e) => {
+          console.error("[floor] perDay failed, using homeStats", e);
+          return null;
+        })
+      : null,
     playedOutPrompt({ ...user, tz: prefs.tz }),
   ]);
   const paused = isPaused(user);
