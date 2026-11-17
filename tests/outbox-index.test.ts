@@ -1,12 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0155
 import { MIGRATIONS } from "../src/lib/db/migrations";
 
 // 1 Nov: the daily email caps count the outbox by status and send time on every email. The planner must be able to
 // answer them from outbox_status_attempt instead of reading every row. (The stuck-send sweep already has outbox_due.)
 test("the daily email cap counts can use the outbox status and send-time index", async () => {
-  const pg = await PGlite.create();
+  const pg = await PGlite.create({ extensions: { pg_trgm } });
   await pg.exec("create table schema_migrations (id text primary key, applied_at bigint not null)");
   for (const m of MIGRATIONS) await pg.exec(m.sql);
   await pg.exec(`insert into outbox (to_email, subject, body, status, created_at, last_attempt_at)
