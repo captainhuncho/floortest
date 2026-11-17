@@ -8,4 +8,14 @@ export const toPlayer = (r: {
   peaks: number[] | null;
   duration: number | null;
   played: boolean;
-}): PlayerTrack => ({ id: r.id, title: r.title, artist: r.artist, peaks: r.peaks, duration: r.duration, played: r.played });
+  /** Passed on when the row has it, so the player's heart knows whether the track is Kept. */
+  decision?: "kept" | "passed" | null;
+}): PlayerTrack => ({
+  id: r.id,
+  title: r.title,
+  artist: r.artist,
+  peaks: r.peaks,
+  duration: r.duration,
+  played: r.played,
+  ...(r.decision !== undefined ? { decision: r.decision } : {}),
+});

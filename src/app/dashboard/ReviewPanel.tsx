@@ -95,6 +95,8 @@ export async function ReviewPanel({
     peaks: t.peaks ? JSON.parse(t.peaks) : null,
     duration: t.duration,
     played: !!t.played_at,
+    // So the floating player's heart shows for a track started from this card.
+    decision: t.decision,
   };
   const removal = deletesAt(t);
   // A track the desk added itself (sent from its own account) can move to Projects; a sender's never can (owner, 13 Nov).
