@@ -48,19 +48,19 @@ test("a track sent to it lands in the Review Queue, unsorted", async ({ page }) 
   await page.goto(`/dashboard/send?to=${desk.handle}`);
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles(file);
   // Wait until the file is read (length and BPM shown), so typing isn't undone when its details fill in.
-  await expect(page.getByText(/WAV · \d+ KB · \d+:\d+/)).toBeVisible();
-  await page.getByLabel("Track title").fill(title);
+  await expect(page.getByText(/WAV · \d+:\d+/)).toBeVisible();
+  await page.getByLabel("Title", { exact: true }).fill(title);
   await page.getByLabel("Artist").fill("E2E Artist");
   // No collection means no brief: the full genre list, as a menu.
   await page.getByRole("combobox", { name: "Genre" }).selectOption("Afro House");
-  await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
-  await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
-  await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
+  await page.getByRole("group", { name: /^Mix/ }).getByRole("button", { name: "Mixed, not mastered" }).click();
+  await page.getByRole("group", { name: /^Release/ }).getByRole("button", { name: "Unreleased" }).click();
+  await page.getByRole("group", { name: /^AI use/ }).getByRole("button", { name: "None", exact: true }).click();
   // The file's own details arrive late on a cold dev server; they must not wipe what was typed (fillFromFile, 31 Oct).
   await expect(page.getByLabel("Artist")).toHaveValue("E2E Artist");
   await page.getByRole("button", { name: /^Send to / }).click();
   // The receipt shows only once the track is saved on the desk (a held upload says "is received" instead).
-  await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 80_000 });
+  await expect(page.getByText(/Your receipt is on its way to/)).toBeVisible({ timeout: 80_000 });
 
   await page.context().clearCookies();
   await page.goto("/login");
