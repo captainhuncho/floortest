@@ -3,32 +3,27 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CARD, Icon, NameCover, type IconName } from "@/components/Kit";
+import { Icon } from "@/components/Kit";
 import { FormError } from "@/components/Feedback";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import { createCollection } from "../actions/collections";
 import { createFolder, deleteFolder, fileCallout, fileProject, renameFolder } from "../actions/folders";
 import { createProject } from "../actions/music";
 import { GHOST, GHOST_TALL, LIME } from "../kitButtons";
+import { FolderRow, MoreDots, ROUND } from "./FolderRow";
+import type { CollectionsFilter } from "./CollectionsTabs";
 
 /**
- * Folders on Callouts and Projects (owner, 16 Nov): one "+" that drops down what you can make here, folder tiles that
- * show their first four items as a 2×2 cover grid, and the same menu on a right-click. A callout folder holds only
- * callouts, a project folder only projects; the server checks every change (actions/folders.ts).
+ * Folders on Collections (owner, 16 Nov; one list since option 43, 17 Nov): the folders you make yourself (Club nights,
+ * 2025) group callouts or projects and sit at the top of the list with the folder shape for a cover. A callout folder
+ * holds only callouts, a project folder only projects; the server checks every change (actions/folders.ts).
  */
 export type FolderKind = "callout" | "project";
-export type FolderView = { id: number; name: string; count: number; preview: { id: number; name: string; art: string | null }[] };
-type Item = { label: string; icon: IconName; run: () => void };
+export type FolderView = { id: number; name: string; count: number };
+type Item = { label: string; icon: "folder" | "tag" | "x"; run: () => void };
 
 const BASE: Record<FolderKind, string> = { callout: "/dashboard/collections", project: "/dashboard/projects" };
 const NOUN: Record<FolderKind, string> = { callout: "callout", project: "project" };
-
-// No artwork: a default cover with the item's name (Kit NameCover), as on callout and project tiles.
-function ItemCover({ name, art }: { name: string; art: string | null }) {
-  // eslint-disable-next-line @next/next/no-img-element
-  if (art) return <img src={art} alt="" className="size-full object-cover" />;
-  return <NameCover name={name} size="size-full rounded-none! border-0!" text="text-[6px] leading-[1.15]" />;
-}
 
 /** Options over the whole screen (as the card ··· menus): a sheet on phones, centred from sm. Escape or a tap outside closes it. */
 function Sheet({ title, onClose, children, role = "menu" }: { title: string; onClose: () => void; children: React.ReactNode; role?: "menu" | "dialog" }) {
@@ -103,26 +98,99 @@ function NameSheet({ title, label, initial = "", extra, onSave, onClose }: { tit
   );
 }
 
-/**
- * The list area of Callouts or Projects: a "+ New" button above it and the same menu on a right-click on empty space
- * (or Shift+F10 / the menu key). A right-click on a card opens that card's own ··· options. Links, fields and selected
- * text keep the browser's menu. Inside a folder, what you make is filed into it.
- */
-export function FolderArea({ kind, folder, canEdit, children }: { kind: FolderKind; /** The folder being shown, if any. */ folder?: number | null; canEdit: boolean; children: React.ReactNode }) {
-  const router = useRouter();
-  const [menu, setMenu] = useState(false);
-  const [form, setForm] = useState<null | "folder" | "item">(null);
-  const fileInto = async (id: number) => {
-    if (folder) await (kind === "callout" ? fileCallout(id, folder) : fileProject(id, folder));
-  };
-  const items: Item[] = [
-    ...(kind === "project" ? [{ label: "Upload audio", icon: "up" as const, run: () => window.dispatchEvent(new Event("ft:add-audio")) }] : []),
-    // A new callout can't be filed yet (createCollection doesn't return its id), so inside a callout folder it isn't offered.
-    ...(kind === "callout" && folder ? [] : [{ label: `New ${NOUN[kind]}`, icon: (kind === "callout" ? "inbox" : "music") as IconName, run: () => setForm("item") }]),
-    ...(folder ? [] : [{ label: "New folder", icon: "folder" as const, run: () => setForm("folder") }]),
-  ];
+type Make = "callout" | "project" | "callout-group" | "project-group";
+const MAKE: Record<Make, { title: string; hint: string }> = {
+  callout: { title: "Callout", hint: "People send tracks to it through your link" },
+  project: { title: "Project", hint: "You add your own tracks, for a set or a release" },
+  "callout-group": { title: "Group of callouts", hint: "Holds callouts you already have, like Club nights" },
+  "project-group": { title: "Group of projects", hint: "Holds projects you already have" },
+};
 
-  const can = canEdit && items.length > 0;
+/** "New folder": a name, then what goes in it. One lime button. A callout or a project is a folder; a group holds them. */
+function NewFolderSheet({ kinds, folder, onClose }: { kinds: Make[]; /** The group being shown: a new project is filed into it. */ folder: number | null; onClose: () => void }) {
+  const router = useRouter();
+  const [make, setMake] = useState<Make>(kinds[0]);
+  const [error, setError] = useState("");
+  const [pending, start] = useTransition();
+  const create = async (name: string, fd: FormData): Promise<string | null> => {
+    if (make === "callout") {
+      await createCollection(fd);
+    } else if (make === "project") {
+      const r = await createProject(name);
+      if (!r.ok) return r.error;
+      if (folder) await fileProject(r.id, folder);
+    } else {
+      const r = await createFolder(make === "callout-group" ? "callout" : "project", name);
+      if (!r.ok) return r.error;
+    }
+    router.refresh();
+    return null;
+  };
+  return (
+    <Sheet title="New folder" onClose={onClose} role="dialog">
+      <form
+        className="flex flex-col gap-3 p-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          start(async () => {
+            const err = await create(String(fd.get("name") ?? ""), fd);
+            if (err) setError(err);
+            else onClose();
+          });
+        }}
+      >
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11.5px] text-mute">Name</span>
+          <input name="name" className="input max-sm:text-base" required maxLength={60} />
+        </label>
+        <fieldset className="flex flex-col">
+          <legend className="sr-only">What goes in it</legend>
+          {kinds.map((k) => (
+            <label key={k} className="flex min-h-11 cursor-pointer items-center gap-3 border-t border-line py-2 first-of-type:border-t-0">
+              <input type="radio" name="make" value={k} checked={make === k} onChange={() => setMake(k)} className="size-5 shrink-0 accent-lime" />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-bone">{MAKE[k].title}</span>
+                <span className="block text-[11.5px] text-mute">{MAKE[k].hint}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        {make === "callout" && (
+          <label className="flex min-h-11 items-center gap-2 text-[12px] text-mute">
+            <input type="checkbox" name="activate" defaultChecked className="size-4 accent-lime" /> Send new tracks here now
+          </label>
+        )}
+        <FormError>{error}</FormError>
+        <div className="flex gap-2">
+          <button className={`${LIME} flex-1`} disabled={pending}>
+            {pending ? "Creating…" : "Create folder"}
+          </button>
+          <button type="button" className={GHOST_TALL} onClick={onClose} disabled={pending}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
+/**
+ * The head and list area of Collections: the title with "New folder" beside it (a + on phones), and the same sheet on a
+ * right-click on empty space (or Shift+F10 / the menu key). A right-click on a folder opens that folder's own ···
+ * options. Links, fields and selected text keep the browser's menu. Inside a group, a new project is filed into it.
+ */
+export function FolderArea({ view, folder, canEdit, label, children }: { /** Which filter is on: it decides what can be made here. */ view: CollectionsFilter; /** The group being shown, if any. */ folder?: number | null; canEdit: boolean; /** A small line over the title. */ label?: React.ReactNode; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  // A new callout can't be filed yet (createCollection doesn't return its id), so inside a group of callouts it isn't
+  // offered; a group holds no groups.
+  const kinds: Make[] = [
+    ...(view !== "projects" && !folder ? (["callout"] as const) : []),
+    ...(view !== "callouts" ? (["project"] as const) : []),
+    ...(view !== "projects" && !folder ? (["callout-group"] as const) : []),
+    ...(view !== "callouts" && !folder ? (["project-group"] as const) : []),
+  ];
+  const can = canEdit && kinds.length > 0;
   const onContextMenu = (e: React.MouseEvent) => {
     if (!canEdit) return;
     const t = e.target as HTMLElement;
@@ -134,111 +202,67 @@ export function FolderArea({ kind, folder, canEdit, children }: { kind: FolderKi
     }
     if (!can || t.closest("a, input, textarea, select, [contenteditable]") || String(window.getSelection() ?? "")) return;
     e.preventDefault();
-    setMenu(true);
+    setOpen(true);
   };
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (!canEdit || !(e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) return;
     e.preventDefault();
     const card = (e.target as HTMLElement).closest<HTMLElement>("[data-card]");
     if (card) card.querySelector<HTMLButtonElement>("[aria-haspopup=menu]")?.click();
-    else if (can) setMenu(true);
+    else if (can) setOpen(true);
   };
 
   return (
-    <div className="flex flex-col gap-3" onContextMenu={onContextMenu} onKeyDown={onKeyDown}>
-      {can && (
-        <div className="flex justify-end">
-          <button className={`${LIME} gap-1.5`} aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(true)}>
-            <Icon name="plus" className="size-4" />
-            New
-          </button>
+    <div className="flex flex-col gap-3 md:gap-4" onContextMenu={onContextMenu} onKeyDown={onKeyDown}>
+      <header className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          {label && <p className="text-[11.5px] text-mute">{label}</p>}
+          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">Collections</h1>
         </div>
-      )}
+        <div className="flex shrink-0 items-center gap-2">
+          {canEdit && view === "projects" && (
+            <button className={GHOST_TALL} onClick={() => window.dispatchEvent(new Event("ft:add-audio"))}>
+              <Icon name="up" className="size-4" />
+              Upload audio
+            </button>
+          )}
+          {can && (
+            <button className={`${GHOST_TALL} max-md:size-11 max-md:rounded-full max-md:px-0!`} aria-haspopup="dialog" aria-label="New folder" onClick={() => setOpen(true)}>
+              <Icon name="plus" className="size-4" />
+              <span className="max-md:hidden">New folder</span>
+            </button>
+          )}
+        </div>
+      </header>
       {children}
-      {menu && <MenuSheet title="New" items={items} onClose={() => setMenu(false)} />}
-      {form === "folder" && (
-        <NameSheet
-          title={`New ${NOUN[kind]} folder`}
-          label="Create"
-          onClose={() => setForm(null)}
-          onSave={async (name) => {
-            const r = await createFolder(kind, name);
-            return r.ok ? null : r.error;
-          }}
-        />
-      )}
-      {form === "item" && kind === "callout" && (
-        <NameSheet
-          title="New callout"
-          label="Create"
-          onClose={() => setForm(null)}
-          extra={
-            <label className="flex min-h-11 items-center gap-2 text-[12px] text-mute">
-              <input type="checkbox" name="activate" defaultChecked className="size-4 accent-lime" /> Send new tracks here now
-            </label>
-          }
-          onSave={async (_name, fd) => {
-            await createCollection(fd);
-            router.refresh();
-            return null;
-          }}
-        />
-      )}
-      {form === "item" && kind === "project" && (
-        <NameSheet
-          title="New project"
-          label="Create"
-          onClose={() => setForm(null)}
-          onSave={async (name) => {
-            const r = await createProject(name);
-            if (!r.ok) return r.error;
-            await fileInto(r.id);
-            router.refresh();
-            return null;
-          }}
-        />
-      )}
+      {open && <NewFolderSheet kinds={kinds} folder={folder ?? null} onClose={() => setOpen(false)} />}
     </div>
   );
 }
 
-/** A folder as a tile: its first four items as a 2×2 cover grid, its name and count. The whole tile opens it; ··· renames or deletes. */
+/** One of your own folders in the list: the folder shape, its name and how much is in it. The whole row opens it; ··· renames or deletes. */
 export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderView; canEdit: boolean }) {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [rename, setRename] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [pending, start] = useTransition();
-  const cells = Array.from({ length: 4 }, (_, i) => f.preview[i]);
+  const holds = `${f.count} ${f.count === 1 ? NOUN[kind] : `${NOUN[kind]}s`}`;
   return (
-    // A row the height of a callout card's header (owner, 16 Nov): a small 2×2 of the first covers, then the name.
-    <div data-card className={`relative flex flex-col ${CARD} p-3`}>
-      <div className="flex items-center gap-3">
-        <div aria-hidden className="grid size-[60px] shrink-0 grid-cols-2 gap-0.5 overflow-hidden rounded-[10px]">
-          {cells.map((p, i) => (
-            <span key={p?.id ?? `empty-${i}`} className="block overflow-hidden rounded-[4px] bg-well">
-              {p ? <ItemCover name={p.name} art={p.art} /> : null}
-            </span>
-          ))}
-        </div>
-        <div className="min-w-0 flex-1">
-          <Link href={`${BASE[kind]}?folder=${f.id}`} className="block truncate text-[15px] font-semibold tracking-[-0.015em] text-bone after:absolute after:inset-0 after:rounded-[18px]">
-            {f.name}
-          </Link>
-          <p className="mt-0.5 text-[11.5px] text-mute tnum">
-            {f.count} {f.count === 1 ? NOUN[kind] : `${NOUN[kind]}s`}
-          </p>
-        </div>
-        {canEdit && (
-          <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`More for ${f.name}`} className="relative z-10 grid size-11 shrink-0 place-items-center rounded-[12px] border border-line bg-well text-mute hover:text-bone">
-            <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
-              <circle cx="6" cy="12" r="1.6" />
-              <circle cx="12" cy="12" r="1.6" />
-              <circle cx="18" cy="12" r="1.6" />
-            </svg>
+    <FolderRow
+      href={`${BASE[kind]}?folder=${f.id}`}
+      name={f.name}
+      spoken={`Open ${f.name}, folder, ${holds}`}
+      art={null}
+      line={`Folder · ${holds}`}
+      menu={
+        canEdit && (
+          <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`More for ${f.name}`} className={ROUND}>
+            <MoreDots />
           </button>
-        )}
-      </div>
+        )
+      }
+    >
       {menu && (
         <MenuSheet
           title={f.name}
@@ -277,7 +301,7 @@ export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderVi
           </div>
         </Sheet>
       )}
-    </div>
+    </FolderRow>
   );
 }
 
