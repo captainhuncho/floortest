@@ -197,6 +197,8 @@ export async function perDay(d: Desk, range: Range): Promise<{ bars: Bar[]; tota
  * Who sent what in the span: each sender's name, tracks sent and kept, when their latest track arrived and where their
  * tracks landed (the one collection's name, "" for the Review Queue, null when they landed in more than one place).
  * Most tracks first. Names only, never emails.
+ * Deleted tracks still count here, as in perDay, so each sender's tracks add up to the page's totals; "What happened"
+ * lists events, so it shows only tracks still on the desk.
  */
 export async function whoSent(d: Desk, range: Range, limit = 10) {
   const desk = await deskOf(d);
