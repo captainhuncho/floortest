@@ -112,6 +112,10 @@ test("the sender-link form runs the bot check, then answers the same for any add
   await form.getByTestId("turnstile").waitFor({ state: "attached" });
   await form.getByRole("button", { name: "Email me my link" }).click();
   await expect(page.getByRole("status")).toContainText("a link is on its way");
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+  // Use a different email shows the form again, empty.
+  await page.getByRole("button", { name: "Use a different email" }).click();
+  await expect(page.getByLabel("Your email")).toHaveValue("");
 });
 
 test("a sender-link request without the bot check is refused", async ({ page }) => {
