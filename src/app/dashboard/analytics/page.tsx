@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { calloutLinks, perDay, periodRange, PERIODS, sharedLinks, whatHappened, whoSent, type Happened, type PeriodKey } from "@/lib/analytics";
 import { canMarkPlayedOut } from "@/lib/played-out-prompt";
-import { CARD, type IconName } from "@/components/Kit";
+import type { IconName } from "@/components/Kit";
 import { FilterMenu } from "../list/FilterMenu";
 import { FloorRow, LABEL, QUIET } from "../floor/Crates";
 import { AnalyticsChart } from "./Chart";
@@ -87,12 +87,42 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
         </header>
 
         {empty ? (
-          <p className={`${CARD} p-4 text-[13px] leading-[1.45] text-mute`}>
-            Nothing {SPAN[range.period]} yet. Share your link and the first tracks show up here.{" "}
-            <Link href="/dashboard/floor#your-link" className="tap-text font-medium text-bone underline underline-offset-4">
-              Share your link
-            </Link>
-          </p>
+          /* Nothing yet (owner, 17 Nov: the bare one-line card didn't look good): the page keeps its shape, a big 0 and the
+             empty chart for the period, with one way forward. */
+          <div className="flex flex-col gap-6 lg:max-w-[560px]">
+            <section aria-labelledby="totals-h" className="flex flex-col gap-2">
+              <h2 id="totals-h" className="sr-only">
+                Totals
+              </h2>
+              <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[14px] leading-snug text-mute lg:text-[15px]">
+                <span className="text-[56px] font-bold leading-none tracking-[-0.03em] text-bone tnum lg:text-[72px]">0</span>{" "}
+                <span>
+                  tracks in
+                  {delta !== null && delta !== 0 && ` · ${Math.abs(delta)} fewer than ${AGAINST[range.period]}`}
+                </span>
+              </p>
+              <p className="max-w-[46ch] text-[14px] leading-snug text-bone">Nothing {SPAN[range.period]} yet. Share your link and the first tracks show up here.</p>
+            </section>
+            <section aria-labelledby="chart-h" className="flex flex-col gap-3">
+              <h2 id="chart-h" className={LABEL}>
+                Tracks in and kept, by {range.bucket}
+              </h2>
+              <AnalyticsChart
+                bars={day.bars.map((b) => ({ key: b.key, label: b.label, in: b.in, kept: b.kept, third: thirdOf(b) }))}
+                thirdLabel={third}
+                span={SPAN[range.period]}
+                unit={range.bucket}
+              />
+            </section>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/dashboard/floor#your-link" className={QUIET}>
+                Share your link
+              </Link>
+              <Link href="/dashboard/activity" className={QUIET}>
+                See everything in Activity
+              </Link>
+            </div>
+          </div>
         ) : (
           <>
             <section aria-labelledby="totals-h" className="flex flex-col gap-2">
@@ -203,11 +233,6 @@ export default async function Analytics({ searchParams }: { searchParams: Promis
           </>
         )}
 
-        {empty && (
-          <Link href="/dashboard/activity" className={`${QUIET} w-fit`}>
-            See everything in Activity
-          </Link>
-        )}
       </div>
     </div>
   );
