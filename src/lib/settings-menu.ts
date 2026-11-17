@@ -23,6 +23,8 @@ export function settingsRows(f: SettingsFacts) {
   return {
     // Your desk
     contacts: true,
+    // Owner and A&R / Admin only (owner, 16 Nov), as the Analytics page itself requires.
+    analytics: manages,
     playedOut: manages && f.playedOut,
     // Your link and look (Theme is everyone's: it's a cookie on this browser)
     pause: manages,
@@ -38,7 +40,7 @@ export function settingsRows(f: SettingsFacts) {
     inviteDj: owner && f.referrals,
     // You row and the ••• menu
     editProfile: manages,
-    signOutEverywhere: owner,
+    signOutAllMyDevices: owner,
     deleteAccount: owner,
   };
 }

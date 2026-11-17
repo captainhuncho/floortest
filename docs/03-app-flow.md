@@ -89,7 +89,7 @@ Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days o
                           (same answer every time; 3 an hour per receipt, 5 per email, 20 per connection)
                           ─► 6-digit code (10 min, 5 tries) ─► the whole receipt; this browser remembers it 30 days
                           stems upload / Stop private sharing without proof ─► refused on the server, same answer as an unknown link
-Avatar ─► Settings (/dashboard/settings; /dashboard/account redirects) ─► rows: Contacts, Played out, Pause your link, Theme, Receiving, Team, Notifications, Sign-in and security, Switch desk, Plan (sheet), Help
+Avatar ─► Settings (/dashboard/settings; /dashboard/account redirects) ─► rows: Contacts, Analytics, Played out, Pause your link, Theme, Receiving, Team, Notifications, Sign-in and security, Switch desk, Plan (sheet), Help
    └─ ••• ─┬─ Sign out ─► "Sign out?" ─┬─ this phone/computer ─► /signed-out
            │                          └─ Sign out everywhere (own desk) ─► password (+ code with two-step) ─► every session ended ─► /signed-out
            └─ Delete account (own desk) ─► what goes ─► "Are you sure?" (type the link name, password, + code) ─► deleteAccount

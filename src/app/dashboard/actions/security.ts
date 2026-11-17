@@ -2,7 +2,7 @@
 
 /** Security: password, other devices, two-factor and sign-in alerts. */
 import { allow } from "@/lib/ratelimit";
-import { stepUp } from "@/lib/step-up";
+import { endEverySession, stepUp } from "@/lib/step-up";
 import { checkSecondFactor } from "@/lib/security";
 import { passwordStrength } from "@/lib/password-strength";
 import { changePasswordTo, currentSessionHash, destroySession, verifyPassword, requireRole } from "@/lib/auth";
@@ -68,14 +68,14 @@ export async function signOutOtherDevices(password: string, code: string): Promi
  * signOutOtherDevices first (the password, and the two-step code when it's on), so a borrowed session can't sign the
  * owner out of everything. Ends on the signed-out page; only a failed check comes back.
  */
-export async function signOutEverywhere(password: string, code: string): Promise<{ error: string }> {
+export async function signOutAllMyDevices(password: string, code: string): Promise<{ error: string }> {
   const u = await requireRole("owner");
-  const denied = await stepUp(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
+  // Browsers, the app and the ops area alike; nothing is kept, so this session's row goes with the rest.
+  const denied = await endEverySession(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
   if (denied) return { error: denied };
+  // Logged only once the sessions are gone, so a failed revoke never reads as a sign-out.
   await audit(u.id, "signed_out_others", "every device, this one too");
   await audit(u.id, "signed_out");
-  // Browsers, the app and the ops area alike; nothing is kept, so this session's row goes with the rest.
-  await revokeAllSessions(u.id);
   await destroySession();
   redirect("/signed-out");
 }

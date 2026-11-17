@@ -45,7 +45,7 @@ export default function Loading() {
       </div>
       <div className="grid grid-cols-1 items-start gap-3 min-[1180px]:grid-cols-2 min-[1180px]:gap-6">
         <div className="flex flex-col gap-3">
-          <GroupSk rows={2} />
+          <GroupSk rows={3} />
           <div className="hidden min-[1180px]:block">
             <GroupSk rows={1} />
           </div>

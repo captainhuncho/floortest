@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { ROLE_LABEL, teamOf, teamsFor, teamsOn } from "@/lib/account-members";
+import { perDay, periodRange } from "@/lib/analytics";
 import { q } from "@/lib/db";
 import { capacity, isPaused } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
@@ -50,7 +51,7 @@ export default async function Settings() {
   const user = await requireUser();
   const tz = user.tz || "UTC";
   const own = user.role === "owner";
-  const [theme, cap, teams, myTeams, referrals, contacts, picks, joined] = await Promise.all([
+  const [theme, cap, teams, myTeams, referrals, contacts, picks, joined, week] = await Promise.all([
     currentTheme(),
     capacity(user),
     teamsOn(user.id),
@@ -59,6 +60,8 @@ export default async function Settings() {
     contactsLine(user.id, tz),
     canMarkPlayedOut(user) ? playedOutPicks(user) : Promise.resolve(null),
     own ? Promise.resolve(null) : q.get<{ created_at: number }>("SELECT created_at FROM account_members WHERE account_id = ? AND user_id = ?", user.id, user.actor_id),
+    // Analytics' own 7-day totals (the page's "Last 7 days"), only for the roles that may open it.
+    user.role !== "member" ? perDay(user, periodRange("7d", user.tz)).then((d) => d.totals) : Promise.resolve(null),
   ]);
   const show = settingsRows({ role: user.role, teams, desks: 1 + myTeams.length, referrals, playedOut: !!picks });
   const team = show.team ? await teamOf(user.id) : null;
@@ -85,7 +88,7 @@ export default async function Settings() {
           <Icon name="chev" className="size-5 rotate-180" />
         </Link>
         <h1 className="flex-1 text-center text-[28px] font-bold leading-9 tracking-[-0.02em] text-bone">Settings</h1>
-        <SettingsMenu everywhere={show.signOutEverywhere} canDelete={show.deleteAccount} handle={user.handle} twoFactor={!!user.totp_enabled_at} />
+        <SettingsMenu everywhere={show.signOutAllMyDevices} canDelete={show.deleteAccount} handle={user.handle} twoFactor={!!user.totp_enabled_at} />
       </header>
 
       <section aria-label="You" className="flex flex-wrap items-center gap-3.5 rounded-[20px] border border-line bg-card p-4 min-[1180px]:flex-nowrap min-[1180px]:px-6 min-[1180px]:py-[22px]">
@@ -134,6 +137,9 @@ export default async function Settings() {
               sub={contacts.line}
               value={contacts.today > 0 ? <span className="min-w-5 rounded-full bg-lime px-1.5 text-center text-[11px] font-bold leading-5 text-ink tnum" aria-label={`${contacts.today} new today`}>{contacts.today}</span> : undefined}
             />
+            {show.analytics && week && (
+              <Row href="/dashboard/analytics" icon="chart" title="Analytics" sub={`${week.in} ${week.in === 1 ? "track" : "tracks"} from ${week.senders} ${week.senders === 1 ? "sender" : "senders"} this week`} />
+            )}
             {show.playedOut && <Row href="/dashboard/played-out" icon="played" title="Played out" sub={toMark ? `${toMark} kept ${toMark === 1 ? "track" : "tracks"} still to mark` : "No kept tracks to mark"} />}
           </Group>
           {plan && <div className="hidden min-[1180px]:block">{plan}</div>}

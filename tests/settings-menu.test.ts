@@ -20,7 +20,7 @@ const shown = (f: SettingsFacts) =>
     .sort();
 
 test("a Member sees Contacts and Switch desk, and nothing they can't use", () => {
-  // Spec, section 6: no Plan, Pause, Played out, Receiving, Team, Invite a DJ or Delete account for Members.
+  // Spec, section 6: no Plan, Pause, Analytics, Played out, Receiving, Team, Invite a DJ or Delete account for Members.
   assert.deepEqual(shown(facts({ role: "member" })), ["contacts", "switchDesk"]);
 });
 
@@ -30,15 +30,15 @@ test("a Member on one desk only gets no Switch desk row", () => {
 
 test("an A&R / Admin runs the desk but not the owner's login, plan or account", () => {
   const rows = settingsRows(facts({ role: "admin" }));
-  for (const k of ["contacts", "playedOut", "pause", "receiving", "team", "editProfile", "switchDesk"] as const) assert.equal(rows[k], true, k);
-  for (const k of ["notifications", "security", "plan", "inviteDj", "signOutEverywhere", "deleteAccount"] as const) assert.equal(rows[k], false, k);
+  for (const k of ["contacts", "analytics", "playedOut", "pause", "receiving", "team", "editProfile", "switchDesk"] as const) assert.equal(rows[k], true, k);
+  for (const k of ["notifications", "security", "plan", "inviteDj", "signOutAllMyDevices", "deleteAccount"] as const) assert.equal(rows[k], false, k);
 });
 
 test("the owner sees every row their desk has switched on", () => {
   assert.equal(Object.values(settingsRows(facts({}))).every(Boolean), true);
   const bare = settingsRows(facts({ teams: false, desks: 1, referrals: false, playedOut: false }));
   for (const k of ["team", "switchDesk", "inviteDj", "playedOut"] as const) assert.equal(bare[k], false, k);
-  for (const k of ["plan", "pause", "receiving", "notifications", "security", "deleteAccount", "signOutEverywhere"] as const) assert.equal(bare[k], true, k);
+  for (const k of ["plan", "pause", "analytics", "receiving", "notifications", "security", "deleteAccount", "signOutAllMyDevices"] as const) assert.equal(bare[k], true, k);
 });
 
 test("every row a Member doesn't see is also refused by the server", () => {
@@ -50,20 +50,27 @@ test("every row a Member doesn't see is also refused by the server", () => {
   assert.match(read("app/dashboard/settings/notifications/page.tsx"), /requireRole\("owner"\)/);
   assert.match(read("app/dashboard/settings/security/page.tsx"), /requireRole\("owner"\)/);
   assert.match(read("app/dashboard/referrals/page.tsx"), /requireRole\("owner"\)/);
+  assert.match(read("app/dashboard/analytics/page.tsx"), /requireRole\("admin"\)/);
+  // The Analytics line's numbers are only read for the roles that may open the page.
+  assert.match(read("app/dashboard/settings/(index)/page.tsx"), /user\.role !== "member" \? perDay\(user, periodRange\("7d", user\.tz\)\)/);
   assert.match(read("lib/played-out-prompt.ts"), /canMarkPlayedOut = .*\n?.*user\.role !== "member"/);
   for (const name of ["pauseLink", "resumeLink"]) assert.match(action("desk.ts", name), /requireRole\("admin"\)/, name);
   assert.match(action("settings.ts", "deleteAccount"), /requireOwnAccount\(\)/);
 });
 
 test("sign out everywhere checks the password (and two-step code) before it ends any session", () => {
-  const body = action("security.ts", "signOutEverywhere");
+  const body = action("security.ts", "signOutAllMyDevices");
   assert.match(body, /await requireRole\("owner"\)/, "only on your own desk, like sign out other devices");
-  assert.match(body, /await stepUp\(u\.id, /, "runs the step-up check");
+  assert.match(body, /const denied = await endEverySession\(u\.id, /, "the check and the revoke are one call");
   assert.match(body, /if \(denied\) return \{ error: denied \}/, "a failed check changes nothing");
-  const check = body.indexOf("stepUp(");
-  for (const change of ["revokeAllSessions(", "destroySession(", "redirect("]) assert.ok(check < body.indexOf(change), `${change} comes after the check`);
-  assert.match(body, /revokeAllSessions\(u\.id\)/, "every session of this account, none kept: browsers, the app and the ops area");
+  const ended = body.indexOf("endEverySession(");
+  for (const after of ["audit(", "destroySession(", "redirect("]) assert.ok(ended < body.indexOf(after), `${after} comes after the sessions are gone`);
   assert.match(body, /redirect\("\/signed-out"\)/);
+  // The ops action of the old name lives in admin/actions.ts; the desk one must not share it.
+  assert.doesNotMatch(read("app/dashboard/actions/security.ts"), /export async function signOutEverywhere\(/);
+  const lib = read("lib/step-up.ts");
+  const fn = lib.slice(lib.indexOf("export async function endEverySession("));
+  assert.ok(fn.indexOf("stepUp(") < fn.indexOf("revokeAllSessions(userId)"), "checked first, then every session, none kept");
 });
 
 test("delete account keeps the password and two-step check on the server", () => {

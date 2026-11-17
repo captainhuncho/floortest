@@ -10,6 +10,7 @@ import { Icon } from "@/components/Kit";
 const GLYPHS = {
   contacts: <><circle cx="9" cy="8" r="3.5" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 010 7M21 20c0-2.6-1.6-4.8-4-5.6" /></>,
   played: <path d="M3 12h4l3-8 4 16 3-8h4" />,
+  chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
   card: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18" /></>,
   pause: <><circle cx="12" cy="12" r="9" /><path d="M10 9v6M14 9v6" /></>,
   theme: <path d="M20 14A8 8 0 0110 4a8 8 0 1010 10z" />,

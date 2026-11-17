@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Dialog, DIALOG_MAIN, DIALOG_QUIET } from "@/components/Dialog";
 import { useActionForm } from "@/components/useActionForm";
 import { logout } from "../../../(auth)/actions";
-import { signOutEverywhere } from "../../actions/security";
+import { signOutAllMyDevices } from "../../actions/security";
 import { deleteAccount } from "../../actions/settings";
 import { FIELD, HELP, Notice } from "../ui";
 import { Glyph } from "./rows";
@@ -158,7 +158,7 @@ function SignOut({ open, confirming, everywhere, twoFactor, onEverywhere, onClos
             const fd = new FormData(e.currentTarget);
             start(async () => {
               // On success the action ends on the signed-out page; only a failed check comes back.
-              const r = await signOutEverywhere(String(fd.get("password") || ""), String(fd.get("code") || ""));
+              const r = await signOutAllMyDevices(String(fd.get("password") || ""), String(fd.get("code") || ""));
               if (r?.error) setError(r.error);
             });
           }}
