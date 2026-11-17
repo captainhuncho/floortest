@@ -54,7 +54,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
     <section aria-labelledby="stems-h" className="flex flex-col gap-2.5">
       <p className="text-[13px] leading-5 text-mute">
         <strong id="stems-h" className="block text-[14px] font-semibold text-bone">
-          {receiver} asked for the stems
+          {receiver} asked for stems
         </strong>
         One WAV or MP3 per stem, up to {max}. Only {receiver} can hear or download them.
       </p>

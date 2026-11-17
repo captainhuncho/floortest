@@ -20,7 +20,6 @@ import { switchOn } from "@/lib/switches";
 import { activeCollection, capacity, isClosed, isPaused, userByHandleForView } from "@/lib/desk";
 import { StopSharing } from "./StopSharing";
 import { CARD, Icon } from "@/components/Kit";
-import { CuePoint } from "@/components/CuePoint";
 import { maskEmail } from "@/lib/mask-email";
 import { receiptProven } from "@/lib/receipt-proof";
 import { ShowDetails } from "./ShowDetails";
@@ -105,7 +104,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const sharable = open && proven && sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner";
   const readOnlyLine = !open && status.closesAt ? (
     <p className="max-w-[40ch] text-center text-[12.5px] leading-[1.5] text-mute">
-      This receipt is read-only now: nothing more can be sent or changed from it. The link closes on {fmtDay(status.closesAt)}.
+      This receipt is read-only now. The link closes on {fmtDay(status.closesAt)}.
     </p>
   ) : null;
 
@@ -113,6 +112,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
    * Laid out like a payment receipt (owner, 17 Nov): the status first and centred, then the track and the steps, and
    * the screen's action in a bar at the bottom (pinned on phones, in the flow from 640px). One lime thing per screen:
    * the newest step's dot, or Show my details.
+   * `body` also renders for the link alone (inside ShowDetails): nothing proven-only goes in it outside a `proven` check.
    */
   const body = (
     <>
@@ -125,9 +125,14 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       </header>
 
       {!proven && (
-        <p className={`${CARD} p-3.5 text-[13px] leading-5 text-mute`}>
-          The track, who it went to and their note show only to you. We&apos;ll email a code to <span className="text-bone">{masked}</span>.
-        </p>
+        <section aria-labelledby="proof-h" className={`${CARD} flex flex-col gap-2 p-3.5`}>
+          <h2 id="proof-h" className={LABEL}>
+            Is this your track?
+          </h2>
+          <p className="text-[13px] leading-5 text-mute">
+            The link only shows what happened. To see the track, the receiver and the rest, we email a code to <span className="text-bone">{masked}</span>.
+          </p>
+        </section>
       )}
       {proven && (
         <div className={`${CARD} flex flex-col gap-3 p-3`}>
@@ -140,8 +145,16 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
               <p className="text-[13px] leading-[1.4] text-mute">
                 {t.artist}
                 {t.duration ? ` · ${fmtTime(t.duration)}` : ""} · to {who}
-                {t.receiver_status === "verified" && <CuePoint size={16} label="Verified by FloorTest: this account controls the linked profile" className="-mt-0.5 ml-1" />}
-                {t.collection ? ` for ${t.collection}` : ""}
+                {t.receiver_status === "verified" && (
+                  <>
+                    {" "}
+                    <span aria-hidden className="font-semibold text-bone">
+                      Verified
+                    </span>
+                    <span className="sr-only">Verified by FloorTest: this account controls the linked profile</span>
+                  </>
+                )}
+                {t.collection ? ` · ${t.collection}` : ""}
               </p>
             </div>
           </div>
@@ -157,7 +170,8 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           {stemsOn && <StemUpload token={token} receiver={first} existing={stemsSent(t)} max={MAX_STEMS} />}
           {!t.verified_at && (
             <p className="text-[13px] leading-5 text-mute">
-              Confirm your email from the delivery email, so {who} sees you as verified. Updates go to <span className="text-bone">{masked}</span>.
+              <strong className="block text-[14px] font-semibold text-bone">Confirm your email</strong>
+              Tap the link in the delivery email, so {who} sees you as verified. Updates go to <span className="text-bone">{masked}</span>.
             </p>
           )}
         </section>
@@ -277,7 +291,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
             <PinnedBar>
               {takingSends && (
                 <Link href={`/${t.receiver_handle}`} className={QUIET}>
-                  Send another to {who}
+                  Send another track to {who}
                 </Link>
               )}
               {sharable && <StopSharing token={token} receiver={first} />}

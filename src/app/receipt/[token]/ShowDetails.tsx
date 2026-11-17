@@ -54,8 +54,9 @@ export function ShowDetails({ token, masked, children, foot }: { token: string; 
     <form action={verify} className="flex flex-1 flex-col" style={keyboard ? { paddingBottom: keyboard } : undefined}>
       <div className={`my-auto flex flex-col items-center gap-3 text-center ${keyboard ? "py-2" : "py-8"}`}>
         <Disc status="code" />
+        <h1 className="mt-1 text-balance text-[28px] font-semibold leading-[1.1] tracking-[-0.02em] text-bone">Check your email</h1>
         <p role="status" className="max-w-[34ch] text-pretty text-[13px] leading-[1.5] text-mute">
-          We sent a code to <span className="text-bone">{asked}</span>. It works for 10 minutes.
+          We sent a 6-digit code to <span className="text-bone">{asked}</span>. It works for 10 minutes.
         </p>
         <CodeBoxes key={tries} />
         {state?.error && (

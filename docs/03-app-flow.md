@@ -85,7 +85,7 @@ Nightly, only if Settings → Receiving → "When a callout closes" is on ─►
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
    /receipt/<token> and /sent/<link> show the sender's email masked (m•••@g•••.com); End this link now still works
    /receipt/<token> ─┬─ sent from this browser (ft_receipt) or signed in as the sending account ─► the whole receipt
-                     └─ link only ─► status and dates, "The receiver …" ─► Show my details ─► "We sent a code to m•••@g•••.com"
+                     └─ link only ─► status and dates, "The receiver …" ─► Show my details ─► "We sent a 6-digit code to m•••@g•••.com"
                           (same answer every time; 3 an hour per receipt, 5 per email, 20 per connection)
                           ─► 6-digit code (10 min, 5 tries) ─► the whole receipt; this browser remembers it 30 days
                           layout (17 Nov): status centred on top, then track and steps; the action (Show my details / Send another, Stop private sharing /
