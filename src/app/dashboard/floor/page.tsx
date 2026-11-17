@@ -215,10 +215,6 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       {tourDue && <FirstVisitTour tip={tourTip(user.kind)} />}
       {/* The main column: 20px sides on phones, 920px wide at most and centred. The layout pads the bottom for the player and menu. */}
       <div className="relative px-5 py-4 sm:py-7 md:px-8">
-        {/* The soft green glow behind the top (option 41): still, behind everything, and it takes no taps. */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[420px] overflow-hidden">
-          <div className="absolute -inset-x-20 -top-[120px] h-[420px] bg-[radial-gradient(closest-side,#1d9e75,transparent)] opacity-[0.22] lg:-right-10 lg:-top-[100px] lg:left-[10%] lg:h-[520px] lg:opacity-[0.24]" />
-        </div>
         <div className="relative mx-auto flex w-full min-w-0 max-w-[920px] flex-col gap-4 lg:gap-5">
           {sp.desk === "ended" && (
             <p role="alert" className="rounded-[13px] border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-bone">
