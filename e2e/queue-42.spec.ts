@@ -44,6 +44,8 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await expect(card.locator('h2[id^="track-h-"]')).toHaveText(title);
   await expect(card.getByRole("button", { name: /Keep/ })).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Escape");
+  // Gone, not fading out: keys are ignored while a layer is still on screen.
+  await expect(panel).toBeHidden();
   await expect(replyButton).toBeFocused();
   // R opens it again from the page, with the text still there.
   await page.keyboard.press("r");
