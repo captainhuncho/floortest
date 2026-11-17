@@ -72,7 +72,7 @@ The ticket between the password (or email code, reset link, Google) and /login/v
 Any dashboard page while a notice is live (show from ≤ now < hide after, not ended; the soonest if several; never in admin View as):
    thin strip under the top bar, role="status": "<title> Sun 15 Nov, 02:00–02:20. <detail> More" in the person's own time zone
    ─► × (44 px) closes it at once ─► saved for the person (notice_dismissals, their own row) ─► never rendered for them again, any device
-Floor (Waiting crate ─► Review; Kept crate ─► Play all or Open the kept list; Your week ─► Analytics) ─► Queue (phones: the open track as a card above the list, ‹ › or a sideways swipe to the next one) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
+Floor (Waiting crate ─► Review; Kept crate ─► Play all or Open the kept list; Your week ─► Analytics) ─► Queue (phones: the open track as a card above the list, ‹ › or a sideways swipe to the next one) ─► play ─► Keep (K) ──► Prepare ─► Download crate ─► sheet: name folder, pick Tracks + playlist / Rekordbox XML / Files only ─► Download N tracks ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email
 Review panel: title · one meta line · tags (sets / release / AI / duplicate / deleting soon) ─► waveform (1–4 jump) ─► Keep · Not for me · Reply ─► next track plays
@@ -127,11 +127,11 @@ Receiver emails ─► instant "New track" (sent at once, one per send: a send o
 
 ## Offline kept tracks (iPhone and Android apps)
 ```
-Prepare ─► Save for offline ─► "Save on this phone" ─► kept tracks download (Saving… n of N) ─► "N tracks on this phone"
+Prepare ─► "Save on this phone" switch on ─► kept tracks download (Saving n of N) ─► "N tracks saved"
 Every later visit to Prepare ─► phone copy brought in line (new keeps saved, cleared/deleted tracks removed)
 No connection ─► "You're offline" + SAVED ON THIS PHONE ─► tap to play (next plays on; lock screen / notification controls)
    signal returns mid-track ─► keeps playing (only an idle screen returns to the desk)
-Remove from phone · sign out / reach sign-in · another account syncs · 30 days without opening Prepare online ─► copy wiped
+Switch off · sign out / reach sign-in · another account syncs · 30 days without opening Prepare online ─► copy wiped
 ```
 
 ## Share to FloorTest (iPhone and Android apps)
