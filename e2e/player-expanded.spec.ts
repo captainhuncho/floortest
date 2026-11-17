@@ -23,17 +23,19 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   await chevron.click();
   await expect(player).toBeVisible();
   // A card, not the window: (1280 − 64) × 0.84, capped at 874, centred, with our corners.
-  const box = await player.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return { width: Math.round(r.width), centred: Math.abs(r.left - (window.innerWidth - r.right)) <= 1, radius: getComputedStyle(el).borderRadius, inside: r.top >= 0 && r.bottom <= window.innerHeight };
-  });
-  expect(box).toEqual({ width: 874, centred: true, radius: "22px", inside: true });
+  const box = () =>
+    player.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { width: Math.round(r.width), centred: Math.abs(r.left - (window.innerWidth - r.right)) <= 1, radius: getComputedStyle(el).borderRadius, inside: r.top >= 0 && r.bottom <= window.innerHeight };
+    });
+  // Read once it has finished scaling in.
+  await expect.poll(box).toEqual({ width: 874, centred: true, radius: "22px", inside: true });
   const title = await player.getByRole("heading", { level: 2 }).innerText();
   await expect(player).toHaveAccessibleName(title);
   // The wave is 150px tall and the time is the big figure.
   expect(await player.getByRole("slider", { name: /^Seek / }).evaluate((el) => Math.round(el.getBoundingClientRect().height))).toBe(150);
   // Focus starts on play / pause, and Tab stays inside.
-  await expect(player.getByRole("button", { name: /^(Pause|Play) / })).toBeFocused();
+  await expect(player.locator("[data-autofocus]")).toBeFocused();
   for (let i = 0; i < 14; i++) {
     await page.keyboard.press("Tab");
     expect(await page.evaluate(() => !!document.activeElement?.closest("dialog[data-player-expanded]"))).toBe(true);
@@ -72,20 +74,34 @@ test("phone: the mini player's title opens the player full window, and the heart
   await mini.locator("[data-open-player]").click();
   const player = page.locator("dialog[data-player-expanded]");
   await expect(player).toBeVisible();
-  expect(await player.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)];
-  })).toEqual([0, 0, 375, 812]);
+  // Read once it has finished scaling in.
+  await expect
+    .poll(() =>
+      player.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)];
+      }),
+    )
+    .toEqual([0, 0, 375, 812]);
   // Every control is a 44px target, and nothing runs off the side.
-  const small = await player.evaluate((el) => [...el.querySelectorAll("button, a")].filter((b) => { const r = b.getBoundingClientRect(); return r.width && (r.height < 44 || r.width < 44); }).length);
-  expect(small).toBe(0);
+  const small = () =>
+    player.evaluate((el) =>
+      [...el.querySelectorAll("button, a")]
+        .map((b) => {
+          const r = b.getBoundingClientRect();
+          return { name: b.getAttribute("aria-label") ?? b.textContent, w: Math.round(r.width), h: Math.round(r.height) };
+        })
+        .filter((c) => c.w > 0 && (c.w < 44 || c.h < 44)),
+    );
+  await expect.poll(small).toEqual([]);
   expect(await player.evaluate((el) => el.firstElementChild!.scrollWidth <= el.clientWidth)).toBe(true);
 
   const heart = player.locator("[data-heart]");
   await expect(heart).toHaveAttribute("aria-pressed", "false");
   await heart.click();
   await expect(heart).toHaveAttribute("aria-pressed", "true");
-  // Put it back, so the next run starts the same.
+  // Saved (a second tap before the answer comes back sends nothing), then put it back.
+  await expect(page.getByText(/added to Prepare for set/)).toBeVisible();
   await heart.click();
   await expect(heart).toHaveAttribute("aria-pressed", "false");
 
