@@ -23,6 +23,7 @@ const ICONS = {
   prep: <><rect x="5" y="4.5" width="14" height="16" rx="2.5" /><path d="M9 4.5V3.5h6v1M9 13l2 2 4-4" /></>,
   contacts: <><circle cx="9" cy="9" r="3" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a3 3 0 0 1 0 5.5M17.5 14.5a5.5 5.5 0 0 1 3 4.5" /></>,
   activity: <path d="M3.5 12h4l2.5-6 4 12 2.5-6h4" />,
+  analytics: <path d="M4 20h16M7 16.5v-4.5M11 16.5V7M15 16.5v-7M18.5 16.5v-3" />,
   send: <path d="M20 4 10 14M20 4l-6 16-4-6-6-4z" />,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M6 18l1.4-1.4M16.6 7.4 18 6" /></>,
   up: <path d="M12 19V5M6 11l6-6 6 6" />,

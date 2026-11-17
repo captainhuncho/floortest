@@ -13,6 +13,8 @@ type Props = {
   pause: PauseState;
   /** On a team desk, Members can't send as the account, so Send isn't offered. */
   canSend?: boolean;
+  /** Analytics is for the owner and A&R / Admin only (owner, 16 Nov); the page checks it again on the server. */
+  canSeeAnalytics?: boolean;
 };
 
 /** The few icons the rail needs beyond the nav set (same 24px grid, 1.8 stroke). */

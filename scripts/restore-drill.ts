@@ -9,6 +9,7 @@
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0155
 import { MIGRATIONS } from "../src/lib/db/migrations";
 import { backupSecrets, openBackup } from "../src/lib/backup-crypto";
 
@@ -17,7 +18,7 @@ async function main() {
   if (!file) throw new Error("Give the path to a backup .json.gz");
   const dump = JSON.parse(gunzipSync(openBackup(readFileSync(file), backupSecrets())).toString()) as { created_at: string; tables: Record<string, Record<string, unknown>[]> };
 
-  const pg = await PGlite.create();
+  const pg = await PGlite.create({ extensions: { pg_trgm } });
   await pg.exec("create table schema_migrations (id text primary key, applied_at bigint not null)");
   for (const m of MIGRATIONS) await pg.exec(m.sql);
   // Load in any order: foreign keys are checked once at the end, as in a real restore.

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useToast } from "@/components/Toast";
 import { linkShared } from "../link-shared";
 import { GHOST_ON_WELL } from "../kitButtons";
@@ -59,81 +58,6 @@ export function LinkRow({ link, card }: { link: string; card?: ShareCardTarget }
           {SHARE_ICON}
         </button>
       )}
-    </div>
-  );
-}
-
-type Day = { weekday: string; count: number; kept: number; listened: number; today: boolean };
-const VIEWS = [
-  ["received", "Received"],
-  ["kept", "Kept"],
-  ["listened", "Listened"],
-] as const;
-
-/**
- * The last seven days, per local day, with a Received / Kept / Listened switch (owner, 30 Oct mock). Received shows the
- * kept part in lime on each grey bar; Kept and Listened show their own count in lime. The totals are said in text above.
- */
-export function WeekChart({ days }: { days: Day[] }) {
-  const [view, setView] = useState<(typeof VIEWS)[number][0]>("received");
-  const value = (d: Day) => (view === "received" ? d.count : view === "kept" ? d.kept : d.listened);
-  const top = Math.max(1, ...days.map((d) => Math.max(value(d), view === "received" ? d.kept : 0)));
-  const total = days.reduce((n, d) => n + value(d), 0);
-  return (
-    <div className="flex flex-col gap-3">
-      <div role="tablist" aria-label="Show" className="inline-flex w-fit gap-1 rounded-xl border border-line bg-well p-[3px]">
-        {VIEWS.map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            role="tab"
-            aria-selected={view === k}
-            onClick={() => setView(k)}
-            className={`tap rounded-[9px] px-2.5 py-1.5 text-[12px] ${view === k ? "bg-lime/15 font-semibold text-lime" : "text-mute hover:text-bone"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <p className="sr-only" aria-live="polite">
-        {total} {view} in the last 7 days.
-      </p>
-      <div aria-hidden className="flex flex-col gap-1.5">
-        <div className="relative grid h-24 grid-cols-7 items-end gap-2 border-b border-dashed border-line-2">
-          <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-line" />
-          <span className="pointer-events-none absolute -top-2 right-0 text-[10px] text-faint tnum">{top}</span>
-          {days.map((d, i) => {
-            const v = value(d);
-            const lime = view === "received" ? Math.min(d.kept, v) : v;
-            const grey = view === "received" ? Math.max(0, v - lime) : 0;
-            return (
-              <div key={i} className="flex h-full flex-col justify-end gap-0.5">
-                {grey > 0 && <span className="block rounded-[5px] bg-line-2" style={{ height: `${(grey / top) * 100}%` }} />}
-                {lime > 0 && <span className="block rounded-[5px] bg-lime" style={{ height: `${(lime / top) * 100}%` }} />}
-              </div>
-            );
-          })}
-        </div>
-        <div className="grid grid-cols-7 gap-2 text-center text-[11px] text-faint">
-          {days.map((d, i) => (
-            <span key={i} className={d.today ? "font-semibold text-bone" : ""}>
-              {d.weekday.slice(0, 1)}
-            </span>
-          ))}
-        </div>
-      </div>
-      <ul aria-hidden className="flex gap-3 text-[11px] text-mute">
-        <li className="flex items-center gap-1.5">
-          <span className="size-2 rounded-[2.5px] bg-lime" />
-          {view === "listened" ? "Listened" : "Kept"}
-        </li>
-        {view === "received" && (
-          <li className="flex items-center gap-1.5">
-            <span className="size-2 rounded-[2.5px] bg-line-2" />
-            Received
-          </li>
-        )}
-      </ul>
     </div>
   );
 }
