@@ -72,6 +72,7 @@ test("phone: the menu sits alone, the player joins it, the heart keeps with Undo
   // A text field in use: the pair steps aside, and comes back after.
   const search = page.getByPlaceholder(/Search/).first();
   await search.focus();
+  await expect(search).toBeFocused();
   await expect(pair).toBeHidden();
   await search.blur();
   await expect(pair).toBeVisible();
