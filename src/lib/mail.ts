@@ -121,7 +121,7 @@ export async function sendMailLater(opts: MailOpts) {
 
 /** Ops sends with Undo (ops server design §2, owner 1 Nov): how long such an email waits on the server before it goes. */
 export const SEND_HOLD_MS = 8_000;
-/** How long past the hold this process waits before sending: a timer can fire a little early, and a claim made before next_at matches nothing, which would leave the email to the mail job (up to 10 minutes). */
+/** How long past the hold this process waits before sending: a timer can fire a little early, and a claim made before next_at matches nothing, which would leave the email to the mail job (up to 15 minutes). */
 export const SEND_GRACE_MS = 500;
 
 /**

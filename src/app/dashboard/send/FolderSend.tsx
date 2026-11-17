@@ -254,7 +254,7 @@ export function FolderSend({
         <p className="mt-2 text-[12px] text-mute">It arrives as one folder. Each track gets its own receipt and updates.</p>
         {items.some((i) => i.held) && (
           <p className="mt-2 text-[12px] text-mute">
-            {items.every((i) => i.held) ? "They're" : "Some are"} still being checked for viruses, which can take up to 10 minutes. Each one reaches the desk as
+            {items.every((i) => i.held) ? "They're" : "Some are"} still being checked for viruses, which can take up to 20 minutes. Each one reaches the desk as
             soon as it passes, and its receipt follows by email.
           </p>
         )}
