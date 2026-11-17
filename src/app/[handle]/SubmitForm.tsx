@@ -370,12 +370,12 @@ export function SubmitForm({
         </h2>
         {allHeld ? (
           <p className="max-w-[400px] text-[13px] leading-5 text-mute">
-            We&apos;re checking {many ? "them" : "it"} for viruses, which can take up to 10 minutes. {many ? "They reach" : "It reaches"} {receiverName}&apos;s desk as soon as {many ? "they pass" : "it passes"}, and we&apos;ll email {many ? "receipts" : "a receipt"} to <span className="text-bone">{account?.email ?? sender.email}</span>. Nothing else to do.
+            We&apos;re checking {many ? "them" : "it"} for viruses, which can take up to 20 minutes. {many ? "They reach" : "It reaches"} {receiverName}&apos;s desk as soon as {many ? "they pass" : "it passes"}, and we&apos;ll email {many ? "receipts" : "a receipt"} to <span className="text-bone">{account?.email ?? sender.email}</span>. Nothing else to do.
           </p>
         ) : (
           <p className="max-w-[400px] text-[13px] leading-5 text-mute">
             {many ? "Your receipts are on their way to" : "Your receipt is on its way to"} <span className="text-bone">{sentTo}</span>. {many ? "They update" : "It updates"} as {first} listens.
-            {heldCount > 0 && ` ${heldCount} ${heldCount === 1 ? "is" : "are"} still being checked for viruses (up to 10 minutes); ${heldCount === 1 ? "its receipt follows" : "their receipts follow"} by email.`}
+            {heldCount > 0 && ` ${heldCount} ${heldCount === 1 ? "is" : "are"} still being checked for viruses (up to 20 minutes); ${heldCount === 1 ? "its receipt follows" : "their receipts follow"} by email.`}
           </p>
         )}
         <ul className="flex w-full flex-col gap-2" aria-label={many ? "Receipts" : undefined}>

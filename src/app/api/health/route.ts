@@ -62,7 +62,7 @@ export async function GET(req: Request) {
   }
   const jobs = detailed ? await jobProblems().catch(() => ["Scheduled jobs couldn't be checked."]) : [];
   if (detailed) checks.jobs = jobs.length ? "problem" : "ok";
-  // Uploads waiting for their virus check (src/lib/held-uploads.ts): normal for up to 10 minutes, a problem after an hour.
+  // Uploads waiting for their virus check (src/lib/held-uploads.ts): normal for up to 20 minutes, a problem after an hour.
   const held = detailed ? await heldUploads().catch(() => null) : null;
   if (held) checks.held = String(held.count);
   const stuck = held?.oldest && Date.now() - held.oldest > 3_600_000 ? [`${held.count} upload(s) have waited over an hour for their virus check.`] : [];
