@@ -223,8 +223,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           )}
           {notice && <Notice action={notice.action}>{notice.text}</Notice>}
 
-          {/* In the page's order (and the tab order) the link follows the greeting; phones show it after the crates. */}
-          <div className="contents lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,400px)] lg:items-end lg:gap-6">
+          {/* In the page's order (and the tab order) the link follows the greeting; phones show it after the crates. A new desk
+              has no crates, so the link row is full width under the greeting at every size (option 41, new desk). */}
+          <div className={fresh ? "contents" : "contents lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,400px)] lg:items-end lg:gap-6"}>
             <header className="flex min-w-0 flex-col gap-1.5 max-lg:order-1">
               <h1 className="text-[26px] font-bold leading-tight tracking-[-0.03em] text-bone lg:text-[34px]">{fresh ? `Welcome, ${first}` : `${greeting}, ${first}`}</h1>
               <p className="max-w-[46ch] text-[14px] leading-snug text-mute tnum lg:text-[15px]">{summary}</p>
