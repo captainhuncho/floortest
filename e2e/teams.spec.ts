@@ -116,12 +116,15 @@ test("a member switches to the team's desk, can't open owner settings, and their
   const trackDelete = page.getByRole("button", { name: "Delete", exact: true }).and(page.locator(':not([aria-label="Review together"] *)'));
   await expect(trackDelete).toHaveCount(0);
 
-  // Callouts are for members the owner or an A&R / Admin has ticked: an unticked member gets no "+ New" on Callouts.
+  // Callouts are for members the owner or an A&R / Admin has ticked: an unticked member gets no "New folder" on Collections.
   await page.goto("/dashboard/collections");
-  await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
-  // Nor on Projects: uploading and folders are the owner's and A&R / Admins'.
+  await expect(page.getByRole("heading", { name: "Collections", level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^New/ })).toHaveCount(0);
+  // Nor on Projects: uploading, projects and groups are the owner's and A&R / Admins'.
   await page.goto("/dashboard/projects");
-  await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Collections", level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^New/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Upload audio" })).toHaveCount(0);
 
   // Owner-only and admin-only pages send members to the Team page instead.
   await page.goto("/dashboard/settings/security");
@@ -206,14 +209,24 @@ test("a member the owner ticks for callouts can make one; folders stay the owner
     await lena.getByRole("button", { name: /Tia Teams/ }).click();
     await expect(lena.getByText(/On Tia Teams.s desk as a member/)).toBeVisible();
     await lena.goto("/dashboard/collections");
-    await lena.getByRole("button", { name: "New", exact: true }).click();
-    await expect(lena.getByRole("menuitem", { name: "New callout" })).toBeVisible();
-    await expect(lena.getByRole("menuitem", { name: "New folder" })).toHaveCount(0);
+    // The New folder sheet offers a ticked member a callout and nothing else: no project, no group of either.
+    await lena.getByRole("button", { name: "New folder" }).click();
+    const sheet = lena.getByRole("dialog", { name: "New folder" });
+    await expect(sheet.getByRole("radio", { name: /^Callout/ })).toBeVisible();
+    await expect(sheet.getByRole("radio")).toHaveCount(1);
+    await expect(sheet.getByRole("radio", { name: /Project|Group/ })).toHaveCount(0);
     await lena.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
     // A callout's own menu offers Edit to a ticked member, but never Move to folder or Delete; folder tiles have no menu.
     await lena.getByRole("button", { name: /^More for / }).first().click();
     await expect(lena.getByRole("menuitem", { name: /^Edit/ })).toBeVisible();
     await expect(lena.getByRole("menuitem", { name: /Move to folder|Delete|Rename/ })).toHaveCount(0);
+    await lena.keyboard.press("Escape");
+    // Projects stay the owner's and A&R / Admins': the tick adds nothing there.
+    await lena.goto("/dashboard/projects");
+    await expect(lena.getByRole("heading", { name: "Collections", level: 1 })).toBeVisible();
+    await expect(lena.getByRole("button", { name: /^New/ })).toHaveCount(0);
+    await expect(lena.getByRole("button", { name: "Upload audio" })).toHaveCount(0);
   } finally {
     await member.close();
   }

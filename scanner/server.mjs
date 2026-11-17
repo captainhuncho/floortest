@@ -50,7 +50,7 @@ const send = (res, status, body) => {
   res.end(JSON.stringify(body));
 };
 
-http
+const server = http
   .createServer(async (req, res) => {
     try {
       const health = req.method === "GET" && req.url === "/health";
@@ -80,3 +80,16 @@ http
     }
   })
   .listen(Number(PORT), () => console.log(`scanner listening on ${PORT}`));
+
+// Cloudflare stops an idle container with SIGTERM. This process is PID 1 (start.sh execs it), and Linux drops a signal
+// sent to PID 1 that has no handler, so without this the container never went to sleep (17 Nov: awake about 94% of the
+// time, billed for 3 GiB all day). Stop taking requests, let a running scan finish, then exit; clamd and freshclam end
+// with the container.
+const STOP_GRACE_MS = 20_000;
+const stopNow = (signal) => {
+  console.log(`scanner stopping (${signal})`);
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), STOP_GRACE_MS).unref();
+};
+process.on("SIGTERM", () => stopNow("SIGTERM"));
+process.on("SIGINT", () => stopNow("SIGINT"));
