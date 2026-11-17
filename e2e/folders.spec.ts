@@ -84,6 +84,8 @@ test("Projects offers Upload audio, and New folder makes a project or a group of
   await expect(page.getByRole("link", { name: "Open E2E project, project, 0 tracks", exact: true })).toBeVisible();
   // It opens as a folder page with the one wide button.
   await page.getByRole("link", { name: "Open E2E project, project, 0 tracks", exact: true }).click();
+  // The first open compiles the page in the dev server; give that room on a busy machine.
+  await page.waitForURL(/\/dashboard\/projects\/\d+$/, { timeout: 60_000 });
   await expect(page.getByRole("heading", { level: 1, name: "E2E project" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add tracks" })).toBeVisible();
 });
