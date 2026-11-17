@@ -54,7 +54,7 @@ type Payload = { to: string; subject: string; body: string; unsub: string | null
  *
  * The scheduled emails (digests, reminders, expiry warnings) are queued with the change that marks them sent and left to
  * the queue (backend audit, Batch B, 28 Oct): a timeout is then retried under the same key instead of becoming a second
- * email. `/api/cron/mail` drains the queue every 10 minutes; the nightly clean-up drains it too, as a backstop.
+ * email. `/api/cron/mail` drains the queue every 15 minutes; the nightly clean-up drains it too, as a backstop.
  */
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MS = [60_000, 5 * 60_000, 15 * 60_000, 60 * 60_000];
@@ -373,7 +373,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
 }
 
 /**
- * Sends what's due in the queue (new, retries, sends a crash interrupted). Called by the mail job every 10 minutes and by
+ * Sends what's due in the queue (new, retries, sends a crash interrupted). Called by the mail job every 15 minutes and by
  * the cleanup jobs. One email that throws never stops the rest; `until` (a Date.now() deadline) stops starting new sends.
  */
 export async function drainOutbox(limit = 50, { until = Infinity } = {}) {
