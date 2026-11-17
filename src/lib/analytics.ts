@@ -123,6 +123,15 @@ const zero = (): Totals => ({ in: 0, senders: 0, kept: 0, passed: 0, downloaded:
 const within = (t: number | null, from: number, to: number): t is number => t !== null && t >= from && t < to;
 
 /**
+ * The 7-day totals on Settings' Analytics row (the page's "Last 7 days"). Null for a Member, who may not open Analytics:
+ * their numbers are never read.
+ */
+export function settingsWeek(user: Desk & { role: string }): Promise<Totals | null> {
+  if (user.role === "member") return Promise.resolve(null);
+  return perDay(user, periodRange("7d", user.tz)).then((d) => d.totals);
+}
+
+/**
  * The chart and the totals: tracks in, distinct senders, kept, not for me, downloaded and played out, per bar, with the
  * same totals for the span compared against. Read from the desk's tracks (deleted tracks keep their row, so Lifetime never
  * shrinks). Both played out and downloaded come back; the screen shows the one the desk type uses.

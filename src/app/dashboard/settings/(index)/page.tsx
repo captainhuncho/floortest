@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { ROLE_LABEL, teamOf, teamsFor, teamsOn } from "@/lib/account-members";
-import { perDay, periodRange } from "@/lib/analytics";
+import { settingsWeek } from "@/lib/analytics";
 import { q } from "@/lib/db";
 import { capacity, isPaused } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
@@ -61,7 +61,7 @@ export default async function Settings() {
     canMarkPlayedOut(user) ? playedOutPicks(user) : Promise.resolve(null),
     own ? Promise.resolve(null) : q.get<{ created_at: number }>("SELECT created_at FROM account_members WHERE account_id = ? AND user_id = ?", user.id, user.actor_id),
     // Analytics' own 7-day totals (the page's "Last 7 days"), only for the roles that may open it.
-    user.role !== "member" ? perDay(user, periodRange("7d", user.tz)).then((d) => d.totals) : Promise.resolve(null),
+    settingsWeek(user),
   ]);
   const show = settingsRows({ role: user.role, teams, desks: 1 + myTeams.length, referrals, playedOut: !!picks });
   const team = show.team ? await teamOf(user.id) : null;

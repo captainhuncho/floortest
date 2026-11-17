@@ -51,8 +51,9 @@ test("every row a Member doesn't see is also refused by the server", () => {
   assert.match(read("app/dashboard/settings/security/page.tsx"), /requireRole\("owner"\)/);
   assert.match(read("app/dashboard/referrals/page.tsx"), /requireRole\("owner"\)/);
   assert.match(read("app/dashboard/analytics/page.tsx"), /requireRole\("admin"\)/);
-  // The Analytics line's numbers are only read for the roles that may open the page.
-  assert.match(read("app/dashboard/settings/(index)/page.tsx"), /user\.role !== "member" \? perDay\(user, periodRange\("7d", user\.tz\)\)/);
+  // The Analytics line's numbers come only from settingsWeek, which reads nothing for a Member
+  // (behaviour test in tests/sign-out-everywhere.test.ts).
+  assert.match(read("app/dashboard/settings/(index)/page.tsx"), /settingsWeek\(user\)/);
   assert.match(read("lib/played-out-prompt.ts"), /canMarkPlayedOut = .*\n?.*user\.role !== "member"/);
   // Played out: the page opens only when playedOutPicks answers, and that answers no one who can't mark tracks.
   assert.match(read("lib/played-out-prompt.ts"), /export async function playedOutPicks\([^]*?\{\s*if \(!canMarkPlayedOut\(user\)\) return null;/);
