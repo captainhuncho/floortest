@@ -15,22 +15,22 @@ const OK = () => `Label Play ${stamp}-${test.info().repeatEachIndex}`;
 async function send(page: import("@playwright/test").Page, title: string, play: "Evaluation only" | "OK to play") {
   await page.goto("/dashboard/send?to=lunalabel");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: `${title}.wav`, mimeType: "audio/wav", buffer: wav(4) });
-  await expect(page.getByText(/WAV · \d+ KB · \d+:\d+/)).toBeVisible({ timeout: 60_000 });
-  await page.getByLabel("Track title").fill(title);
+  await expect(page.getByText(/WAV · \d+:\d+/)).toBeVisible({ timeout: 60_000 });
+  await page.getByLabel("Title", { exact: true }).fill(title);
   await page.getByLabel("Artist").fill("Lou Sender");
   const genre = page.getByRole("combobox", { name: "Genre" });
   if (await genre.count()) await genre.selectOption({ index: 1 });
-  else await page.getByRole("group", { name: /^Genre/ }).getByRole("radio").first().check({ force: true });
-  await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
-  await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
-  await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
+  else await page.getByRole("group", { name: /^Genre/ }).getByRole("button").first().click();
+  await page.getByRole("group", { name: /^Mix/ }).getByRole("button", { name: "Mixed, not mastered" }).click();
+  await page.getByRole("group", { name: /^Release/ }).getByRole("button", { name: "Unreleased" }).click();
+  await page.getByRole("group", { name: /^AI use/ }).getByRole("button", { name: "None", exact: true }).click();
   const choice = page.getByRole("group", { name: /^Sending to a label/ });
   // Evaluation only is the default; the sender has to choose OK to play.
-  await expect(choice.getByRole("radio", { name: "Evaluation only" })).toBeChecked();
-  if (play === "OK to play") await choice.getByText("OK to play").click();
-  await expect(choice.getByRole("radio", { name: play })).toBeChecked();
+  await expect(choice.getByRole("button", { name: "Evaluation only" })).toHaveAttribute("aria-pressed", "true");
+  if (play === "OK to play") await choice.getByRole("button", { name: "OK to play" }).click();
+  await expect(choice.getByRole("button", { name: play })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: /^Send to / }).click();
-  await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByText(/Your receipt is on its way to/)).toBeVisible({ timeout: 180_000 });
 }
 
 test("a signed-in sender picks Evaluation only or OK to play when sending to a label", async ({ page }) => {

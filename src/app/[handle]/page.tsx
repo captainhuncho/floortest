@@ -13,12 +13,12 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
 import { activeCollection, calloutBlock, capacity, isPaused, NOT_OPEN_YET, pausedMessage, userByHandleForView } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
-import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
+import { genresFor } from "@/lib/plans";
 import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { botCheckKey } from "@/lib/turnstile";
 import { ReopenAlert } from "./ReopenAlert";
-import { CARD, Icon } from "@/components/Kit";
+import { Icon } from "@/components/Kit";
 import { SendModes } from "./SendModes";
 import { receiverAsksPlayChoice } from "@/lib/account-types";
 import { currentTermsOrNull } from "@/lib/terms-record";
@@ -81,75 +81,73 @@ export default async function ReceiverPage({ params }: Props) {
 
   // The brief shows only what the receiver asked for: their own genres (never the default list, which they didn't choose),
   // and the rest as it reads on the desk. Genres become tappable choices that carry into the form.
-  const briefRest = collection ? briefItems(collection, [], receiver.tz).filter((b) => b.key !== "genres") : [];
+  // The closing date sits in the callout line under the name, so the brief doesn't repeat it.
+  const briefRest = collection ? briefItems(collection, [], receiver.tz).filter((b) => b.key !== "genres" && b.key !== "deadline") : [];
   const firstName = receiver.first_name || receiver.name.split(" ")[0];
   const shareNote = sharing && !!collection?.allow_sharing ? `${firstName} may share what you send privately with people they name.` : null;
   const brief = closedReason ? null : { heading: <E k="looking_for" />, genres: ownGenres ? genres : [], items: briefRest, shareNote };
   const bpmRange: [number, number] | null = collection?.bpm_min && collection.bpm_max ? [collection.bpm_min, collection.bpm_max] : null;
-  const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
-  // What happens to the file: shown under the drop zone, and again above Send once a file is picked (the form gets the text).
-  const bullets = ([team ? "bullet_private_team" : "bullet_private", "bullet_retention", "bullet_receipt"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
+  const vars = { receiver: receiver.name };
+  // What happens to the file, under the drop box: who hears it, the receipt, no account. Once a file is picked the form
+  // says it in one line above Send.
+  const bullets = ([team ? "bullet_private_team" : "bullet_private", "bullet_receipt", "bullet_no_account"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
 
   const verified = receiver.identity_status === "verified";
   const cover = receiver.cover_key ? `/api/cover/${receiver.handle}?v=${encodeURIComponent(receiver.cover_key)}` : null;
-  // The promise lines, each with its own small icon (who hears it, deletion, receipt).
-  const bulletIcon = { bullet_private: "lock", bullet_private_team: "lock", bullet_retention: "clock", bullet_receipt: "mail" } as const;
+  const bulletIcon = { bullet_private: "lock", bullet_private_team: "lock", bullet_receipt: "mail", bullet_no_account: "check" } as const;
+  const open = collection && !closedReason ? collection : null;
 
   return (
     <EditablePage editing={!!editor} page="link" label="Public link" values={c}>
     {/* Light or dark with the visitor's device (theme-system, the dashboard's "System" setting; owner, 29 Oct). */}
-    {/* One column at every width (owner, 29 Oct), in the desk's card look (owner, 30 Oct): the receiver's card at the top,
-        kept (smaller) once a file is picked; the brief, the drop box or the form below. */}
-    <main className="theme-system group/page mx-auto flex min-h-dvh max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-10">
+    {/* One column at every width, about 560px (owner, 29 Oct; option 48, 17 Nov), one step at a time on the page
+        background: the receiver, what they want, the drop box and what happens to the file; then the form in their place. */}
+    <main className="theme-system group/page mx-auto flex min-h-dvh max-w-[560px] flex-col gap-3.5 bg-ink px-3.5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-bone sm:px-5 sm:pt-8">
       {/* Only a live receiver's page carries this, so the visit counter credits a handle only here (src/lib/visit-beacon.ts). */}
       <span hidden data-visit-handle={receiver.handle} />
-      <ProfileBar cover={cover} name={receiver.name} callout={collection && !closedReason ? collection.name : null}>
-      {/* The receiver's section is the previous version (owner, 31 Oct): photo, name and callout centred, no card. */}
-      <header className="mb-3 flex flex-col items-center gap-2.5 text-center">
+      <ProfileBar cover={cover} name={receiver.name} callout={open ? open.name : null}>
+      <header className="flex flex-col items-center gap-1 pt-2 text-center">
         {cover && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt="" width={96} height={96} className="mb-1 size-24 rounded-[18px] object-cover" />
+          <img src={cover} alt="" width={72} height={72} className="mb-2 size-[72px] rounded-full object-cover" />
         )}
-        <p className="font-mono text-sm text-mute"><E k="kicker" /></p>
-        <h1 className="break-words text-[30px] font-semibold leading-tight tracking-[-0.4px]">
+        <p className="text-[12px] text-mute"><E k="kicker" /></p>
+        <h1 className="break-words text-[24px] font-semibold leading-tight tracking-[-0.02em]">
           {receiver.name}
           {verified && <CuePoint size={20} label="Verified by FloorTest: this account controls the linked profile" className="-mt-1 ml-2" />}
         </h1>
-        {collection && !closedReason && (
-          <p className="mt-1 inline-flex items-center gap-2 rounded-full border border-line bg-ink-2 px-3.5 py-1.5 text-[13px] font-semibold">
-            {collection.art_key ? (
+        {open ? (
+          <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-[13px] text-mute">
+            {open.art_key && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`/api/collection-art/${collection.id}?v=${encodeURIComponent(collection.art_key)}`} alt="" className="-my-0.5 size-5 rounded object-cover" />
-            ) : (
-              <span aria-hidden className="size-1.5 rounded-full bg-(--color-lime)" />
+              <img src={`/api/collection-art/${open.id}?v=${encodeURIComponent(open.art_key)}`} alt="" width={20} height={20} className="size-5 rounded object-cover" />
             )}
-            <span className="font-medium text-mute"><E k="receiving_for" /></span> {collection.name}
+            <span><E k="receiving_for" /></span> <span className="font-semibold text-bone">{open.name}</span>
+            {open.closes_at && <span>· closes {fmtDay(open.closes_at, receiver.tz)}</span>}
           </p>
+        ) : (
+          !closedReason && receiver.role_line && <p className="text-[13px] text-mute">{receiver.role_line}</p>
         )}
         <ProfileLinks links={readLinks(receiver.links)} size={20} className="mt-1 justify-center" />
+        <hr className="mt-2 w-full border-line" />
       </header>
       </ProfileBar>
       {closedReason ? (
-        <div className={`${CARD} flex flex-col gap-2 p-3`} role="status">
-          <p className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em]">
-            <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-line bg-well text-[#d98a2b]">
-              <Icon name="clock" className="size-4" />
-            </span>
-            {closedReason}
-          </p>
-          {note && <p className="whitespace-pre-wrap border-l-2 border-lime pl-3 text-[13px]">{note}</p>}
-          <p className="text-[12px] text-dim"><E k="closed_note" /></p>
+        <section className="flex flex-col gap-2.5 rounded-2xl border border-line bg-card p-3.5" role="status">
+          <h2 className="text-[20px] font-semibold leading-tight tracking-[-0.02em]">{closedReason}</h2>
+          {note && <p className="whitespace-pre-wrap border-l-2 border-line-2 pl-3 text-[13px]">{note}</p>}
+          <p className="text-[13px] text-mute"><E k="closed_note" /></p>
           <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
-        </div>
+        </section>
       ) : (
-        <SendModes folderBytes={folderBytes} brief={brief} receiverFirstName={firstName} bpmRange={bpmRange} promise={bullets.map(([, b]) => b)} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} termsHash={(await currentTermsOrNull())?.hash} receiverAsksPlay={receiverAsksPlayChoice(receiver.kind)} />
+        <SendModes folderBytes={folderBytes} brief={brief} receiverFirstName={firstName} bpmRange={bpmRange} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={open ? open.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} termsHash={(await currentTermsOrNull())?.hash} receiverAsksPlay={receiverAsksPlayChoice(receiver.kind)} />
       )}
-      {/* Once a file is picked the form repeats these above Send, so they step aside here. */}
+      {/* Once a file is picked the form says this in one line above Send, so the list steps aside. */}
       {!closedReason && (
-      <ul className="flex flex-col gap-2 px-1 pt-1 group-has-[[data-picked]]/page:hidden" aria-label="How your file is handled">
+      <ul className="flex flex-col gap-2 px-1 group-has-[[data-picked]]/page:hidden" aria-label="What happens to your file">
         {bullets.map(([k, b]) => (
-          <li key={k} {...panel(k, "Keep {receiver} and {days} as they are: the page fills them in.")} className="flex gap-2.5 text-[12.5px] leading-5 text-mute">
-            <Icon name={bulletIcon[k]} className="mt-0.5 size-[15px] text-bone" />
+          <li key={k} {...panel(k, "Keep {receiver} as it is: the page fills in the receiver's name.")} className="flex gap-2.5 text-[13px] leading-5 text-mute">
+            <Icon name={bulletIcon[k]} className="mt-0.5 size-4 shrink-0" />
             {b}
           </li>
         ))}

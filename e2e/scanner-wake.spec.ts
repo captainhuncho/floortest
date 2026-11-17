@@ -29,12 +29,12 @@ async function send(page: Page, title: string) {
   await page.goto("/dashboard/send?to=maxwell");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: `Scanner - ${title}.wav`, mimeType: "audio/wav", buffer: wav(4) });
   await expect(page.getByRole("button", { name: /^Send to / })).toBeEnabled({ timeout: 30_000 });
-  await page.getByRole("textbox", { name: "Track title", exact: true }).fill(title);
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
   await page.getByRole("textbox", { name: "Artist", exact: true }).fill("Scanner");
-  await page.getByRole("group", { name: /^Genre/ }).locator("label").first().click();
-  await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
-  await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
-  await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
+  await page.getByRole("group", { name: /^Genre/ }).getByRole("button").first().click();
+  await page.getByRole("group", { name: /^Mix/ }).getByRole("button", { name: "Mixed, not mastered" }).click();
+  await page.getByRole("group", { name: /^Release/ }).getByRole("button", { name: "Unreleased" }).click();
+  await page.getByRole("group", { name: /^AI use/ }).getByRole("button", { name: "None", exact: true }).click();
   await page.getByRole("button", { name: /^Send to / }).click();
 }
 
@@ -46,7 +46,7 @@ test("a sleeping scanner: the track is received and held without waking it, then
   await send(page, "Night Bus");
   await expect(page.getByRole("heading", { name: /“Night Bus” is received\./ })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/We're checking it for viruses, which can take up to 10 minutes/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "View receipt" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open your receipt" })).toHaveCount(0);
   expect(await seen(page)).not.toContain("POST /wake");
   expect(await seen(page)).not.toContain("POST /scan");
 

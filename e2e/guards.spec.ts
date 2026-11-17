@@ -35,7 +35,9 @@ test("the public link shows the open callout's brief in the same order and wordi
   const brief = page.getByRole("region", { name: "What they're looking for" });
   await expect(brief).toContainText("BPM");
   await expect(brief).toContainText("118–130");
-  await expect(brief).toContainText(/Deadline\s*Open until/);
+  // The closing date sits in the callout line under the name, so the brief doesn't repeat it (option 48).
+  await expect(brief).not.toContainText("Deadline");
+  await expect(page.getByText(/· closes \d/)).toBeVisible();
   await expect(brief).toContainText("“Percussive, warm and built for late-night rooms”");
 });
 
