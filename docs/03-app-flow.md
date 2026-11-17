@@ -126,7 +126,7 @@ floortest.app/<handle> ─► Choose a track, or drop it on the page (or "Sendin
 Link closed / paused / full ─► the page says why in one card, no upload ─► your email, "Email me when it reopens" ─► one email when the link takes uploads again
    (after the receiver switches collection, moves the closing date or resumes: up to 50 sent just after the page answers, the rest nightly; nightly also for a pause that ended on its own or a re-route; a failed send is retried by the email queue every 15 minutes)
 
-Receiver emails ─► instant "New track" (sent at once, one per send: a send of several is one "New tracks" email listing them; quiet hours hold it for the digest; the bell also shows a send as one row) · daily digest, 2-week nudge, first-track nudge, Played out reminder (written at 08:00 UTC, sent by the 10-minute email queue) ─► a failed send is retried with the same key, never sent twice ─► near the daily send limit these wait until after midnight UTC; sign-in codes, resets and receipts always go
+Receiver emails ─► instant "New track" (sent at once, one per send: a send of several is one "New tracks" email listing them; quiet hours hold it for the digest; the bell also shows a send as one row) · daily digest, 2-week nudge, first-track nudge, Played out reminder (written at 08:00 UTC, sent by the 15-minute email queue) ─► a failed send is retried with the same key, never sent twice ─► near the daily send limit these wait until after midnight UTC; sign-in codes, resets and receipts always go
 ```
 
 ## Offline kept tracks (iPhone and Android apps)
