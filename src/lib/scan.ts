@@ -155,8 +155,11 @@ export async function scannerHealth(): Promise<"ok" | "asleep" | "down" | "off">
   try {
     const s = await fetch(`${url}/status`, { signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) });
     const status = s.ok ? ((await s.json().catch(() => ({}))) as { container?: string }).container : undefined;
-    if (status === "stopped" || status === "stopped_with_code") return "asleep";
+    // Stopping is going to sleep, not a fault (Safety, 17 Nov). /health starts a container that isn't running, so it is
+    // asked only of one that is already up; any other answer (unknown, none, an error) reads as down without waking it.
+    if (status === "stopped" || status === "stopped_with_code" || status === "stopping") return "asleep";
     if (!s.ok) await s.body?.cancel().catch(() => {});
+    if (status !== "running" && status !== "healthy") return "down";
     // /health needs the secret since 28 Oct (scanner/cloudflare/routes.js), like /wake and /scan.
     const r = await fetch(`${url}/health`, {
       headers: { Authorization: `Bearer ${process.env.SCAN_SECRET ?? ""}` },
