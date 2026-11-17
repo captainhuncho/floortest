@@ -14,6 +14,7 @@ import { markTourSeenFor } from "@/lib/tour-seen";
 import { dismissNoticeFor } from "@/lib/site-notices";
 import { noteLinkShared } from "@/lib/getting-started";
 import { searchDesk, type SearchHit } from "@/lib/search";
+import { allow } from "@/lib/ratelimit";
 
 /** Beta feedback, signed by the person who sent it (src/lib/feedback.ts). */
 export async function sendFeedback(kind: string, message: string, path: string, fromAsk = false, viewport?: number) {
@@ -78,9 +79,24 @@ export async function markNotificationsRead() {
 
 export type { SearchHit } from "@/lib/search";
 
-/** Type-ahead for the search dialog: a few tracks and contacts that match the query or come close (typos). */
+/** Searches per person per window before quickSearch answers nothing (typing at full speed is about 7 a second after the debounce). */
+const SEARCH_LIMIT = 30;
+const SEARCH_WINDOW_MS = 10_000;
+
+/**
+ * Type-ahead for the search dialog: a few tracks and contacts that match the query or come close (typos). Over the
+ * per-person limit, or if the search fails (the 2 s timeout), it answers no results; the error goes to the server log
+ * without the search words.
+ */
 export async function quickSearch(query: string): Promise<SearchHit[]> {
-  return searchDesk(await requireUser(), query);
+  const u = await requireUser();
+  if (!(await allow("quick_search", String(u.actor_id), SEARCH_LIMIT, SEARCH_WINDOW_MS))) return [];
+  try {
+    return await searchDesk(u, query);
+  } catch (e) {
+    console.error("[search] quickSearch failed", u.actor_id, e instanceof Error ? e.message : "unknown error");
+    return [];
+  }
 }
 
 export async function pauseLink(form: FormData) {

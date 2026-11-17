@@ -68,6 +68,9 @@ test("search: forgives typos, ranks the closest first, knows the floor's other s
   const fs = await import("node:fs");
   const src = fs.readFileSync(new URL("../src/lib/search.ts", import.meta.url), "utf8");
   assert.match(src, /asPerson\(desk\.actor_id, \(\) =>\s*q\.tx\(/);
+  const { asPerson } = await import("../src/lib/db");
+  const role = await asPerson(a, () => q.tx((t) => t.get<{ r: string }>("SELECT current_user AS r")));
+  assert.equal(role?.r, "ft_person", "asPerson + q.tx runs as ft_person, as searchDesk does");
 
   // Input only fills values: wildcards and quotes match as text, and long input is capped, not an error.
   assert.deepEqual(await searchDesk(desk, "%"), []);
@@ -85,4 +88,13 @@ test("spellings: whole words from the fixed list only, at most four", async () =
   assert.deepEqual(spellings("  dnb   "), ["dnb", "drum and bass", "drum & bass", "d&b"]);
   assert.deepEqual(spellings("(.*)"), ["(.*)"], "input is never a pattern");
   assert.deepEqual(spellings("house"), ["house"]);
+});
+
+test("quickSearch: signed in, rate limited per person, and a failed search answers nothing instead of throwing", async () => {
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("../src/app/dashboard/actions/desk.ts", import.meta.url), "utf8");
+  const fn = src.slice(src.indexOf("export async function quickSearch"), src.indexOf("export async function quickSearch") + 600);
+  assert.match(fn, /await requireUser\(\)[\s\S]*allow\("quick_search", String\(u\.actor_id\), SEARCH_LIMIT, SEARCH_WINDOW_MS\)\)\) return \[\]/);
+  assert.match(fn, /try \{\s*return await searchDesk\(u, query\);\s*\} catch/);
+  assert.doesNotMatch(fn.slice(fn.indexOf("catch")), /query/, "the search words never reach the log");
 });
