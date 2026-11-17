@@ -1,8 +1,13 @@
 "use client";
 
-import { PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
+import { useEffect, useRef, useState } from "react";
+import { isTyping, PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
 import { Icon } from "@/components/Kit";
+import { overlayOpen } from "@/components/useShortcuts";
+import type { ReplyResult } from "../actions/review";
+import { MoreMenu } from "./MoreMenu";
 import { useStep, type Step } from "./QueueState";
+import { ReplyPanel } from "./ReplyCard";
 
 /** How many bars the phone card draws before it falls back to one filling line. */
 const MAX_BARS = 20;
@@ -109,33 +114,30 @@ export function CardControls({ track, prev, next }: { track: PlayerTrack; prev: 
 
 const CALL = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[13px] border border-line bg-well px-3.5 text-[13px] font-semibold text-bone transition-colors hover:border-line-2";
 
-/** Brings a part of the page lower down into view without a slide when motion is reduced. */
-function reveal(el: Element) {
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
-}
-
 /**
- * Reply, Download and More, beside Keep and Not for me. Reply jumps into the reply box (the same place R goes);
- * Download is the same link as in Details; More opens Details (file, move, report, delete, the sender's record).
+ * Reply, Download and More, beside Keep and Not for me. Reply (and R, from anywhere outside a field) opens the reply
+ * panel; Download is the same link as in Details; More opens the menu (note, Played out, move, copy link, details,
+ * report).
  */
-export function PanelCalls({ trackId }: { trackId: number }) {
-  const reply = () => {
-    const box = document.querySelector<HTMLTextAreaElement>("[data-reply] textarea");
-    if (!box) return;
-    reveal(box);
-    box.focus({ preventScroll: true });
-  };
-  const more = () => {
-    const details = document.querySelector<HTMLDetailsElement>("details[data-panel-details]");
-    if (!details) return;
-    details.open = true;
-    reveal(details);
-    details.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
-  };
+export function PanelCalls({ trackId, href, kept, senderName, onReply }: { trackId: number; href: string; kept: boolean; senderName: string; onReply: (fd: FormData) => Promise<ReplyResult> }) {
+  const [replying, setReplying] = useState(false);
+  const replyButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || e.key.toLowerCase() !== "r") return;
+      // Another layer is open (More, a confirm): R belongs to it.
+      if (overlayOpen()) return;
+      e.preventDefault();
+      // From the Reply button, so closing the panel puts focus back there and not at the top of the page.
+      replyButton.current?.focus({ preventScroll: true });
+      setReplying(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   return (
     <div className="grid grid-cols-3 gap-2 md:flex md:items-center">
-      <button type="button" onClick={reply} aria-keyshortcuts="R" className={CALL}>
+      <button ref={replyButton} type="button" onClick={() => setReplying(true)} aria-haspopup="dialog" aria-keyshortcuts="R" className={CALL}>
         <Icon name="reply" className="size-4" />
         Reply
       </button>
@@ -144,14 +146,8 @@ export function PanelCalls({ trackId }: { trackId: number }) {
         <Icon name="dl" className="size-4" />
         Download
       </a>
-      <button type="button" onClick={more} className={CALL}>
-        <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden>
-          <circle cx="5" cy="12" r="1.9" />
-          <circle cx="12" cy="12" r="1.9" />
-          <circle cx="19" cy="12" r="1.9" />
-        </svg>
-        More
-      </button>
+      <MoreMenu trackId={trackId} href={href} kept={kept} />
+      <ReplyPanel open={replying} onClose={() => setReplying(false)} senderName={senderName} onReply={onReply} />
     </div>
   );
 }

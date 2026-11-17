@@ -11,7 +11,7 @@ import { useToast } from "@/components/Toast";
 import { decideTrack, undoDecision } from "./actions/review";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
 import { useQueue, useStep, type Step } from "./review/QueueState";
-import { isCharacterKey, shortcutsOn } from "@/components/useShortcuts";
+import { isCharacterKey, overlayOpen, shortcutsOn } from "@/components/useShortcuts";
 import { Icon } from "@/components/Kit";
 
 /** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
@@ -109,6 +109,8 @@ export function DecisionRail({ track, selfHref, next, prev, children }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isTyping(e.target)) return;
+      // A layer is open (Reply, More, a confirm): keys belong to it, never to the track behind.
+      if (overlayOpen()) return;
       // Shift+↑ / Shift+↓ are the player's volume (Player.tsx), not a move between tracks.
       if (e.shiftKey && e.key.startsWith("Arrow")) return;
       // Settings → Account can switch the letter and number keys off; Space and the arrows stay.
