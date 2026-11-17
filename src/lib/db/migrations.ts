@@ -2482,6 +2482,15 @@ create index if not exists library_folders_folder on library_folders(desk_folder
 grant update (desk_folder_id) on library_folders to ft_person;`,
   },
   {
+    // Owner, 16 Nov: owners and A&R / Admins run callouts by their role; a Member only once an owner or admin ticks
+    // them. Additive: everyone starts unticked. The person role keeps select only on account_members, so nobody can
+    // tick themselves from the database; the tick is changed by the app connection after its own checks.
+    // The revoke is belt and braces: ft_person was already select-only on account_members.
+    id: "0154_member_callouts",
+    sql: `alter table account_members add column if not exists callouts boolean not null default false;
+revoke update on account_members from ft_person;`,
+  },
+  {
     // Search that forgives typos and ranks the closest match first (owner, 17 Nov: "In-house pg_trgm"), in our own
     // database: nothing leaves it. The extension in public (on ft_person's search_path, so searches under asPerson can
     // call it) and trigram indexes on the fields the top bar searches, so `<%` and LIKE use an index, not a scan.
