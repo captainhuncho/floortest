@@ -108,7 +108,16 @@ function NameSheet({ title, label, initial = "", extra, onSave, onClose }: { tit
  * (or Shift+F10 / the menu key). A right-click on a card opens that card's own ··· options. Links, fields and selected
  * text keep the browser's menu. Inside a folder, what you make is filed into it.
  */
-export function FolderArea({ kind, folder, canEdit, children }: { kind: FolderKind; /** The folder being shown, if any. */ folder?: number | null; canEdit: boolean; children: React.ReactNode }) {
+export function FolderArea({ kind, folder, canEdit, canCreate = canEdit, children }: {
+  kind: FolderKind;
+  /** The folder being shown, if any. */
+  folder?: number | null;
+  /** Folders: make, rename, delete (owner and A&R / Admin). */
+  canEdit: boolean;
+  /** "New callout" / "New project": a ticked Member may make callouts without managing folders. Defaults to canEdit. */
+  canCreate?: boolean;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [form, setForm] = useState<null | "folder" | "item">(null);
@@ -116,15 +125,15 @@ export function FolderArea({ kind, folder, canEdit, children }: { kind: FolderKi
     if (folder) await (kind === "callout" ? fileCallout(id, folder) : fileProject(id, folder));
   };
   const items: Item[] = [
-    ...(kind === "project" ? [{ label: "Upload audio", icon: "up" as const, run: () => window.dispatchEvent(new Event("ft:add-audio")) }] : []),
+    ...(canCreate && kind === "project" ? [{ label: "Upload audio", icon: "up" as const, run: () => window.dispatchEvent(new Event("ft:add-audio")) }] : []),
     // A new callout can't be filed yet (createCollection doesn't return its id), so inside a callout folder it isn't offered.
-    ...(kind === "callout" && folder ? [] : [{ label: `New ${NOUN[kind]}`, icon: (kind === "callout" ? "inbox" : "music") as IconName, run: () => setForm("item") }]),
-    ...(folder ? [] : [{ label: "New folder", icon: "folder" as const, run: () => setForm("folder") }]),
+    ...(!canCreate || (kind === "callout" && folder) ? [] : [{ label: `New ${NOUN[kind]}`, icon: (kind === "callout" ? "inbox" : "music") as IconName, run: () => setForm("item") }]),
+    ...(!canEdit || folder ? [] : [{ label: "New folder", icon: "folder" as const, run: () => setForm("folder") }]),
   ];
 
-  const can = canEdit && items.length > 0;
+  const can = (canEdit || canCreate) && items.length > 0;
   const onContextMenu = (e: React.MouseEvent) => {
-    if (!canEdit) return;
+    if (!canEdit && !canCreate) return;
     const t = e.target as HTMLElement;
     const card = t.closest<HTMLElement>("[data-card]");
     if (card) {
@@ -137,7 +146,7 @@ export function FolderArea({ kind, folder, canEdit, children }: { kind: FolderKi
     setMenu(true);
   };
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!canEdit || !(e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) return;
+    if ((!canEdit && !canCreate) || !(e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) return;
     e.preventDefault();
     const card = (e.target as HTMLElement).closest<HTMLElement>("[data-card]");
     if (card) card.querySelector<HTMLButtonElement>("[aria-haspopup=menu]")?.click();
