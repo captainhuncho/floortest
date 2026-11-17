@@ -49,7 +49,7 @@ test("a track sent to it lands in the Review Queue, unsorted", async ({ page }) 
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles(file);
   // Wait until the file is read (length and BPM shown), so typing isn't undone when its details fill in.
   await expect(page.getByText(/WAV · \d+:\d+/)).toBeVisible();
-  await page.getByLabel("Title", { exact: true }).fill(title);
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
   await page.getByLabel("Artist").fill("E2E Artist");
   // No collection means no brief: the full genre list, as a menu.
   await page.getByRole("combobox", { name: "Genre" }).selectOption("Afro House");
