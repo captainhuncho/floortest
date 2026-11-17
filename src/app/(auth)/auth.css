@@ -563,8 +563,9 @@ input.af-fld:focus, select.af-fld:focus, div.af-fld:focus-within { border-color:
 .st-bars i { display: block; flex: 1; border-radius: 2px; overflow: hidden; background: var(--ag-bar); }
 .st-bars b { display: block; height: 100%; background: var(--ag-ink); transform: scaleX(0); transform-origin: 0 50%; }
 .st-bars .st-done b, .st-bars .st-on b { transform: none; }
-.st-pause { flex: none; width: 44px; height: 44px; margin: -12px -14px -12px 0; display: grid; place-items: center; border-radius: 12px; color: var(--ag-soft); }
-.st-pause svg { width: 14px; height: 14px; }
+.st-pause { flex: none; width: 44px; height: 44px; margin: -12px -8px -12px 0; display: grid; place-items: center; border-radius: 12px; color: var(--ag-soft); }
+/* a 44px tap around a small glass disc, fine-line icon, no lime */
+.st-pause svg { width: 28px; height: 28px; padding: 7px; border-radius: 50%; background: var(--ag-btn); border: 1px solid var(--ag-field-edge); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .st-pause:hover { color: var(--ag-ink); }
 @media (prefers-reduced-motion: reduce) { .st-pause { display: none; } }
 
@@ -613,10 +614,18 @@ input.af-fld:focus, select.af-fld:focus, div.af-fld:focus-within { border-color:
 .aw noscript { order: 5; }
 .aw-btns { order: 6; display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
 .aw-keys { display: none; }
+/* the waitlist note sits small under the buttons, so the words keep their height */
+.aw-note { order: 7; margin-top: 12px; font-size: 13px; line-height: 1.45; text-align: center; font-weight: var(--ag-body-weight); color: var(--ag-soft); }
+@media (prefers-color-scheme: light) {
+  /* full ink by day: soft ink fades on the bright floor */
+  .af-page.theme-system .aw-note { color: #0b0c0a; font-weight: 500; }
+}
 .af-btn.aw-alt { color: var(--ag-ink); background: var(--ag-btn); border-color: var(--ag-field-edge); }
 .af-btn.aw-alt:hover { border-color: var(--ag-soft); }
 .aw-skip { align-self: center; min-height: 44px; padding: 0 12px; font-size: 14px; color: var(--ag-soft); text-decoration: underline; text-underline-offset: 3px; }
 .aw-skip:hover { color: var(--ag-ink); }
+/* the end card's second choice is a text link under the lime button, in full ink */
+.aw-have-one { display: inline-flex; align-items: center; color: var(--ag-ink); font-weight: 500; }
 /* the end card sits at the foot of the phone's screen: headline, one line, the link, the ask */
 .aw-end .aw-cap { margin-top: auto; min-height: 0; }
 .aw-end .aw-h { font-size: 32px; line-height: 1.05; }
@@ -636,14 +645,10 @@ input.af-fld:focus, select.af-fld:focus, div.af-fld:focus-within { border-color:
 @media (prefers-color-scheme: light) and (max-width: 639px) {
   /* the end by day: the clean photo, the DJ in the top half */
   .af-page.theme-system:has(.aw-end) .af-l-photo { background-size: auto 136%, auto 136%, cover; background-position: 68% 100%, 68% 100%, 0 0; }
-  /* a pale wash rises behind the words, so they never sit on the booth */
-  .af-page.theme-system:has(.aw-end) .af-l-tone { background: linear-gradient(transparent 24%, rgb(250 248 242 / 0.9) 44%); }
 }
-@media (prefers-color-scheme: light) and (max-width: 480px) and (max-height: 700px) {
-  /* short phones: the booth sits above the headline, the words on the light floor */
-  .af-page.theme-system:has(.aw-end) .af-l-photo { background-size: auto 165%, auto 165%, cover; background-position: 70% 100%, 70% 100%, 0 0; }
-  /* with the waitlist note the words start higher, so the wash does too */
-  .af-page.theme-system:has(.aw-end) .af-l-tone { background: linear-gradient(transparent 8%, rgb(250 248 242 / 0.9) 24%); }
+@media (prefers-color-scheme: light) and (max-width: 480px) and (max-height: 700px), (prefers-color-scheme: light) and (max-height: 499px) {
+  /* short phones and phones on their side: no room for the booth above the headline, so the photo turns to the sunlit floor and the words sit on it */
+  .af-page.theme-system:has(.aw-end) .af-l-photo { background-size: auto 165%, auto 165%, cover; background-position: 16% 100%, 16% 100%, 0 0; }
 }
 @media (max-height: 599px) {
   .aw-scene { min-height: 172px; padding: 4px 0; }
@@ -667,6 +672,8 @@ input.af-fld:focus, select.af-fld:focus, div.af-fld:focus-within { border-color:
 .sc-av svg { width: 20px; height: 20px; stroke-width: 1.5; }
 .sc-url { font: 400 14px var(--font-mono); color: var(--ag-soft); overflow-wrap: anywhere; }
 .sc-url b { font-weight: 700; color: var(--ag-ink); }
+/* the end card's example name moves to the next line whole, never split */
+.sc-url .sc-name { white-space: nowrap; }
 .sc-link.sc-big { padding: 16px; border-radius: 20px; }
 .sc-big .sc-av { width: 52px; height: 52px; }
 .sc-big .sc-url { font-size: 16px; }
@@ -731,6 +738,7 @@ input.af-fld:focus, select.af-fld:focus, div.af-fld:focus-within { border-color:
   .aw-ex { order: 0; margin-top: 0; text-align: left; }
   .aw-barrow { order: 1; }
   .aw-keys { order: 7; }
+  .aw-note { margin-top: 0; text-align: left; }
   .aw-cap { min-height: 200px; }
   .aw-h, .aw-end .aw-h { font-size: 40px; line-height: 1.05; }
   .aw-line { font-size: 16px; }
@@ -740,35 +748,12 @@ input.af-fld:focus, select.af-fld:focus, div.af-fld:focus-within { border-color:
   .aw-btns .af-btn { width: auto; padding: 0 22px; }
   .aw-btns .af-row { flex-basis: 100%; justify-content: flex-start; }
   .aw-skip { padding: 0 4px; }
+  .aw-have-one { flex-basis: 100%; }
   .aw-keys { display: block; font-size: 12px; color: var(--ag-soft); }
   .aw-keys kbd { display: inline-block; min-width: 22px; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--ag-field-edge); font: 500 11px var(--font-mono); text-align: center; }
   .aw-scene { min-height: 0; padding: 0; }
   .sc { max-width: 440px; font-size: 14px; }
 
-  /* log in: the top row across the page, the form on a glass card at the left, the story's caption on the photo */
-  .af-page:has(.af-stage) { padding-top: 24px; }
-  .af-frame.af-stage {
-    width: min(1144px, 100%);
-    min-height: calc(100dvh - 104px);
-    grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-    gap: 8px 48px;
-    border: 0;
-    border-radius: 0;
-    overflow: visible;
-    box-shadow: none;
-  }
-  .af-stage .af-top { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
-  .af-stage .af-panel { align-self: center; border-radius: var(--ag-radius); background: var(--ag-bg); border: 1px solid var(--ag-edge); box-shadow: var(--ag-shadow); }
-  .af-stage .af-flow { grid-template-rows: 1fr; padding: 36px; }
-  .af-stage .af-hd, .af-stage .af-sp-t, .af-stage .af-sp-b, .af-stage .af-end { display: none; }
-  .af-stage .af-view { padding: 0 0 8px; }
-  .af-stage .af-h { color: var(--ag-ink); letter-spacing: var(--ag-track); }
-  .af-stage .af-fld { background: var(--ag-field); border-color: var(--ag-field-edge); }
-  .af-stage .af-fld.af-bad { border-color: var(--color-danger); }
-  .af-stage .af-btn:not(.af-prime):not(.af-off) { background: var(--ag-btn); border-color: var(--ag-field-edge); }
-  /* the top row already asks "New to FloorTest?" */
-  .af-stage .af-ft > .af-row { display: none; }
 }
 @media (prefers-color-scheme: light) and (min-width: 1024px) and (min-height: 500px) {
   /* by day the story's words sit straight on the clean photo, no panel */
@@ -779,5 +764,74 @@ input.af-fld:focus, select.af-fld:focus, div.af-fld:focus-within { border-color:
   .aw-glass { gap: 14px; padding: 28px; }
   .aw-cap { min-height: 168px; }
   .aw-h, .aw-end .aw-h { font-size: 34px; }
+  .af-stage .af-flow { padding: 28px 32px; }
+}
+
+/* ── log in (DESIGN, 17 Nov). 640 to 899 wide: the phone's column, centred on the photo, the form on a frosted panel.
+ * 900 and up: the top row across the page, the form on a glass card at the left, the story's caption on the photo.
+ * Never a solid card. ── */
+@media (min-width: 640px) and (min-height: 500px) {
+  .af-page:has(.af-stage) { background: var(--af-scene-base); }
+  .af-page:has(.af-stage)::before { opacity: 0; }
+  .af-page:has(.af-stage) .af-scene { display: block; }
+  .af-page:has(.af-stage) .af-legal { color: var(--af-legal); }
+  .af-stage .af-h { color: var(--ag-ink); letter-spacing: var(--ag-track); }
+  .af-stage .af-fld { background: var(--ag-field); border-color: var(--ag-field-edge); }
+  .af-stage .af-fld.af-bad { border-color: var(--color-danger); }
+  .af-stage .af-btn:not(.af-prime):not(.af-off) { background: var(--ag-btn); border-color: var(--ag-field-edge); }
+}
+@media (min-width: 640px) and (max-width: 899px) and (min-height: 500px) {
+  .af-page:has(.af-stage) .af-l-tone { background: var(--af-tone-phone); }
+  .af-page:has(.af-stage) .af-l-photo { background-position: 62% 100%, 62% 100%, 0 0; }
+  .af-frame.af-stage { width: min(480px, 100%); border-radius: var(--ag-radius); background: var(--ag-bg); border: 1px solid var(--ag-edge); box-shadow: var(--ag-shadow); }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .af-frame.af-stage { -webkit-backdrop-filter: var(--ag-blur); backdrop-filter: var(--ag-blur); }
+  }
+}
+@media (prefers-reduced-transparency: reduce) { .af-frame.af-stage { -webkit-backdrop-filter: none; backdrop-filter: none; } }
+@media (min-width: 900px) and (min-height: 500px) {
+  .af-page:has(.af-stage) { padding: 24px 48px clamp(8px, 2vh, 16px); }
+  .af-frame.af-stage {
+    display: grid;
+    width: min(1144px, 100%);
+    min-height: calc(100dvh - 104px);
+    padding: 0;
+    grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 8px 48px;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+    box-shadow: none;
+  }
+  .af-stage .af-top { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+  .af-stage .aw-q { display: inline; }
+  .af-stage .af-panel { display: flex; align-self: center; border-radius: var(--ag-radius); background: var(--ag-bg); border: 1px solid var(--ag-edge); box-shadow: var(--ag-shadow); }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .af-stage .af-panel { -webkit-backdrop-filter: var(--ag-blur); backdrop-filter: var(--ag-blur); }
+  }
+  .af-stage .af-flow { flex: 1; min-height: 0; grid-template-rows: 1fr; padding: 36px; }
+  .af-stage .af-hd, .af-stage .af-sp-t, .af-stage .af-sp-b, .af-stage .af-end { display: none; }
+  .af-stage .af-view { position: relative; display: grid; align-content: end; justify-items: start; padding: 0 0 8px; }
+  /* the top row already asks "New to FloorTest?" */
+  .af-stage .af-ft > .af-row { display: none; }
+}
+@media (prefers-color-scheme: light) {
+  /* by day the top row's question and its link share one light frosted button: the words never sit bare on the bright window */
+  .af-page.theme-system .aw-have:has(.aw-q) .aw-q { color: #121310; font-weight: 600; }
+}
+@media (prefers-color-scheme: light) and (min-width: 1024px) and (min-height: 500px) {
+  .af-page.theme-system .aw-have:has(.aw-q) { gap: 0; padding-left: 14px; border-radius: 10px; background: rgb(252 250 245 / 0.78); border: 1px solid rgb(255 255 255 / 0.7); box-shadow: 0 10px 24px -14px rgb(48 38 22 / 0.5); }
+  .af-page.theme-system .aw-have:has(.aw-q) .aw-login { padding: 0 14px 0 8px; background: none; border-color: transparent; box-shadow: none; text-decoration: underline; text-underline-offset: 3px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .af-page.theme-system .aw-have:has(.aw-q) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  }
+}
+@media (prefers-color-scheme: light) and (min-width: 900px) and (max-width: 1023px) and (min-height: 500px) {
+  .af-page.theme-system .af-stage .aw-have { gap: 0; padding-left: 14px; border-radius: 10px; background: rgb(252 250 245 / 0.78); border: 1px solid rgb(255 255 255 / 0.7); box-shadow: 0 10px 24px -14px rgb(48 38 22 / 0.5); }
+  .af-page.theme-system .af-stage .aw-login { padding: 0 14px 0 8px; background: none; border-color: transparent; box-shadow: none; text-decoration: underline; text-underline-offset: 3px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (min-width: 900px) and (min-height: 500px) and (max-height: 800px) {
   .af-stage .af-flow { padding: 28px 32px; }
 }

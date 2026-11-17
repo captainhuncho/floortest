@@ -30,8 +30,8 @@ function StoryBars({ count, at, onDone }: { count: number; at: number; onDone: (
 function PauseButton({ paused, onToggle }: { paused: boolean; onToggle: () => void }) {
   return (
     <button type="button" className="st-pause" aria-label={paused ? "Play the story" : "Pause the story"} onClick={onToggle}>
-      <svg aria-hidden viewBox="0 0 24 24" fill="currentColor">
-        {paused ? <path d="M8 5.5v13l11-6.5z" /> : <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />}
+      <svg aria-hidden viewBox="0 0 24 24">
+        {paused ? <path d="M9 6.5v11l9-5.5z" /> : <path d="M9 6v12M15 6v12" />}
       </svg>
     </button>
   );
@@ -133,12 +133,13 @@ export function Welcome({
                 </span>
                 <span className="sc-lm">
                   <span className="sc-url">
-                    {host}/<b>yourname</b>
+                    {host}/<wbr />
+                    <b className="sc-name">yourname</b>
                   </span>
                   <span className="sc-sm">Your role</span>
                 </span>
               </div>
-              {canSignUp ? notice && <div className="af-notice">{notice}</div> : <p className="af-notice">{waitlistNote}</p>}
+              {canSignUp && notice && <div className="af-notice">{notice}</div>}
             </div>
           )}
           <noscript>
@@ -155,7 +156,7 @@ export function Welcome({
                   Join the waitlist
                 </Link>
               )}
-              <Link href="/login" className="af-btn aw-alt">
+              <Link href="/login" className="aw-skip aw-have-one">
                 I already have one
               </Link>
               {canSignUp && google && (
@@ -176,6 +177,7 @@ export function Welcome({
               </button>
             </div>
           )}
+          {end && !canSignUp && <p className="aw-note">{waitlistNote}</p>}
           {!end && (
             <p className="aw-keys" aria-hidden>
               <kbd>←</kbd> <kbd>→</kbd> move · <kbd>Space</kbd> pause

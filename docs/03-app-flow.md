@@ -30,7 +30,7 @@ On /signup a wrong invite code counts: 5 an hour per email, 20 an hour per conne
 ```
 /signup ─┬─ one question per screen (owner, 31 Oct; ?step= in the URL, so the phone's Back works):
          │   1 welcome story (owner, 17 Nov): six chapters (a seventh while switch send_music is on), Next / Skip to the end,
-         │     then the end card: Claim your link → / I already have one ─► /login (no invite: Join the waitlist →)
+         │     then the end card: Claim your link → / I already have one (text link) ─► /login (no invite: Join the waitlist →)
          │   2 first name, surname ─► 3 username (live check, checkHandle) ─► 4 account type (tap rows)
          │   5 email (locked to the invite's), password, 18+/Terms, optional emails ─► Create my link
          │   (answers kept in memory and sessionStorage, never the password; one post of the same signup action;
