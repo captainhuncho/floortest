@@ -27,7 +27,24 @@ export class Scanner extends Container {
     const { SCAN_SECRET, S3_ENDPOINT, S3_BUCKET, SCAN_ACCESS_KEY_ID, SCAN_SECRET_ACCESS_KEY } = env;
     this.envVars = { SCAN_SECRET, S3_ENDPOINT, S3_BUCKET, SCAN_ACCESS_KEY_ID, SCAN_SECRET_ACCESS_KEY, PORT: "8080" };
   }
+
+  /**
+   * After 10 idle minutes the library's default only sends SIGTERM (stop()). The scanner now exits on it
+   * (../server.mjs), but if the container is still running after STOP_WAIT_MS it is killed (destroy(), SIGKILL), so a
+   * missed signal can never keep it awake and billed again (17 Nov: it ran ~22.5 hours a day).
+   */
+  async onActivityExpired() {
+    if (!this.container.running) return;
+    await this.stop();
+    for (let waited = 0; waited < STOP_WAIT_MS && this.container.running; waited += STOP_POLL_MS) {
+      await new Promise((resolve) => setTimeout(resolve, STOP_POLL_MS));
+    }
+    if (this.container.running) await this.destroy();
+  }
 }
+
+const STOP_WAIT_MS = 15_000;
+const STOP_POLL_MS = 1_000;
 
 const scanner = (env) => getContainer(env.SCANNER);
 

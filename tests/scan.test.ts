@@ -103,9 +103,9 @@ test("on the live site a missing scanner refuses uploads instead of letting them
 
 test("the scanner's health check: ok, down when it answers wrongly, down when nothing answers", async () => {
   let healthy = true;
-  const server = http.createServer((_req, res) => {
+  const server = http.createServer((req, res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ clamd: healthy }));
+    res.end(JSON.stringify(req.url === "/status" ? { worker: true, container: "healthy" } : { clamd: healthy }));
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
   process.env.SCAN_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -120,6 +120,41 @@ test("the scanner's health check: ok, down when it answers wrongly, down when no
   process.env.SCAN_URL = "http://127.0.0.1:9";
   assert.equal(await scannerHealth(), "down");
   delete process.env.SCAN_URL;
+});
+
+test("the scanner's health check asks /health (which wakes the container) only when /status says running or healthy", async () => {
+  const realFetch = globalThis.fetch;
+  let container: string | undefined;
+  let statusCode = 200;
+  const asked: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const path = new URL(String(input)).pathname;
+    asked.push(path);
+    if (path === "/status") return Response.json(container === undefined ? { worker: true } : { worker: true, container }, { status: statusCode });
+    return Response.json({ clamd: true });
+  }) as typeof fetch;
+  process.env.SCAN_URL = "https://scanner.test";
+  try {
+    for (const state of ["stopping", "stopped", "stopped_with_code", "unknown", undefined]) {
+      container = state;
+      asked.length = 0;
+      assert.equal(await scannerHealth(), "asleep", `state ${state}`);
+      assert.deepEqual(asked, ["/status"], `state ${state} never reaches /health`);
+    }
+    for (const state of ["running", "healthy"]) {
+      container = state;
+      asked.length = 0;
+      assert.equal(await scannerHealth(), "ok", `state ${state}`);
+      assert.deepEqual(asked, ["/status", "/health"]);
+    }
+    statusCode = 500;
+    asked.length = 0;
+    assert.equal(await scannerHealth(), "down", "a Worker that can't answer /status is a fault, and isn't woken");
+    assert.deepEqual(asked, ["/status"]);
+  } finally {
+    globalThis.fetch = realFetch;
+    delete process.env.SCAN_URL;
+  }
 });
 
 /** A fake scanner Worker that is asleep at first: it answers 503 "starting" (or refuses) until it has woken. */

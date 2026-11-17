@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { readFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
@@ -50,7 +51,7 @@ const send = (res, status, body) => {
   res.end(JSON.stringify(body));
 };
 
-http
+const server = http
   .createServer(async (req, res) => {
     try {
       const health = req.method === "GET" && req.url === "/health";
@@ -80,3 +81,29 @@ http
     }
   })
   .listen(Number(PORT), () => console.log(`scanner listening on ${PORT}`));
+
+/**
+ * Stop cleanly when Cloudflare puts the container to sleep (sleepAfter sends SIGTERM). Node is PID 1 here (start.sh
+ * execs it), and Linux ignores SIGTERM to a PID 1 that has no handler, so without this the container never stopped.
+ * Stops taking requests, asks clamd and freshclam to stop (best effort: their pid files may be missing, or they may
+ * belong to another user; they end with the container anyway once PID 1 exits), then exits within 5 seconds.
+ */
+const STOP_GRACE_MS = 5000;
+const DAEMON_PID_FILES = ["/run/clamav/clamd.pid", "/run/clamav/freshclam.pid"];
+const shutdown = (signal) => {
+  console.log(`scanner stopping (${signal})`);
+  setTimeout(() => process.exit(0), STOP_GRACE_MS).unref();
+  for (const file of DAEMON_PID_FILES) {
+    try {
+      const pid = Number(readFileSync(file, "utf8").trim());
+      // Never 0, 1 or a negative number: those would signal a process group or ourselves, not one daemon.
+      if (Number.isInteger(pid) && pid > 1) process.kill(pid, "SIGTERM");
+    } catch {
+      // No pid file, no such process, or not ours to signal: nothing more to do here.
+    }
+  }
+  server.close(() => process.exit(0));
+  server.closeIdleConnections();
+};
+process.once("SIGTERM", () => shutdown("SIGTERM"));
+process.once("SIGINT", () => shutdown("SIGINT"));

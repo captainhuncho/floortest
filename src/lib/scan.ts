@@ -146,17 +146,22 @@ export async function scannerAwake(): Promise<boolean | null> {
 
 /**
  * The scanner's own health check, for /api/health's detailed report: "ok", "asleep" (the Worker answers and the
- * container is stopped until the next upload wakes it: not a fault), "down", or "off" when there is none. Asking
- * `/status` first means a health check never wakes a sleeping scanner.
+ * container is stopping, stopped or in no known state until the next upload wakes it: not a fault), "down", or "off"
+ * when there is none. Asking `/status` first means a health check never wakes a sleeping scanner.
  */
 export async function scannerHealth(): Promise<"ok" | "asleep" | "down" | "off"> {
   const url = scanBase();
   if (!url) return "off";
   try {
     const s = await fetch(`${url}/status`, { signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) });
-    const status = s.ok ? ((await s.json().catch(() => ({}))) as { container?: string }).container : undefined;
-    if (status === "stopped" || status === "stopped_with_code") return "asleep";
-    if (!s.ok) await s.body?.cancel().catch(() => {});
+    if (!s.ok) {
+      await s.body?.cancel().catch(() => {});
+      return "down";
+    }
+    const status = ((await s.json().catch(() => ({}))) as { container?: string }).container;
+    // Only a running container is asked /health: /health waits for ports (startAndWaitForPorts), so asking it while the
+    // container is stopping, stopped or of unknown state would wake it and keep it billed (17 Nov: awake ~22.5 h a day).
+    if (status !== "running" && status !== "healthy") return "asleep";
     // /health needs the secret since 28 Oct (scanner/cloudflare/routes.js), like /wake and /scan.
     const r = await fetch(`${url}/health`, {
       headers: { Authorization: `Bearer ${process.env.SCAN_SECRET ?? ""}` },
