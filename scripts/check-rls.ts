@@ -7,6 +7,7 @@
  * Run: tsx scripts/check-rls.ts
  */
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm"; // migration 0155
 import { MIGRATIONS } from "../src/lib/db/migrations";
 
 /** Column names that hold sign-in secrets, as a Postgres regular expression. */
@@ -27,7 +28,7 @@ const ALLOWED_SECRETS = new Set(["tracks.token_hash"]);
 const USERS_NEVER_WRITABLE = "^(plan|email|handle|extra_seats|suspended_at|cover_key|active_collection_id|links|role_line|page_style|paused_at|pause_until|pause_message|product_consent_at|marketing_consent_at|identity_.*)$";
 
 async function main() {
-  const pg = await PGlite.create();
+  const pg = await PGlite.create({ extensions: { pg_trgm } });
   // The app creates this table itself before migrating (src/lib/db/client.ts); 0002 locks it.
   await pg.exec("create table schema_migrations (id text primary key, applied_at bigint not null)");
   for (const m of MIGRATIONS) await pg.exec(m.sql);
