@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkAudit, type Allowed, type AuditJson } from "../scripts/audit-check";
+import { checkAudit, parseAudit, type Allowed, type AuditJson } from "../scripts/audit-check";
 
 const ALLOWED: Allowed = { id: "GHSA-fc5q-39xc-vjpf", reason: "build-time only", expires: "2026-12-17" };
 const advisory = (id: string, severity = "high") => ({ source: 1, title: id, url: `https://github.com/advisories/${id}`, severity });
@@ -50,4 +50,11 @@ test("a chain that also leads to a new advisory fails, even on the same package"
 test("moderate and low findings are left to npm, and an empty report passes", () => {
   assert.deepEqual(checkAudit({ vulnerabilities: { x: { severity: "moderate", via: [advisory("GHSA-mmmm-mmmm-mmmm", "moderate")] } } }, [], "2026-11-17"), { failed: [], allowed: [] });
   assert.deepEqual(checkAudit({}, [], "2026-11-17"), { failed: [], allowed: [] });
+});
+
+test("a report that can't be read fails instead of passing", () => {
+  assert.throws(() => parseAudit(""), /no report/);
+  assert.throws(() => parseAudit("npm ERR! network"), /no report/);
+  assert.throws(() => parseAudit(JSON.stringify({ error: { code: "ENOTFOUND", summary: "registry unreachable" } })), /npm audit failed/);
+  assert.deepEqual(parseAudit(JSON.stringify(today)), today);
 });
