@@ -185,8 +185,9 @@ export function MiniPlayer() {
               {current.artist && <> · {current.artist}</>}
             </span>
           </Link>
-          {/* Over the end of the title for the moment it shows, so the title keeps the whole line the rest of the time. */}
-          <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="absolute right-0 top-0.5 rounded bg-card px-1" />
+          {/* Over the end of the title for the moment it shows, so the title keeps the whole line the rest of the time.
+              It never takes a tap: the title under it stays tappable. */}
+          <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="pointer-events-none absolute right-0 top-0.5 rounded bg-card px-1" />
         </span>
         <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={18} label={`Seek ${current.title}`} />
       </div>
@@ -243,7 +244,7 @@ export function PlayerBar() {
         </span>
         {current.decision !== undefined && <KeepHeart track={current} />}
         {/* The words say the level for a moment after a volume key, over the speaker so the bar keeps its width. */}
-        <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="absolute -top-7 right-2 rounded-md bg-card px-1.5 py-0.5" />
+        <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="pointer-events-none absolute -top-7 right-2 rounded-md bg-card px-1.5 py-0.5" />
         <VolumeControl />
       </section>
     </>
