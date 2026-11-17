@@ -77,7 +77,7 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await more.click();
   await menu.getByRole("menuitem", { name: "Copy link" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Link copied" })).toBeVisible();
+  await expect(page.locator("[data-toast-region]").getByText(/^Link copied/)).toBeVisible();
   const copied = new URL(await page.evaluate(() => navigator.clipboard.readText()));
   expect(copied.origin).toBe(new URL(page.url()).origin);
   expect(copied.pathname).toBe("/dashboard/review");
