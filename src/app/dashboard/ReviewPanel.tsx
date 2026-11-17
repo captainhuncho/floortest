@@ -26,7 +26,6 @@ import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
 import { TrackStepper } from "./review/TrackStepper";
 import type { Step } from "./review/QueueState";
-import { ReplyCard } from "./review/ReplyCard";
 import { CardControls, CoverSteps, PanelCalls, StoryBars } from "./review/NowReviewing";
 import { MoveToProjects } from "./projects/MoveToProjects";
 import { listFolders } from "@/lib/library";
@@ -255,7 +254,7 @@ export async function ReviewPanel({
           {releaseBlock}
           <CardControls track={player} prev={prev} next={next} />
           <DecisionRail track={{ ...player, decision: t.decision }} senderName={sender.name} selfHref={selfHref} next={next} prev={prev}>
-            <PanelCalls trackId={t.id} />
+            <PanelCalls trackId={t.id} href={selfHref} senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
           </DecisionRail>
         </div>
       </section>
@@ -284,10 +283,6 @@ export async function ReviewPanel({
             ) : (
               <p className="text-[12px] text-mute">No message with this track.</p>
             )}
-          </section>
-
-          <section data-reply aria-label={`Reply to ${sender.name}`} className={card}>
-            <ReplyCard senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
           </section>
 
           {t.decision === "kept" && (

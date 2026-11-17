@@ -9,6 +9,7 @@ test("a failed playback link is replaced by a fresh one from the app", async ({ 
   let asked = 0;
   await page.route("**/api/tracks/*/audio", (route) => (++asked === 1 ? route.abort("failed") : route.continue()));
   await page.goto("/dashboard/review");
-  await page.getByRole("button", { name: /^Play / }).first().click();
+  // The Queue's playlist has no play buttons (Design option 42): a row plays its track.
+  await page.getByRole("table", { name: "Up next" }).getByRole("link", { name: /^Play / }).first().click();
   await expect.poll(() => asked, { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
 });
