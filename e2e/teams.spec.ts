@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, hydrated, logIn, submitLogin, TEST_PASSWORD, test } from "./fixtures";
+import { expect, hydrated, logIn, preparePage, submitLogin, TEST_PASSWORD, test } from "./fixtures";
 
 /**
  * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). Its own owner, Tia (teams@), has 3 seats
@@ -116,6 +116,13 @@ test("a member switches to the team's desk, can't open owner settings, and their
   const trackDelete = page.getByRole("button", { name: "Delete", exact: true }).and(page.locator(':not([aria-label="Review together"] *)'));
   await expect(trackDelete).toHaveCount(0);
 
+  // Callouts are for members the owner or an A&R / Admin has ticked: an unticked member gets no "+ New" on Callouts.
+  await page.goto("/dashboard/collections");
+  await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
+  // Nor on Projects: uploading and folders are the owner's and A&R / Admins'.
+  await page.goto("/dashboard/projects");
+  await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
+
   // Owner-only and admin-only pages send members to the Team page instead.
   await page.goto("/dashboard/settings/security");
   await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
@@ -172,4 +179,51 @@ test("the owner approves the held reply from the Team page", async ({ page }) =>
   // The account log names who did each thing: the held reply was the member's.
   await page.goto("/dashboard/activity");
   await expect(page.getByText("by Lena Listener").first()).toBeVisible();
+});
+
+test("a member the owner ticks for callouts can make one; folders stay the owner's", async ({ page, browser, baseURL }) => {
+  await logInWithTwoStep(page);
+  await page.goto("/dashboard/settings/team");
+  // The people list is folded; open it to reach each member's row.
+  await page.getByRole("button", { name: /^People · / }).click();
+  const tick = page.getByRole("checkbox", { name: "Let Lena Listener run callouts" });
+  // A rerun may find the tick left on by an earlier go; turn it on either way and let the save land.
+  if (!(await tick.isChecked())) {
+    const saved = page.waitForResponse((r) => r.request().method() === "POST");
+    await tick.check();
+    await saved;
+  }
+
+  const member = await browser.newContext();
+  const lena = await member.newPage();
+  try {
+    // The second browser needs the same set-up as the test's own page: the banner choice and the fake bot check, which a
+    // full run asks for after earlier specs' sign-ins (without it, the sign-in waits for Cloudflare and never lands).
+    await preparePage(lena, baseURL ?? undefined);
+    await lena.goto("/api/health");
+    await lena.bringToFront();
+    await logIn(lena, "listener@floortest.test");
+    await lena.getByText("Switch desk").click();
+    await lena.getByRole("button", { name: /Tia Teams/ }).click();
+    await expect(lena.getByText(/On Tia Teams.s desk as a member/)).toBeVisible();
+    await lena.goto("/dashboard/collections");
+    await lena.getByRole("button", { name: "New", exact: true }).click();
+    await expect(lena.getByRole("menuitem", { name: "New callout" })).toBeVisible();
+    await expect(lena.getByRole("menuitem", { name: "New folder" })).toHaveCount(0);
+    await lena.keyboard.press("Escape");
+    // A callout's own menu offers Edit to a ticked member, but never Move to folder or Delete; folder tiles have no menu.
+    await lena.getByRole("button", { name: /^More for / }).first().click();
+    await expect(lena.getByRole("menuitem", { name: /^Edit/ })).toBeVisible();
+    await expect(lena.getByRole("menuitem", { name: /Move to folder|Delete|Rename/ })).toHaveCount(0);
+  } finally {
+    await member.close();
+  }
+
+  // Untick again, so the member test above finds Lena unticked on the next run.
+  await page.reload();
+  await page.getByRole("button", { name: /^People · / }).click();
+  const untick = page.getByRole("checkbox", { name: "Let Lena Listener run callouts" });
+  const saved = page.waitForResponse((r) => r.request().method() === "POST");
+  await untick.uncheck();
+  await saved;
 });
