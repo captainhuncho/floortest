@@ -1,6 +1,7 @@
 import "server-only";
 import { asPerson, now, q, type User } from "./db";
 import { IntakeError } from "./intake";
+import { calloutCovers } from "./covers";
 
 /**
  * Folders to organise a desk's callouts and projects (owner, 16 Nov, in the Desk). A callout folder holds only
@@ -9,7 +10,10 @@ import { IntakeError } from "./intake";
  * the signed-in person (asPerson): row-level security shows only desks they may work.
  */
 export type FolderKind = "callout" | "project";
-/** Up to four of what's in a folder, newest first, for its tile (art: the callout's cover URL; null for projects for now). */
+/**
+ * Up to four of what's in a folder, newest first, for its tile. art: the callout's first cover (its own artwork, else its
+ * newest track artwork, src/lib/covers.ts); null for projects, whose tracks carry no artwork yet.
+ */
 export type FolderPreview = { id: number; name: string; art: string | null };
 export type DeskFolder = { id: number; kind: FolderKind; name: string; count: number; created_at: number; preview: FolderPreview[] };
 
@@ -35,22 +39,24 @@ export async function listDeskFolders(desk: Desk, kind: FolderKind): Promise<Des
       kind,
     ),
   );
-  const art = kind === "callout" ? "art_key" : "NULL";
-  const items = await asPerson(desk.actor_id, () =>
-    q.all<{ id: number; name: string; art_key: string | null; desk_folder_id: number }>(
-      `SELECT id, name, art_key, desk_folder_id FROM (
-         SELECT i.id, i.name, ${art} AS art_key, i.desk_folder_id, ROW_NUMBER() OVER (PARTITION BY i.desk_folder_id ORDER BY i.created_at DESC, i.id DESC) AS n
-         FROM ${ITEMS[kind]} i WHERE i.user_id = ? AND i.desk_folder_id IS NOT NULL
-       ) x WHERE n <= 4 ORDER BY desk_folder_id, n`,
-      desk.id,
+  const [items, covers] = await Promise.all([
+    asPerson(desk.actor_id, () =>
+      q.all<{ id: number; name: string; desk_folder_id: number }>(
+        `SELECT id, name, desk_folder_id FROM (
+           SELECT i.id, i.name, i.desk_folder_id, ROW_NUMBER() OVER (PARTITION BY i.desk_folder_id ORDER BY i.created_at DESC, i.id DESC) AS n
+           FROM ${ITEMS[kind]} i WHERE i.user_id = ? AND i.desk_folder_id IS NOT NULL
+         ) x WHERE n <= 4 ORDER BY desk_folder_id, n`,
+        desk.id,
+      ),
     ),
-  );
+    kind === "callout" ? calloutCovers(desk) : Promise.resolve(new Map<number, string[]>()),
+  ]);
   const preview = new Map<number, FolderPreview[]>();
   for (const i of items) {
     const list = preview.get(Number(i.desk_folder_id)) ?? [];
     preview.set(Number(i.desk_folder_id), [
       ...list,
-      { id: Number(i.id), name: i.name, art: i.art_key ? `/api/collection-art/${i.id}?v=${encodeURIComponent(i.art_key)}` : null },
+      { id: Number(i.id), name: i.name, art: covers.get(Number(i.id))?.[0] ?? null },
     ]);
   }
   return rows.map((r) => ({ id: Number(r.id), kind: r.kind, name: r.name, count: Number(r.count), created_at: Number(r.created_at), preview: preview.get(Number(r.id)) ?? [] }));
