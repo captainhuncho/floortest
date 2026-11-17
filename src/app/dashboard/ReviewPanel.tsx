@@ -254,7 +254,7 @@ export async function ReviewPanel({
           {releaseBlock}
           <CardControls track={player} prev={prev} next={next} />
           <DecisionRail track={{ ...player, decision: t.decision }} senderName={sender.name} selfHref={selfHref} next={next} prev={prev}>
-            <PanelCalls trackId={t.id} href={selfHref} kept={t.decision === "kept"} senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
+            <PanelCalls trackId={t.id} href={selfHref} senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
           </DecisionRail>
         </div>
       </section>

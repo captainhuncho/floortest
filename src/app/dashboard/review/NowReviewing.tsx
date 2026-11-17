@@ -119,7 +119,7 @@ const CALL = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[
  * panel; Download is the same link as in Details; More opens the menu (note, Played out, move, copy link, details,
  * report).
  */
-export function PanelCalls({ trackId, href, kept, senderName, onReply }: { trackId: number; href: string; kept: boolean; senderName: string; onReply: (fd: FormData) => Promise<ReplyResult> }) {
+export function PanelCalls({ trackId, href, senderName, onReply }: { trackId: number; href: string; senderName: string; onReply: (fd: FormData) => Promise<ReplyResult> }) {
   const [replying, setReplying] = useState(false);
   const replyButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -146,7 +146,7 @@ export function PanelCalls({ trackId, href, kept, senderName, onReply }: { track
         <Icon name="dl" className="size-4" />
         Download
       </a>
-      <MoreMenu trackId={trackId} href={href} kept={kept} />
+      <MoreMenu trackId={trackId} href={href} />
       <ReplyPanel open={replying} onClose={() => setReplying(false)} senderName={senderName} onReply={onReply} />
     </div>
   );

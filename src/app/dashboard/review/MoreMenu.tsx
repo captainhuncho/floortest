@@ -12,12 +12,13 @@ function reveal(el: Element) {
 }
 
 /**
- * Goes to a control that already lives on the page. Details opens first when the control is inside it. An opener
- * (marked data-more) is pressed, so its form opens with the cursor in it; anything else takes focus.
+ * Goes to a control of the open track, looked up inside that track's own card and never across the page. Details opens
+ * first when the control is inside it. An opener (marked data-more) is pressed, so its form opens with the cursor in
+ * it; anything else takes focus.
  */
-function goTo(selector: string) {
-  const details = document.querySelector<HTMLDetailsElement>("details[data-panel-details]");
-  const el = document.querySelector<HTMLElement>(selector);
+function goTo(card: ParentNode, selector: string) {
+  const details = card.querySelector<HTMLDetailsElement>("details[data-panel-details]");
+  const el = card.querySelector<HTMLElement>(selector);
   if (!el) return;
   if (details?.contains(el)) details.open = true;
   reveal(el);
@@ -28,7 +29,8 @@ function goTo(selector: string) {
   requestAnimationFrame(() => around?.querySelector<HTMLElement>("input, textarea")?.focus({ preventScroll: true }));
 }
 
-type Item = { label: string; icon: IconName; run: () => void };
+/** `to`: the control on the open track's card this item goes to. Copy link has none. */
+type Item = { label: string; icon: IconName; to?: string };
 
 const CALL = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[13px] border border-line bg-well px-3.5 text-[13px] font-semibold text-bone transition-colors hover:border-line-2";
 const ITEM = "flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-left text-[14px] font-medium text-bone hover:bg-well focus-visible:bg-well md:min-h-11 md:text-[13px]";
@@ -44,12 +46,15 @@ function Items({ items, role, onPick }: { items: Item[]; role?: "menuitem"; onPi
 
 /**
  * More, beside the decision (Design option 42): a sheet on phones, a pop-over beside the button on laptops. Every item
- * goes to something the page already has (the private note, Played out, Move, Details, Report); Copy link copies this
+ * goes to something the open track's card already shows (the private note, Played out, Move, Details, Report), and an
+ * item whose control isn't on the card (a track that isn't kept has no Played out) is left out. Copy link copies this
  * track's own Queue address. Escape or a click outside closes it, and focus goes back to the button.
  */
-export function MoreMenu({ trackId, href, kept }: { trackId: number; href: string; kept: boolean }) {
+export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
   // "sheet" on phones, "pop" from 768px; decided when it opens.
   const [open, setOpen] = useState<"sheet" | "pop" | null>(null);
+  // The items whose control is on the card, read when the menu opens.
+  const [items, setItems] = useState<Item[]>([]);
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   // What to do once the layer has closed and focus is back on the button.
@@ -89,16 +94,28 @@ export function MoreMenu({ trackId, href, kept }: { trackId: number; href: strin
     }
   };
 
-  const items: Item[] = [
-    { label: "Add a note", icon: "tag", run: () => goTo("[data-more=note], #note-body") },
-    ...(kept ? [{ label: "Played out", icon: "head" as const, run: () => goTo("[data-more=played], [data-played-out]") }] : []),
-    { label: "Move", icon: "folder", run: () => goTo(`#move-${trackId}`) },
-    { label: "Copy link", icon: "link", run: () => void copy() },
-    { label: "Details", icon: "music", run: () => goTo("details[data-panel-details] summary") },
-    { label: "Report", icon: "shield", run: () => goTo("[data-more=report]") },
+  const all: Item[] = [
+    { label: "Add a note", icon: "tag", to: "[data-more=note], #note-body" },
+    { label: "Played out", icon: "head", to: "[data-more=played], [data-played-out]" },
+    { label: "Move", icon: "folder", to: `#move-${trackId}` },
+    { label: "Copy link", icon: "link" },
+    { label: "Details", icon: "music", to: "details[data-panel-details] summary" },
+    { label: "Report", icon: "shield", to: "[data-more=report]" },
   ];
+  /** The open track's card: the only place the menu looks for a control. */
+  const card = () => wrap.current?.closest("#review-card") ?? null;
+  const toggle = () => {
+    if (open) return setOpen(null);
+    const here = card();
+    setItems(all.filter((item) => !item.to || here?.querySelector(item.to)));
+    setOpen(window.matchMedia("(min-width: 768px)").matches ? "pop" : "sheet");
+  };
   const pick = (item: Item) => {
-    after.current = item.run;
+    after.current = () => {
+      const here = card();
+      if (!item.to) void copy();
+      else if (here) goTo(here, item.to);
+    };
     setOpen(null);
   };
   return (
@@ -106,7 +123,7 @@ export function MoreMenu({ trackId, href, kept }: { trackId: number; href: strin
       <button
         ref={button}
         type="button"
-        onClick={() => setOpen((o) => (o ? null : window.matchMedia("(min-width: 768px)").matches ? "pop" : "sheet"))}
+        onClick={toggle}
         aria-expanded={open === "pop"}
         aria-haspopup={open === "sheet" ? "dialog" : "menu"}
         className={`${CALL} w-full`}

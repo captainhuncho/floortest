@@ -34,6 +34,16 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await expect(replyButton).toBeFocused();
   await expect(card.getByRole("heading", { level: 2 })).toHaveText(title);
   await expect(card.getByRole("button", { name: /Keep/ })).toHaveAttribute("aria-pressed", "false");
+  // With focus on a button in the panel (not in the box), K and X still belong to the panel: nothing is decided.
+  await replyButton.click();
+  await panel.getByRole("button", { name: "Cancel" }).focus();
+  await page.keyboard.press("k");
+  await page.keyboard.press("x");
+  await expect(panel).toBeVisible();
+  await expect(card.getByRole("heading", { level: 2 })).toHaveText(title);
+  await expect(card.getByRole("button", { name: /Keep/ })).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Escape");
+  await expect(replyButton).toBeFocused();
   // R opens it again from the page, with the text still there.
   await page.keyboard.press("r");
   await expect(box).toBeFocused();
@@ -59,6 +69,21 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await more.click();
   await menu.getByRole("menuitem", { name: "Report" }).click();
   await expect(page.getByRole("group", { name: "Report this track" })).toBeVisible();
+
+  // Copy link copies this track's own Queue address on this site, nothing else.
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await more.click();
+  await menu.getByRole("menuitem", { name: "Copy link" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Link copied" })).toBeVisible();
+  const copied = new URL(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(copied.origin).toBe(new URL(page.url()).origin);
+  expect(copied.pathname).toBe("/dashboard/review");
+  expect(copied.searchParams.get("t")).toMatch(/^\d+$/);
+
+  // None of the keys pressed with a layer open saved a decision: the same track is still first and undecided.
+  await page.reload();
+  await expect(card.getByRole("heading", { level: 2 })).toHaveText(title);
+  await expect(card.getByRole("button", { name: /Keep/ })).toHaveAttribute("aria-pressed", "false");
 
   // The BPM head sorts the rows on the page, up then down.
   const bpms = async () => (await list.locator('[role="row"][aria-current], [role="row"]:has(a)').evaluateAll((rows) => rows.map((r) => Number(r.querySelectorAll('[role="cell"]')[4]?.textContent)))).filter((n) => n > 0);
