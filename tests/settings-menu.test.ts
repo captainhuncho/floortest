@@ -54,6 +54,15 @@ test("every row a Member doesn't see is also refused by the server", () => {
   // The Analytics line's numbers are only read for the roles that may open the page.
   assert.match(read("app/dashboard/settings/(index)/page.tsx"), /user\.role !== "member" \? perDay\(user, periodRange\("7d", user\.tz\)\)/);
   assert.match(read("lib/played-out-prompt.ts"), /canMarkPlayedOut = .*\n?.*user\.role !== "member"/);
+  // Played out: the page opens only when playedOutPicks answers, and that answers no one who can't mark tracks.
+  assert.match(read("lib/played-out-prompt.ts"), /export async function playedOutPicks\([^]*?\{\s*if \(!canMarkPlayedOut\(user\)\) return null;/);
+  assert.match(read("app/dashboard/played-out/page.tsx"), /const picks = await playedOutPicks\(user\);\s*if \(!picks\) redirect\("\/dashboard\/floor"\);/);
+  // Team: open to Members on purpose (it is where "not for your role" lands and where they see their own held
+  // replies). Its manage controls are admin-gated instead: each one renders only when `manage` is true.
+  const team = read("app/dashboard/settings/team/page.tsx");
+  assert.match(team, /const manage = atLeast\(user\.role, "admin"\) && !ownerNeedsTwoStep\(user\);/);
+  for (const control of ["<InviteForm", "<CancelInviteForm", "<ApprovalForm"]) assert.match(team, new RegExp(`manage (&&|\\?) ${control}`), control);
+  assert.match(team, /user\.role === "owner" \? <RoleSelect/, "only the owner changes roles");
   for (const name of ["pauseLink", "resumeLink"]) assert.match(action("desk.ts", name), /requireRole\("admin"\)/, name);
   assert.match(action("settings.ts", "deleteAccount"), /requireOwnAccount\(\)/);
 });
@@ -65,6 +74,7 @@ test("sign out everywhere checks the password (and two-step code) before it ends
   assert.match(body, /if \(denied\) return \{ error: denied \}/, "a failed check changes nothing");
   const ended = body.indexOf("endEverySession(");
   for (const after of ["audit(", "destroySession(", "redirect("]) assert.ok(ended < body.indexOf(after), `${after} comes after the sessions are gone`);
+  assert.match(body, /try \{\s*await audit\([^]*?await audit\([^]*?\} catch \(e\) \{\s*console\.error\([^]*?\}\s*await destroySession\(\);/, "a failed audit is logged and never skips ending this session");
   assert.match(body, /redirect\("\/signed-out"\)/);
   // The ops action of the old name lives in admin/actions.ts; the desk one must not share it.
   assert.doesNotMatch(read("app/dashboard/actions/security.ts"), /export async function signOutEverywhere\(/);

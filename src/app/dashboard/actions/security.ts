@@ -73,9 +73,14 @@ export async function signOutAllMyDevices(password: string, code: string): Promi
   // Browsers, the app and the ops area alike; nothing is kept, so this session's row goes with the rest.
   const denied = await endEverySession(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
   if (denied) return { error: denied };
-  // Logged only once the sessions are gone, so a failed revoke never reads as a sign-out.
-  await audit(u.id, "signed_out_others", "every device, this one too");
-  await audit(u.id, "signed_out");
+  // Logged only once the sessions are gone, so a failed revoke never reads as a sign-out. A log line that can't be
+  // written must not keep this browser's cookie alive: note it on the server and carry on.
+  try {
+    await audit(u.id, "signed_out_others", "every device, this one too");
+    await audit(u.id, "signed_out");
+  } catch (e) {
+    console.error("[security] signOutAllMyDevices: audit failed for user", u.id, e instanceof Error ? e.message : "unknown error");
+  }
   await destroySession();
   redirect("/signed-out");
 }
