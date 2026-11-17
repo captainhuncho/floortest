@@ -4,12 +4,19 @@ export type ChartBar = { key: string; label: string; in: number; kept: number; t
 const MAX_COUNTED_BARS = 14;
 
 /**
- * The period's bars (days, weeks or months), as drawn in option 41: each bar is the tracks that came in, with the kept
- * part in lime, the count above it and the kept count under its label. Nothing here needs a tap or a hover; the same
+ * The period's bars (days, weeks or months), as drawn in option 41: each bucket shows the tracks that came in and, beside
+ * them in lime, the tracks kept that day (a keep counts on the day it was decided, so it can fall on a day with no
+ * arrivals), the count above and the kept count under its label. Nothing here needs a tap or a hover; the same
  * numbers, with played out or downloaded too, are in a table for screen readers.
  */
+/** Heights as a share of the tallest bar, so a keep on a day with no arrivals still shows (option 41 fix). */
+export function barHeights(b: Pick<ChartBar, "in" | "kept">, top: number): { in: number; kept: number } {
+  const scale = Math.max(1, top);
+  return { in: (b.in / scale) * 100, kept: (b.kept / scale) * 100 };
+}
+
 export function AnalyticsChart({ bars, thirdLabel, span, unit }: { bars: ChartBar[]; thirdLabel: string; span: string; unit: "day" | "week" | "month" }) {
-  const top = Math.max(1, ...bars.map((b) => b.in));
+  const top = Math.max(1, ...bars.map((b) => Math.max(b.in, b.kept)));
   const counted = bars.length <= MAX_COUNTED_BARS;
   // Label every bar when they fit; with many only every few, so the words never collide.
   const every = Math.max(1, Math.ceil(bars.length / 8));
@@ -40,17 +47,17 @@ export function AnalyticsChart({ bars, thirdLabel, span, unit }: { bars: ChartBa
       </table>
       <div aria-hidden className={`flex items-end ${gap}`}>
         {bars.map((b, i) => {
-          const kept = Math.min(b.kept, b.in);
+          const h = barHeights(b, top);
           return (
             <div key={b.key} className="flex min-w-0 flex-1 flex-col items-center gap-1">
               {counted && <span className={`text-[12px] tnum ${b.in ? "text-bone" : "text-faint"}`}>{b.in}</span>}
-              <div className="flex h-24 w-full max-w-12 flex-col justify-end gap-0.5">
-                {b.in === 0 ? (
-                  <span className="block h-1 rounded-[4px] bg-line" />
+              <div className="flex h-24 w-full max-w-12 items-end gap-0.5">
+                {b.in === 0 && b.kept === 0 ? (
+                  <span className="block h-1 w-full rounded-[4px] bg-line" />
                 ) : (
                   <>
-                    {b.in - kept > 0 && <span className="block rounded-[4px] bg-line-2" style={{ height: `${((b.in - kept) / top) * 100}%` }} />}
-                    {kept > 0 && <span className="block rounded-[4px] bg-lime" style={{ height: `${(kept / top) * 100}%` }} />}
+                    <span className={`block min-w-0 flex-1 rounded-[4px] ${b.in ? "bg-line-2" : "h-1 bg-line"}`} style={b.in ? { height: `${h.in}%` } : undefined} />
+                    {b.kept > 0 && <span className="block min-w-0 flex-1 rounded-[4px] bg-lime" style={{ height: `${h.kept}%` }} />}
                   </>
                 )}
               </div>
