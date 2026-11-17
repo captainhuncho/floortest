@@ -180,19 +180,19 @@ function NewFolderSheet({ kinds, folder, onClose }: { kinds: Make[]; /** The gro
  * right-click on empty space (or Shift+F10 / the menu key). A right-click on a folder opens that folder's own ···
  * options. Links, fields and selected text keep the browser's menu. Inside a group, a new project is filed into it.
  */
-export function FolderArea({ view, folder, canEdit, label, children }: { /** Which filter is on: it decides what can be made here. */ view: CollectionsFilter; /** The group being shown, if any. */ folder?: number | null; canEdit: boolean; /** A small line over the title. */ label?: React.ReactNode; children: React.ReactNode }) {
+export function FolderArea({ view, folder, canEdit, canCreate = canEdit, label, children }: { /** Which filter is on: it decides what can be made here. */ view: CollectionsFilter; /** The group being shown, if any. */ folder?: number | null; /** Projects and groups: make, rename, delete (owner and A&R / Admin). */ canEdit: boolean; /** A new callout: a ticked Member may make callouts without managing projects or groups. Defaults to canEdit. */ canCreate?: boolean; /** A small line over the title. */ label?: React.ReactNode; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   // A new callout can't be filed yet (createCollection doesn't return its id), so inside a group of callouts it isn't
   // offered; a group holds no groups.
   const kinds: Make[] = [
-    ...(view !== "projects" && !folder ? (["callout"] as const) : []),
-    ...(view !== "callouts" ? (["project"] as const) : []),
-    ...(view !== "projects" && !folder ? (["callout-group"] as const) : []),
-    ...(view !== "callouts" && !folder ? (["project-group"] as const) : []),
+    ...(canCreate && view !== "projects" && !folder ? (["callout"] as const) : []),
+    ...(canEdit && view !== "callouts" ? (["project"] as const) : []),
+    ...(canEdit && view !== "projects" && !folder ? (["callout-group"] as const) : []),
+    ...(canEdit && view !== "callouts" && !folder ? (["project-group"] as const) : []),
   ];
-  const can = canEdit && kinds.length > 0;
+  const can = (canEdit || canCreate) && kinds.length > 0;
   const onContextMenu = (e: React.MouseEvent) => {
-    if (!canEdit) return;
+    if (!canEdit && !canCreate) return;
     const t = e.target as HTMLElement;
     const card = t.closest<HTMLElement>("[data-card]");
     if (card) {
@@ -205,7 +205,7 @@ export function FolderArea({ view, folder, canEdit, label, children }: { /** Whi
     setOpen(true);
   };
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!canEdit || !(e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) return;
+    if ((!canEdit && !canCreate) || !(e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) return;
     e.preventDefault();
     const card = (e.target as HTMLElement).closest<HTMLElement>("[data-card]");
     if (card) card.querySelector<HTMLButtonElement>("[aria-haspopup=menu]")?.click();

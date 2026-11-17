@@ -1,4 +1,5 @@
 import { trackUse } from "@/lib/usage";
+import { canRunCallouts } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { listDeskFolders } from "@/lib/desk-folders";
 import { listFolders } from "@/lib/library";
@@ -19,6 +20,7 @@ import { shareCardTarget } from "./callout-card";
 import { sharedLinksFor } from "@/lib/share-links";
 import { CARD, SectionHead } from "@/components/Kit";
 import { CollectionsTabs } from "./CollectionsTabs";
+import { Notice } from "../settings/ui";
 
 export const metadata = { title: "Collections — FloorTest" };
 
@@ -28,11 +30,13 @@ export const metadata = { title: "Collections — FloorTest" };
  * line. All / Callouts / Projects filters it (Projects keeps its own address, /dashboard/projects, where the tracks in
  * no project also live). Tracks show only inside a folder; the whole row opens it. Then collections shared with you.
  */
-export default async function Collections({ searchParams }: { searchParams: Promise<{ folder?: string; kind?: string }> }) {
+export default async function Collections({ searchParams }: { searchParams: Promise<{ folder?: string; kind?: string; denied?: string }> }) {
   const user = await requireUser();
   await trackUse(user.id, "collections");
   const params = await searchParams;
   const canManage = user.role !== "member";
+  // Making and editing callouts: owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov). The actions check too.
+  const callouts = await canRunCallouts(user);
   const [collections, sharing, viaLinks, folders] = await Promise.all([collectionsFor(user.id), switchOn("sharing"), sharedLinksFor(user), listDeskFolders(user, "callout")]);
   // Inside a folder (?folder=), only its callouts; at the top, the folders and then what is in none.
   const folderId = recordId(params.folder);
@@ -65,6 +69,7 @@ export default async function Collections({ searchParams }: { searchParams: Prom
               receiving={c.id === user.active_collection_id}
               closed={isClosed(c)}
               canManage={canManage}
+              canEdit={callouts}
               link={`${APP_URL}/${user.handle}`}
               card={c.id === receiving?.id ? card : undefined}
               folders={calloutFolders}
@@ -92,7 +97,12 @@ export default async function Collections({ searchParams }: { searchParams: Prom
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-5 sm:gap-6">
         {/* "New folder" and right-click: a callout, a project, or a group of them. Your own folders first. */}
-        <FolderArea view={view} folder={folder?.id ?? null} canEdit={canManage}>
+        {params.denied === "callouts" && (
+          <Notice tone="error" next="Ask the owner or an A&R / Admin to tick Runs callouts for you in Settings → Team.">
+            Making and editing callouts is for people the owner or an A&amp;R / Admin has let run them.
+          </Notice>
+        )}
+        <FolderArea view={view} folder={folder?.id ?? null} canEdit={canManage} canCreate={callouts}>
           {folder && <FolderCrumb kind="callout" name={folder.name} />}
           <FolderList
             items={items}

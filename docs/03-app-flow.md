@@ -80,7 +80,7 @@ Review panel: title · one meta line · tags (sets / release / AI / duplicate / 
    Details (closed, remembered) ─► format & size · dates · Download · Move · Delete (confirm) · sender email, links, stats, note, last 3 events · Full history →
 Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
-Floor ─► Collections (folders with covers; search · All / Callouts / Projects) ─► New folder (name · Callout / Project / a group of either ─► Create folder) / open a folder
+Floor ─► Collections (folders with covers; search · All / Callouts / Projects) ─► New folder (name · Callout / Project / a group of either ─► Create folder; Callout and Edit collection: owner, A&R / Admin, or a ticked Member; Project and groups: owner and A&R / Admin; owner 16 Nov) / open a folder
    A callout's folder ─► shuffle · play ─► Review N new (the Queue, that callout) ─► tracks, numbered, with their status ─► link button (while it receives) · ··· (Send new tracks here · Edit collection · Download) ─► share links · details · delete
    A project's folder ─► shuffle · play ─► Add tracks (owner and A&R / Admins: choose WAV/MP3s, edit titles, rights tick, upload) ─► tracks, numbered ─► ··· (Rename · Delete project)
    Projects filter ─► Upload audio ─► Not in a project (tracks in none)
