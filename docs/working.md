@@ -8,7 +8,7 @@ How FloorTest gets built day to day: sessions, branches, checks, shipping, docs 
 |---|---|
 | Release manager | `mobile-next` vs `main`, what is held on preview, ship branches, the spaced pushes |
 | Session coordinator | Parallel Claude sessions, worktrees, who owns which branch, nothing left half-merged |
-| QA | `typecheck`, `lint`, `test`, `check:perms`, e2e, real-device and email-client checks |
+| QA | `typecheck`, `lint`, `test`, `check:perms`, `audit:prod`, e2e, real-device and email-client checks |
 | Docs keeper | Docs move in the same commit as the change; `06-plan.md` Done stays honest |
 | Ops on call | Production health, incidents, the runbooks in `operations.md` |
 | Owner's time | What only the owner can do, batched so it fits a phone review |
