@@ -35,7 +35,9 @@ test("the public link shows the open callout's brief in the same order and wordi
   const brief = page.getByRole("region", { name: "What they're looking for" });
   await expect(brief).toContainText("BPM");
   await expect(brief).toContainText("118–130");
-  await expect(brief).toContainText(/Deadline\s*Open until/);
+  // The closing date sits in the callout line under the name, so the brief doesn't repeat it (option 48).
+  await expect(brief).not.toContainText("Deadline");
+  await expect(page.getByText(/· closes \d/)).toBeVisible();
   await expect(brief).toContainText("“Percussive, warm and built for late-night rooms”");
 });
 
@@ -110,6 +112,10 @@ test("the sender-link form runs the bot check, then answers the same for any add
   await form.getByTestId("turnstile").waitFor({ state: "attached" });
   await form.getByRole("button", { name: "Email me my link" }).click();
   await expect(page.getByRole("status")).toContainText("a link is on its way");
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+  // Use a different email shows the form again, empty.
+  await page.getByRole("button", { name: "Use a different email" }).click();
+  await expect(page.getByLabel("Your email")).toHaveValue("");
 });
 
 test("a sender-link request without the bot check is refused", async ({ page }) => {

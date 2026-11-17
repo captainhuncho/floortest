@@ -58,16 +58,18 @@ function age(ts: number) {
 
 /**
  * One card of track rows: a compact line per track on phones (the row opens the track in the Queue), the full row with
- * Keep, Not for me, reply and download on desktop. `statusTag` shows Needs review instead of the age (collection detail).
+ * Keep, Not for me, reply and download on desktop. `statusTag` shows where each track stands in plain words instead of the age, and `numbered` its place in the list (a folder's page).
  */
 export function ListRows({
   rows,
   statusTag = false,
+  numbered = false,
   collections = [],
   title,
 }: {
   rows: ListRow[];
   statusTag?: boolean;
+  numbered?: boolean;
   collections?: { id: number; name: string }[];
   /** The list's heading inside its card (the List view's status, "All tracks"); without it the card shows the count. */
   title?: string;
@@ -196,10 +198,11 @@ export function ListRows({
   const queueHref = (id: number) => `/dashboard/review?view=queue&s=all&t=${id}`;
   // The age chip is lime while a track is unheard and undecided, like the Queue's list; decided tracks show the outcome.
   const tag = (r: ListRow, decision: Decision | null) =>
-    decision ? (
+    statusTag ? (
+      // A folder's page (owner, 17 Nov): the status in words, no chip; lime only while it waits.
+      <span className={`text-[11.5px] ${decision ? "text-mute" : "font-semibold text-lime"}`}>{decision ? decisionLabel(decision) : "Waiting"}</span>
+    ) : decision ? (
       <Chip tone={decision === "kept" ? "up" : "flat"}>{decisionLabel(decision)}</Chip>
-    ) : statusTag ? (
-      <Chip tone="warn">Needs review</Chip>
     ) : (
       <span suppressHydrationWarning>
         <Chip tone={r.played ? "flat" : "acc"}>{age(r.createdAt)}</Chip>
@@ -242,6 +245,11 @@ export function ListRows({
           const waiting = !decision;
           const ticked = picked.has(r.id);
           const sub = [r.artist, ...r.meta].join(" · ");
+          const no = numbered && (
+            <span aria-hidden className="w-5 shrink-0 text-center text-[12px] text-mute tnum">
+              {i + 1}
+            </span>
+          );
           const play = (
             <button
               type="button"
@@ -289,7 +297,10 @@ export function ListRows({
                     aria-label={`Select ${r.artist} - ${r.title}`}
                   />
                 ) : (
-                  play
+                  <>
+                    {no}
+                    {play}
+                  </>
                 )}
                 <Link href={queueHref(r.id)} className="flex min-w-0 flex-1 flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
                   {name}
@@ -309,6 +320,7 @@ export function ListRows({
                     aria-label={`Select ${r.artist} - ${r.title}`}
                   />
                 )}
+                {no}
                 {play}
                 <button
                   type="button"
@@ -361,9 +373,13 @@ export function ListRows({
                     <KitIcon name="dl" className="size-[18px]" />
                   </a>
                   {/* The buttons already say Kept or Not for me, so desktop ends on the age (lime while unheard). */}
-                  <span className="flex w-10 justify-end" title={new Date(r.createdAt).toLocaleString()} suppressHydrationWarning>
-                    <Chip tone={!decision && !r.played ? "acc" : "flat"}>{age(r.createdAt)}</Chip>
-                  </span>
+                  {statusTag ? (
+                    <span className="flex w-[4.5rem] justify-end">{tag(r, decision)}</span>
+                  ) : (
+                    <span className="flex w-10 justify-end" title={new Date(r.createdAt).toLocaleString()} suppressHydrationWarning>
+                      <Chip tone={!decision && !r.played ? "acc" : "flat"}>{age(r.createdAt)}</Chip>
+                    </span>
+                  )}
                 </div>
               </div>
 

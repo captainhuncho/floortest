@@ -19,9 +19,11 @@ import { SendMusicCard } from "./SendMusicCard";
 import { UpNext } from "./UpNext";
 import { UpNextHero } from "./UpNextHero";
 import { PlayedOutCard } from "./PlayedOutCard";
-import { playedOutPrompt } from "@/lib/played-out-prompt";
+import { canMarkPlayedOut, playedOutPrompt } from "@/lib/played-out-prompt";
 import { Chip, DeskStrip, FloorIcon, IconBox, InfoRow, Legend, StatTile } from "./FloorBits";
-import { LinkRow, WeekChart } from "./FloorClient";
+import { LinkRow } from "./FloorClient";
+import { Icon } from "@/components/Kit";
+import { perDay, periodRange } from "@/lib/analytics";
 import { GHOST, LIME_SM } from "../kitButtons";
 import { FirstVisitTour } from "../Tour";
 import { tourTip } from "@/lib/tour";
@@ -79,6 +81,10 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   // Never in an admin's view.
   const tourDue = !view && !tourSeen?.t;
   const stats = await homeStats(user.id, prefs.tz);
+  const dj = canMarkPlayedOut(user);
+  // Analytics numbers are for the owner and A&R / Admins; members get the week from the Floor's own stats.
+  const analyst = atLeast(user.role, "admin");
+  const week = analyst ? await perDay(user, periodRange("7d", user.tz)) : null;
   const weekend = await playedOutPrompt({ ...user, tz: prefs.tz });
   const paused = isPaused(user);
   const link = `${APP_URL}/${user.handle}`;
@@ -251,18 +257,24 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     </section>
   );
 
-  // The week: a Received / Kept / Listened switch over the last seven days, the totals in the chip.
-  const week = stats.daily.slice(-7);
-  const receivedDelta = stats.receivedWeek - stats.receivedPrev;
-  const weekCard = !fresh && stats.receivedWeek + stats.receivedPrev + stats.keptWeek > 0 && (
-    <section aria-labelledby="week-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="week-h" className="text-[15px] font-semibold text-bone">This week</h2>
-        <Chip tone={receivedDelta > 0 ? "up" : "flat"}>
-          {stats.receivedWeek} received · {receivedDelta === 0 ? "same as last week" : receivedDelta > 0 ? `${receivedDelta} more` : `${-receivedDelta} fewer`}
-        </Chip>
-      </div>
-      <WeekChart days={week} />
+  // The week, in one line (owner, 16 Nov): the chart moved to Analytics, which this row opens for the owner and A&R / Admins.
+  const wkIn = week ? week.totals.in : stats.receivedWeek;
+  const wkKept = week ? week.totals.kept : stats.keptWeek;
+  const third = week ? ` · ${dj ? `${week.totals.playedOut} played out` : `${week.totals.downloaded} downloaded`}` : "";
+  const weekLine = `Your week · ${wkIn} track${wkIn === 1 ? "" : "s"} in · ${wkKept} kept${third}`;
+  const weekCard = !fresh && wkIn + wkKept + stats.receivedPrev > 0 && (
+    <section aria-label="Your week" className="rounded-[18px] border border-line bg-card shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+      {analyst ? (
+        <Link href="/dashboard/analytics?p=7d" className="flex min-h-12 items-center justify-between gap-3 rounded-[18px] px-3.5 py-2.5 text-[13px] text-bone hover:bg-well">
+          <span className="min-w-0 tnum">{weekLine}</span>
+          <span className="flex shrink-0 items-center gap-1 text-[12px] text-mute">
+            Analytics
+            <Icon name="chev" className="size-3.5" />
+          </span>
+        </Link>
+      ) : (
+        <p className="flex min-h-12 items-center px-3.5 py-2.5 text-[13px] text-bone tnum">{weekLine}</p>
+      )}
     </section>
   );
 

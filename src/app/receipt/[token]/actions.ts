@@ -35,7 +35,7 @@ export type CodeState = { sent?: string; error?: string; done?: boolean } | null
 
 /**
  * "Show my details": emails a code to the sender's address, taken from the receipt, never typed. One answer every
- * time, whatever happened (a limit, a bounce, an unknown link): "We sent a code to m•••@g•••.com".
+ * time, whatever happened (a limit, a bounce, an unknown link): "We sent a 6-digit code to m•••@g•••.com".
  */
 export async function requestReceiptCode(token: string): Promise<CodeState> {
   // A closed receipt answers as an unknown link does, after the same single lookup.
