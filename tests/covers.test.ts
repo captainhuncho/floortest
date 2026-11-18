@@ -134,6 +134,7 @@ test("list rows carry only the cover link, only for the web players, and never a
   const theirs = await callout(b, "collection-art/b/own.webp");
   const inCallout = await track(a, mine, null);
   const ownArt = await track(a, mine, "track-art/own.jpg");
+  const looseArt = await track(a, null, "track-art/loose.jpg");
   const loose = await track(a, null, null);
   // A track can't name another desk's callout at all: the database refuses the row, and the list's join is desk-scoped too.
   await assert.rejects(track(a, theirs, null), /tracks_collection_same_desk/);
@@ -154,6 +155,18 @@ test("list rows carry only the cover link, only for the web players, and never a
   const theirRows = await loadRows(b, { covers: true, actor: b });
   assert.deepEqual(theirRows.map((r) => r.id), [bTrack], "desk B reads only its own track");
   assert.ok(!JSON.stringify(theirRows).includes(`/api/collection-art/${mine}`) && !JSON.stringify(theirRows).includes(`/api/track-art/${ownArt}`), "and none of desk A's cover links");
+
+  // A release's shared artwork is another track's artwork on the same desk, linked through /api/track-art like any
+  // track's: the route asks fileAccess every time, so desk B can't fetch what desk A's Review card links to.
+  const { playerCover } = await import("../src/lib/covers");
+  const { fileAccess } = await import("../src/lib/file-access");
+  const viewer = (id: number) => ({ id, plan: "team", actor_id: id });
+  const releaseLink = playerCover({ id: loose, art_key: null, collection_id: null, callout_art_key: null }, { id: looseArt, art_key: "track-art/loose.jpg" });
+  assert.equal(releaseLink, cover(looseArt), "a release's art is that track's own art link");
+  assert.ok(!JSON.stringify(theirRows).includes(`/api/track-art/${looseArt}`), "desk B's rows carry none of desk A's release links");
+  assert.equal((await fileAccess(viewer(a), "art", looseArt))?.key, "track-art/loose.jpg", "its own desk fetches it");
+  assert.equal(await fileAccess(viewer(b), "art", looseArt), null, "another desk can't, even with the id");
+  assert.equal(await fileAccess(null, "art", looseArt), null, "nor someone signed out");
 
   // The app's API reads the same rows without asking for covers: the link isn't in its payload.
   assert.ok((await loadRows(a, { actor: a })).every((r) => !("cover" in r)), "no cover unless the web desk asks");
