@@ -62,6 +62,16 @@ test("site lock: signed out sees Coming soon, signed in passes, and a re-lock ke
     await vPage.getByLabel("Have the password?").fill("not-the-password");
     await vPage.getByRole("button", { name: "Enter" }).click();
     await expect(vPage.getByText("That password isn't right.")).toBeVisible();
+    // The field keeps the typing and says it's wrong (option 55).
+    await expect(vPage.getByLabel("Have the password?")).toHaveValue("not-the-password");
+    await expect(vPage.getByLabel("Have the password?")).toHaveAttribute("aria-invalid", "true");
+    await comingSoon(vPage);
+  });
+
+  await test.step("Log in (top right) opens the log-in page while the site is locked", async () => {
+    await vPage.getByRole("link", { name: "Log in" }).click();
+    await expect(vPage).toHaveURL(/\/login$/);
+    await expect(soon(vPage)).toHaveCount(0);
     await comingSoon(vPage);
   });
 

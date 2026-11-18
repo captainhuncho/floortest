@@ -163,12 +163,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const notice: { text: string; action?: React.ReactNode } | null = verify
     ? null
     : paused
-      ? // The Link open switch lives on Account, so the fix points there.
+      ? // The Pause your link switch lives on Settings, so the fix points there.
         {
           text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until, prefs.tz)}` : ""}.`,
           action: member ? undefined : (
-            <Link href="/dashboard/account" className={QUIET}>
-              Open Account
+            <Link href="/dashboard/settings" className={QUIET}>
+              Open Settings
             </Link>
           ),
         }

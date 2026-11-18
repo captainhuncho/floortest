@@ -89,9 +89,13 @@ test("the owner adds a WAV on Projects, not from a callout page; strangers and o
   await page.goto("/dashboard/collections/2");
   await expect(page.getByRole("button", { name: "Add tracks" })).toHaveCount(0);
   await page.goto("/dashboard/projects");
-  const add = page.getByRole("button", { name: "Add tracks" });
-  if (await add.isVisible()) await add.click();
-  await page.getByLabel("Choose WAV or MP3 files to add").setInputFiles({ name: "Owner Promo.wav", mimeType: "audio/wav", buffer: wav(4) });
+  // Upload audio opens the file picker from a React handler, so a click before the page has hydrated does nothing (the
+  // 17 Nov #596 run timed out that way under load). Click until the picker really opens, then hand it the file once.
+  await expect(async () => {
+    const chooser = page.waitForEvent("filechooser", { timeout: 3_000 });
+    await page.getByRole("button", { name: "Upload audio" }).click();
+    await (await chooser).setFiles({ name: "Owner Promo.wav", mimeType: "audio/wav", buffer: wav(4) });
+  }).toPass({ timeout: 30_000 });
   await page.getByLabel(/own these recordings/).check();
   await page.getByRole("button", { name: "Add 1 track" }).click();
   await expect(page.getByText("Added", { exact: true })).toBeVisible({ timeout: 30_000 });
