@@ -18,18 +18,18 @@ const RANK = { member: 1, admin: 2, owner: 3 } as const;
 const sectionsFor = (role: keyof typeof RANK, teams: boolean) =>
   SECTIONS.filter((s) => RANK[role] >= RANK[s.min] && (s.slug !== "team" || teams));
 
-/** Desktop: a left rail of the settings pages, the current one lit. Phones: a back link to the Account menu. */
+/** Desktop: a left rail of the settings pages, the current one lit. Phones: a back arrow to Settings. */
 export function SettingsNav({ role, teams }: { role: keyof typeof RANK; teams: boolean }) {
   const path = useNavPath();
   const sections = sectionsFor(role, teams);
   const current = SECTIONS.find((s) => path.startsWith(`/dashboard/settings/${s.slug}`));
   return (
     <>
-      {/* Phones: the way back to the Account menu (the page's own title says where you are). */}
+      {/* Phones: the way back to Settings (the page's own title says where you are). */}
       <div className="mb-2 flex h-11 items-center md:hidden">
-        <Link href="/dashboard/account" aria-label="Back to Account" className="-ml-2 flex min-h-11 items-center gap-1 rounded-[11px] px-2 text-[12.5px] text-mute hover:text-bone">
+        <Link href="/dashboard/settings" aria-label="Back to Settings" className="-ml-2 flex min-h-11 items-center gap-1 rounded-[11px] px-2 text-[12.5px] text-mute hover:text-bone">
           <Icon name="chev" className="size-4 rotate-180" />
-          Account
+          Settings
         </Link>
       </div>
       <nav aria-label="Settings" className={`${CARD} hidden p-2 md:sticky md:top-6 md:block`}>
@@ -52,9 +52,9 @@ export function SettingsNav({ role, teams }: { role: keyof typeof RANK; teams: b
           })}
         </ul>
         <div className="mt-2 border-t border-line px-1 pt-2">
-          <Link href="/dashboard/account" className="flex min-h-10 items-center gap-2 rounded-[11px] px-1.5 text-[12px] text-mute hover:text-bone">
+          <Link href="/dashboard/settings" className="flex min-h-10 items-center gap-2 rounded-[11px] px-1.5 text-[12px] text-mute hover:text-bone">
             <Icon name="chev" className="size-4 rotate-180" />
-            Back to Account
+            Back to Settings
           </Link>
         </div>
       </nav>

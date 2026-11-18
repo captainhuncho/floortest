@@ -25,8 +25,8 @@ test("a new owner sees five steps, copying the link ticks one off, and Hide this
   await expect(c).toBeVisible();
   await expect(c.getByText("0 of 5")).toBeVisible();
   await expect(c.getByRole("progressbar", { name: "Getting started" })).toHaveAttribute("aria-valuenow", "0");
-  // One lime button: the next step's action.
-  await expect(c.getByRole("link", { name: "Edit your page" })).toHaveAttribute("href", "/dashboard/settings/profile");
+  // Each open step is a row that goes where it's done (option 41's new desk; sharing happens from the link row).
+  await expect(c.getByRole("link", { name: /Add a photo and a line about you/ })).toHaveAttribute("href", "/dashboard/settings/profile");
   await expect(c.getByRole("link", { name: /Get your first track/ })).toHaveAttribute("href", `/${desk.handle}`);
   await render(page, "new");
 
@@ -47,16 +47,21 @@ test("a new owner sees five steps, copying the link ticks one off, and Hide this
   await expect(page.getByRole("heading", { name: "Getting started" })).toHaveCount(0);
 });
 
-test("copying the link on the Account page ticks Share your link on the Floor", async ({ page }) => {
+// Settings (option 47) has no link card, so the Floor's Copy is the one place a new owner copies the link.
+test("copying the link on the Floor ticks Share your link, for a second new owner", async ({ page }) => {
   const s = `${stamp}b`;
   await signUp(page, { kind: "DJ", first: "Gia", last: "Copy", handle: `gs${s}`, email: `gs+${s}@example.test`, password: desk.password });
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.goto("/dashboard/account");
-  await page.getByRole("button", { name: "Copy", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Copied", exact: true })).toBeVisible();
+  await page.goto("/dashboard/floor");
+  await expect(card(page).getByText("0 of 5")).toBeVisible();
+  await page.getByRole("button", { name: /^Copy your link, / }).first().click();
+  await expect(page.getByText("Your link is copied.")).toBeVisible();
   await expect.poll(async () => {
-    await page.goto("/dashboard/floor");
+    await page.reload();
     return card(page).getByRole("listitem").filter({ hasText: /Share your link\s*\(done\)/ }).count();
   }, { timeout: 15_000 }).toBe(1);
   await expect(card(page).getByText("1 of 5")).toBeVisible();
+  // The old Account address, where this step used to be, now lands on Settings.
+  await page.goto("/dashboard/account");
+  await expect(page).toHaveURL(/\/dashboard\/settings$/);
 });

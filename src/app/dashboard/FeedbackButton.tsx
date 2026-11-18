@@ -160,8 +160,13 @@ export function FeedbackButton() {
  * page is open (a decision refreshes the layout and the 5th brings `due`); any answer closes it for good.
  */
 export function FeedbackAsk({ due }: { due: boolean }) {
+  const path = usePathname();
   const [closed, setClosed] = useState(false);
-  if (!due || closed) return null;
+  // Only from a page's first render: appearing mid-page, right after the 5th decision, pushed the page down under the
+  // finger (owner, 18 Nov: "everything needs to be stable"). It waits for the next page the person opens.
+  const [atOpen, setAtOpen] = useState({ path, due });
+  if (atOpen.path !== path) setAtOpen({ path, due });
+  if (!atOpen.due || !due || closed) return null;
   return (
     <div className="px-3 pb-1 md:px-6 md:pt-4">
       <FeedbackForm ask onClose={() => setClosed(true)} className="mx-auto max-w-xl shadow-none!" />

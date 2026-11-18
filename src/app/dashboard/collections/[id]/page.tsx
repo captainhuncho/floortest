@@ -9,6 +9,7 @@ import { asPerson, now, q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
+import { calloutCovers, collectionArtUrl } from "@/lib/covers";
 import { DownloadActions } from "../../DownloadActions";
 import { LinkRow } from "../../floor/FloorClient";
 import { APP_URL } from "@/lib/mail";
@@ -97,7 +98,8 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     sharingAvailable: await switchOn("sharing"),
     maxTracks: c.max_tracks,
     full: !!c.full_at,
-    art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null,
+    art: c.art_key ? collectionArtUrl(c.id, c.art_key) : null,
+    covers: (await calloutCovers(user)).get(c.id) ?? [],
     canCap: canCapCallouts(user.plan),
     genres: genres.custom ? genres.list : [],
     brief: briefItems(c, genres.custom ? genres.list : [], user.tz),
@@ -163,7 +165,8 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     <FolderPage
       back={{ href: "/dashboard/collections", label: "Collections" }}
       tools={<CalloutTools c={editable} receiving={receiving} closed={closed} canManage={admin} canEdit={callouts} link={live ? `${APP_URL}/${user.handle}` : undefined} card={card} />}
-      art={editable.art}
+      covers={editable.covers}
+      empty={c.count === 0 && editable.covers.length === 0}
       name={c.name}
       lines={[
         `Callout · ${trackCount(c.count)}${length ? ` · ${fmtLength(length)}` : ""}`,

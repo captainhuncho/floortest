@@ -107,14 +107,74 @@ test("whoSent and calloutLinks: names and counts for this desk only, no emails",
   const range = A.periodRange("30d", "UTC", now);
   const who = await A.whoSent(desk(a), range);
   assert.equal(who.total, 2);
-  assert.deepEqual(who.rows, [
+  assert.deepEqual(who.rows.map(({ name, tracks, kept }) => ({ name, tracks, kept })), [
     { name: "Kwame", tracks: 2, kept: 1 },
     { name: "Ama", tracks: 2, kept: 0 },
   ], "most tracks first, then most kept");
+  for (const r of who.rows) {
+    assert.ok(r.id > 0 && r.last >= range.from && r.last < range.to, "each row carries the sender and when their latest track arrived");
+    assert.ok(r.place === null || typeof r.place === "string", "where the tracks landed: one collection's name, the Review Queue, or several");
+  }
+  assert.ok(who.rows.some((r) => r.place === "Afro House"), "tracks sent into one callout name it");
   assert.equal((await A.whoSent(desk(a), range, 1)).rows.length, 1, "the limit holds");
   assert.ok(!JSON.stringify(who).includes("@"), "no sender email leaves the server");
 
   assert.deepEqual(await A.calloutLinks(desk(a), range), { rows: [{ id: afro, name: "Afro House", tracks: 2, senders: 1 }], more: false });
+});
+
+test("whatHappened: the desk's own newest events in the span, never another desk's, no emails", async () => {
+  const A = await import("../src/lib/analytics");
+  const { q } = await import("../src/lib/db");
+  const { desk, a, b, now } = await setup();
+  const range = A.periodRange("30d", "UTC", now);
+  const mine = await q.get<{ id: number; sender_id: number; title: string }>("SELECT id, sender_id, title FROM tracks WHERE user_id = ? AND deleted_at IS NULL ORDER BY id LIMIT 1", a);
+  const theirs = await q.get<{ id: number; sender_id: number }>("SELECT id, sender_id FROM tracks WHERE user_id = ? ORDER BY id LIMIT 1", b);
+  assert.ok(mine && theirs);
+  for (const [type, at] of [["kept", now - 3000], ["played", now - 2000], ["played_out", now - 1000]] as const)
+    await q.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?, ?, ?, ?, '', ?)", a, mine.sender_id, mine.id, type, at);
+  await q.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?, ?, ?, 'kept', '', ?)", b, theirs.sender_id, theirs.id, now - 500);
+  await q.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?, ?, ?, 'kept', '', ?)", a, mine.sender_id, mine.id, range.from - 1000);
+  const rows = await A.whatHappened(desk(a), range);
+  assert.deepEqual(rows.map((r) => r.type), ["played_out", "kept"], "newest first; listens stay in Activity; nothing from before the span or from another desk");
+  assert.equal(rows[0].title, mine.title);
+  assert.ok(!JSON.stringify(rows).includes("@"), "no email leaves the server");
+  assert.equal((await A.whatHappened(desk(a), range, 1)).length, 1, "the limit holds");
+  assert.equal((await A.whatHappened(desk(a), range, Number.NaN)).length <= 5, true, "a bad limit falls back to 5");
+});
+
+test("whatHappened: arrivals and downloads show, a deleted track and another desk's track never do, nor another desk's collection name", async () => {
+  const A = await import("../src/lib/analytics");
+  const { q } = await import("../src/lib/db");
+  const { desk, a, b, now } = await setup();
+  const range = A.periodRange("30d", "UTC", now);
+  const live = await q.get<{ id: number; sender_id: number }>("SELECT id, sender_id FROM tracks WHERE user_id = ? AND deleted_at IS NULL ORDER BY id LIMIT 1", a);
+  const gone = await q.get<{ id: number; sender_id: number }>("SELECT id, sender_id FROM tracks WHERE user_id = ? AND deleted_at IS NOT NULL LIMIT 1", a);
+  const theirs = await q.get<{ id: number; sender_id: number }>("SELECT id, sender_id FROM tracks WHERE user_id = ? AND collection_id IS NOT NULL LIMIT 1", b);
+  assert.ok(live && gone && theirs);
+  const event = (track: { id: number; sender_id: number }, type: string, at: number) =>
+    q.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?, ?, ?, ?, '', ?)", a, track.sender_id, track.id, type, at);
+  await event(live, "submitted", now - 400);
+  await event(live, "downloaded", now - 300);
+  await event(gone, "kept", now - 200);
+  // A desk A event pointing at desk B's sender and track can't even be stored.
+  await assert.rejects(event(theirs, "submitted", now - 100), /events_sender_same_desk/);
+  const rows = await A.whatHappened(desk(a), range, 20);
+  const types = rows.map((r) => r.type);
+  assert.ok(types.includes("submitted") && types.includes("downloaded"), "arrivals and downloads show");
+  assert.ok(!rows.some((r) => r.trackId === gone.id), "a deleted track never shows");
+  assert.ok(!rows.some((r) => r.trackId === theirs.id), "another desk's track never shows");
+  const who = await A.whoSent(desk(a), range, 200);
+  assert.ok(!JSON.stringify(rows).includes("B callout") && !JSON.stringify(who).includes("B callout"), "another desk's collection name never shows as a place");
+});
+
+test("ownedSender: another desk's sender is not found", async () => {
+  const { ownedSender } = await import("../src/lib/desk");
+  const { q } = await import("../src/lib/db");
+  const { desk, a, b } = await setup();
+  const senderOfA = await q.get<{ id: number }>("SELECT id FROM senders WHERE user_id = ? LIMIT 1", a);
+  assert.ok(senderOfA);
+  assert.ok(await ownedSender(desk(a), senderOfA.id), "the desk finds its own sender");
+  assert.equal(await ownedSender(desk(b), senderOfA.id), undefined, "desk B gets nothing for desk A's sender");
 });
 
 test("sharedLinks: per person on this desk's links only, in the span", async () => {
@@ -174,7 +234,7 @@ test("guards: a Member gets no numbers; an erased sender's name is gone; a share
   const admin = await mate("adm", "admin", true);
   const stranger = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES ('str@x.io', 'h', 'S', 'strngr', 'free', 'UTC', ?, ?) RETURNING id", now, now))!.id;
   for (const actor of [member, noTwoStep, stranger]) {
-    for (const run of [() => A.perDay(desk(a, actor), range), () => A.whoSent(desk(a, actor), range), () => A.calloutLinks(desk(a, actor), range), () => A.sharedLinks(desk(a, actor), range)]) {
+    for (const run of [() => A.perDay(desk(a, actor), range), () => A.whoSent(desk(a, actor), range), () => A.calloutLinks(desk(a, actor), range), () => A.sharedLinks(desk(a, actor), range), () => A.whatHappened(desk(a, actor), range)]) {
       await assert.rejects(run, /owner and A&R \/ Admins/);
     }
   }

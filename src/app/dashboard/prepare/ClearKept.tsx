@@ -1,22 +1,23 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Dialog, DIALOG_MAIN, DIALOG_QUIET } from "@/components/Dialog";
+import { Dialog, DIALOG_QUIET } from "@/components/Dialog";
 import { useToast } from "@/components/Toast";
 import { clearKept } from "../actions/review";
-import { GHOST_BTN } from "./buttons";
 
 /**
  * "Start a new batch": empties Prepare so the next keeps start fresh, after a confirm. Nothing is deleted or un-kept
- * (the tracks stay Kept in the Review Queue and their collections), so it's a quiet secondary action, not a red one.
+ * (the tracks stay Kept, in their callouts, and still count toward the desk), so it's a quiet link and neither button
+ * in its sheet is lime (owner, 17 Nov: option 44).
  */
-export function ClearKept({ count }: { count: number }) {
+export function ClearKept({ count, className = "" }: { count: number; className?: string }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [failed, setFailed] = useState(false);
   const toast = useToast();
 
-  const n = `${count} track${count === 1 ? "" : "s"}`;
+  const one = count === 1;
+  const n = `${count} track${one ? "" : "s"}`;
   const close = () => {
     setOpen(false);
     setFailed(false);
@@ -24,10 +25,8 @@ export function ClearKept({ count }: { count: number }) {
 
   return (
     <>
-      <button type="button" className={`${GHOST_BTN} disabled:opacity-40`} disabled={!count} onClick={() => setOpen(true)} aria-haspopup="dialog">
-        {/* It shares a row with Files only: the short label where that row is narrow. */}
-        <span className="sm:hidden">New batch</span>
-        <span className="hidden sm:inline">Start a new batch</span>
+      <button type="button" className={`inline-flex min-h-11 items-center rounded-[10px] text-[13px] font-medium text-mute underline-offset-4 transition-colors hover:text-bone hover:underline ${className}`} onClick={() => setOpen(true)} aria-haspopup="dialog">
+        Start a new batch
       </button>
       <Dialog
         open={open}
@@ -36,23 +35,18 @@ export function ClearKept({ count }: { count: number }) {
         title="Start a new batch?"
         description={
           <>
-            Prepare empties so your next keeps start fresh. The {n} {count === 1 ? "stays" : "stay"} Kept in the Review Queue and {count === 1 ? "its collection" : "their collections"}.
-            Download {count === 1 ? "it" : "them"} first if you still need {count === 1 ? "it" : "them"} for a set.
+            Prepare empties. The {n} {one ? "stays" : "stay"} Kept, {one ? "stays in its callout" : "stay in their callouts"} and still {one ? "counts" : "count"} toward your desk. It frees no room.
           </>
         }
         actions={
           <>
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download, not a page */}
-            <a href="/api/export?files=1" className={`${DIALOG_QUIET} sm:mr-auto`}>
-              Download files first
-            </a>
             <button type="button" className={DIALOG_QUIET} disabled={pending} onClick={close}>
               Cancel
             </button>
             <button
               type="button"
-              autoFocus
-              className={DIALOG_MAIN}
+              data-autofocus
+              className={DIALOG_QUIET}
               disabled={pending}
               onClick={() =>
                 start(async () => {
@@ -63,11 +57,11 @@ export function ClearKept({ count }: { count: number }) {
                     return setFailed(true);
                   }
                   close();
-                  toast.show({ message: `New batch started. The ${n} ${count === 1 ? "is" : "are"} still Kept.` });
+                  toast.show({ message: `New batch started. The ${n} ${one ? "is" : "are"} still Kept.` });
                 })
               }
             >
-              {pending ? "Starting…" : "Start new batch"}
+              {pending ? "Starting…" : "Start a new batch"}
             </button>
           </>
         }

@@ -30,7 +30,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   // A used, expired or cancelled team invite: the join page says so plainly, rather than a bare sign-up form.
   if (sp.team && !team) redirect(`/join/${encodeURIComponent(sp.team.slice(0, 200))}`);
   const inviteOnly = !(await switchOn("open_signup")) && !team;
-  const [c, home, editor] = await Promise.all([siteCopy("auth"), siteCopy("home"), siteEditor()]);
+  const [c, editor, sendOn] = await Promise.all([siteCopy("auth"), siteEditor(), switchOn("send_music", null)]);
   const { E } = editable(c, !!editor);
   const host = env.appUrl.replace(/^https?:\/\//, "");
   const hasInvite = !inviteOnly || !!team || !!personal?.email;
@@ -66,7 +66,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         canSignUp={hasInvite}
         initialHandle={(sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined}
         google={!!googleConfig() && !isPreview && !(await inApp())}
-        welcome={{ headline: home.headline, italic: home.headline_italic, intro: home.intro }}
+        sendOn={sendOn}
         notice={notice}
         waitlistNote={<E k="signup_invite_only" />}
         claimTitle={<E k="signup_title" />}

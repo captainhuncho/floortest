@@ -47,9 +47,8 @@ test("Projects: own tracks are stored, kept apart from the desk, private to the 
   const a = await make("libowner");
   const b = await make("libother");
   const file = wav();
-  const add = { fileName: "mine.wav", size: file.length, title: "My edit", artist: "Me", genre: "House", rights: true };
+  const add = { fileName: "mine.wav", size: file.length, title: "My edit", artist: "Me", genre: "House" };
 
-  await assert.rejects(lib.startLibraryUpload(a, { ...add, rights: false }), /allowed to keep/);
   const started = await lib.startLibraryUpload(a, add);
   const key = (await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", started.uploadId))!.file_key;
   assert.match(key, new RegExp(`^library/${a.id}/`));
@@ -102,7 +101,7 @@ test("Projects: projects (folders) and moves stay inside the desk; only the desk
   const b = await make("foldother");
   const none = { duration: null, bpm: null, peaks: null };
   const file = wav();
-  const add = { fileName: "mine.wav", size: file.length, title: "Demo", artist: "Me", genre: "House", rights: true };
+  const add = { fileName: "mine.wav", size: file.length, title: "Demo", artist: "Me", genre: "House" };
 
   // Projects: named, renamed, and invisible to another account.
   await assert.rejects(lib.createFolder(a, "   "), /name/);

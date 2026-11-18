@@ -29,7 +29,8 @@ On /signup a wrong invite code counts: 5 an hour per email, 20 an hour per conne
 ## Receiver: sign-up
 ```
 /signup ─┬─ one question per screen (owner, 31 Oct; ?step= in the URL, so the phone's Back works):
-         │   1 welcome: Claim your link → / I already have one (no invite: Join the waitlist →)
+         │   1 welcome story (owner, 17 Nov): six chapters (a seventh while switch send_music is on), Next / Skip to the end,
+         │     then the end card: Claim your link → / I already have one (text link) ─► /login (no invite: Join the waitlist →)
          │   2 first name, surname ─► 3 username (live check, checkHandle) ─► 4 account type (tap rows)
          │   5 email (locked to the invite's), password, 18+/Terms, optional emails ─► Create my link
          │   (answers kept in memory and sessionStorage, never the password; one post of the same signup action;
@@ -72,7 +73,7 @@ The ticket between the password (or email code, reset link, Google) and /login/v
 Any dashboard page while a notice is live (show from ≤ now < hide after, not ended; the soonest if several; never in admin View as):
    thin strip under the top bar, role="status": "<title> Sun 15 Nov, 02:00–02:20. <detail> More" in the person's own time zone
    ─► × (44 px) closes it at once ─► saved for the person (notice_dismissals, their own row) ─► never rendered for them again, any device
-Floor (waiting count ─► Start with the oldest; Up next rows open the track) ─► Queue (phones: the open track as a card above the list, ‹ › or a sideways swipe to the next one) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
+Floor (Waiting crate ─► Review; Kept crate ─► Play all or Open the kept list; Your week ─► Analytics) ─► Queue (phones: the open track as a card above the list, ‹ › or a sideways swipe to the next one) ─► play ─► Keep (K) ──► Prepare ─► Download crate ─► sheet: name folder, pick Tracks + playlist / Rekordbox XML / Files only ─► Download N tracks ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email
 Review panel: title · one meta line · tags (sets / release / AI / duplicate / deleting soon) ─► waveform (1–4 jump) ─► Keep · Not for me · Reply ─► next track plays
@@ -94,15 +95,17 @@ Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days o
                           layout (17 Nov): status centred on top, then track and steps; the action (Show my details / Send another, Stop private sharing /
                           the read-only line) in a bar pinned at the bottom on phones, in the page from 640px; the code screen is short and centred
                           stems upload / Stop private sharing without proof ─► refused on the server, same answer as an unknown link
-Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
+Avatar ─► Settings (/dashboard/settings; /dashboard/account redirects) ─► rows: Contacts, Analytics, Played out, Pause your link, Theme, Receiving, Team, Notifications, Sign-in and security, Switch desk, Plan (sheet), Help
+   └─ ••• ─┬─ Sign out ─► "Sign out?" ─┬─ this phone/computer ─► /signed-out
+           │                          └─ Sign out everywhere (own desk) ─► password (+ code with two-step) ─► every session ended ─► /signed-out
+           └─ Delete account (own desk) ─► what goes ─► "Are you sure?" (type the link name, password, + code) ─► deleteAccount
 Feedback (every desk page, phones too: the speech-bubble icon in the top bar) ─► Idea / Bug / Confusing / Love it · text ─► Send ─► ops → Feedback (with the page it came from and the window width, e.g. 390 px) · toast "Thanks. It went straight to the FloorTest team."
-Account ─► About FloorTest ─► Send feedback ─► the same form opens under the row (not the public contact page) ─► Send ─► ops → Feedback
 5th Keep / Not for me by a person (any desk, counted from their own activity) ─► the decision saves as usual ─► a card at the top of the page (in the page, not over it), once: "How's FloorTest working for you?" (no focus taken; shortcuts and the player carry on)
    ├─ Send ─► ops → Feedback ─► not asked again
    ├─ Not now (first time) ─► closes ─► asked once more after 10 further decisions (users.feedback_snoozed_at)
    └─ Don't ask again · a second Not now ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
 ```
-Mobile menu: Floor · Collections · Queue · Prepare · More (a sheet: Send music, Contacts, Activity, How it works). Desktop sidebar lists them all, plus Analytics (owner and A&R / Admin); on phones Analytics sits under Account → Your desk.
+Mobile menu: Floor · Collections · Queue · Prepare · More (a sheet: Send music, Contacts, Activity, How it works; from #594; the owner kept it on 17 Nov rather than option 47's menu without More, for now). Desktop sidebar: Floor · Collections · Review Queue · Prepare · Send music; at the foot, How it works then Settings. Contacts and Analytics (owner and A&R / Admin) are rows on Settings; Emails to senders is no longer linked from users' screens (option 47).
 Any menu tap (desk, settings rail, ops): the tapped item lights up at once ─► the page's skeleton (loading.tsx) ─► the page. A thin lime line along the top only if nothing has arrived after 150ms.
 
 ## Plans
@@ -129,11 +132,11 @@ Receiver emails ─► instant "New track" (sent at once, one per send: a send o
 
 ## Offline kept tracks (iPhone and Android apps)
 ```
-Prepare ─► Save for offline ─► "Save on this phone" ─► kept tracks download (Saving… n of N) ─► "N tracks on this phone"
+Prepare ─► "Save on this phone" switch on ─► kept tracks download (Saving n of N) ─► "N tracks saved"
 Every later visit to Prepare ─► phone copy brought in line (new keeps saved, cleared/deleted tracks removed)
 No connection ─► "You're offline" + SAVED ON THIS PHONE ─► tap to play (next plays on; lock screen / notification controls)
    signal returns mid-track ─► keeps playing (only an idle screen returns to the desk)
-Remove from phone · sign out / reach sign-in · another account syncs · 30 days without opening Prepare online ─► copy wiped
+Switch off · sign out / reach sign-in · another account syncs · 30 days without opening Prepare online ─► copy wiped
 ```
 
 ## Share to FloorTest (iPhone and Android apps)

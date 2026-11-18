@@ -108,7 +108,7 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await expect(week.getByRole("link")).toHaveCount(0);
   await expect(week).toHaveText(/^Your week · \d+ tracks? in · \d+ kept$/);
   // Members can't send as the account, so Send isn't offered; nor are the owner's setup checklist or link controls.
-  await expect(page.getByRole("link", { name: /^Send$/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Send music$/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Hide this" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Getting started" })).toHaveCount(0);
   await page.goto("/dashboard/review");
@@ -164,11 +164,12 @@ test("a member switches to the team's desk, can't open owner settings, and their
 
 test("the owner approves the held reply from the Team page", async ({ page }) => {
   await logInWithTwoStep(page);
-  // The Floor's "Your desk" line says what needs the owner (the reply waiting) and how many seats are in use.
+  // The Floor's "Needs you" row says what needs the owner (the reply waiting). Seats left the Floor with the desk card
+  // (Floor, final, 16 Nov); the Team page shows them.
   await page.goto("/dashboard/floor");
   const desk = page.getByRole("region", { name: "Your desk" });
   await expect(desk.getByRole("link", { name: "1 reply waiting for your approval" })).toBeVisible();
-  await expect(desk.getByRole("link", { name: /of \d+ seats/ })).toBeVisible();
+  await expect(desk.getByText("Needs you")).toBeVisible();
   await desk.getByRole("link", { name: "1 reply waiting for your approval" }).click();
   await page.waitForURL(/\/dashboard\/settings\/team/);
   await expect(page.getByRole("heading", { name: "Waiting for approval (1)" })).toBeVisible();

@@ -123,6 +123,15 @@ const zero = (): Totals => ({ in: 0, senders: 0, kept: 0, passed: 0, downloaded:
 const within = (t: number | null, from: number, to: number): t is number => t !== null && t >= from && t < to;
 
 /**
+ * The 7-day totals on Settings' Analytics row (the page's "Last 7 days"). Null for a Member, who may not open Analytics:
+ * their numbers are never read.
+ */
+export function settingsWeek(user: Desk & { role: string }): Promise<Totals | null> {
+  if (user.role === "member") return Promise.resolve(null);
+  return perDay(user, periodRange("7d", user.tz)).then((d) => d.totals);
+}
+
+/**
  * The chart and the totals: tracks in, distinct senders, kept, not for me, downloaded and played out, per bar, with the
  * same totals for the span compared against. Read from the desk's tracks (deleted tracks keep their row, so Lifetime never
  * shrinks). Both played out and downloaded come back; the screen shows the one the desk type uses.
@@ -193,23 +202,57 @@ export async function perDay(d: Desk, range: Range): Promise<{ bars: Bar[]; tota
   };
 }
 
-/** Who sent what in the span: each sender's name, tracks sent and kept, most tracks first. Names only, never emails. */
+/**
+ * Who sent what in the span: each sender's name, tracks sent and kept, when their latest track arrived and where their
+ * tracks landed (the one collection's name, "" for the Review Queue, null when they landed in more than one place).
+ * Most tracks first. Names only, never emails.
+ * Deleted tracks still count here, as in perDay, so each sender's tracks add up to the page's totals; "What happened"
+ * lists events, so it shows only tracks still on the desk.
+ */
 export async function whoSent(d: Desk, range: Range, limit = 10) {
   const desk = await deskOf(d);
   const cap = Number.isFinite(limit) ? Math.min(Math.max(1, Math.floor(limit)), 200) : 10;
   return asPerson(desk.actor_id, async () => {
     const [rows, total] = await Promise.all([
-      q.all<{ name: string; tracks: number; kept: number }>(
-        `SELECT s.name, COUNT(*)::int AS tracks, COUNT(*) FILTER (WHERE t.decision = 'kept')::int AS kept
-         FROM tracks t JOIN senders s ON s.id = t.sender_id
+      q.all<{ id: number; name: string; tracks: number; kept: number; last: number; places: number; place: string | null }>(
+        `SELECT s.id, s.name, COUNT(*)::int AS tracks, COUNT(*) FILTER (WHERE t.decision = 'kept')::int AS kept,
+           MAX(t.created_at) AS last, COUNT(DISTINCT COALESCE(t.collection_id, 0))::int AS places, MIN(c.name) AS place
+         FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id AND c.user_id = t.user_id
          WHERE t.user_id = ? AND t.created_at >= ? AND t.created_at < ?
          GROUP BY s.id, s.name ORDER BY tracks DESC, kept DESC, s.name LIMIT ?`,
         desk.id, range.from, range.to, cap,
       ),
       q.count("SELECT COUNT(DISTINCT sender_id) AS n FROM tracks WHERE user_id = ? AND created_at >= ? AND created_at < ?", desk.id, range.from, range.to),
     ]);
-    return { rows: rows.map((r) => ({ name: r.name, tracks: Number(r.tracks), kept: Number(r.kept) })), total };
+    return {
+      rows: rows.map((r) => ({ id: Number(r.id), name: r.name, tracks: Number(r.tracks), kept: Number(r.kept), last: Number(r.last), place: Number(r.places) > 1 ? null : (r.place ?? "") })),
+      total,
+    };
   });
+}
+
+/** What the "What happened" list shows: arrivals, keeps, played-outs and downloads. Listens, notes and replies stay in Activity. */
+const HAPPENED = ["submitted", "kept", "played_out", "downloaded"] as const;
+export type Happened = { id: number; type: (typeof HAPPENED)[number]; at: number; trackId: number; title: string; sender: string; place: string };
+
+/**
+ * The newest things that happened on the desk in the span, from the desk's own event log (the table Activity reads):
+ * a track arrived, was kept, played out or downloaded. Only tracks still on the desk; names only, never emails.
+ */
+export async function whatHappened(d: Desk, range: Range, limit = 5): Promise<Happened[]> {
+  const desk = await deskOf(d);
+  const cap = Number.isFinite(limit) ? Math.min(Math.max(1, Math.floor(limit)), 20) : 5;
+  const rows = await asPerson(desk.actor_id, () =>
+    q.all<{ id: number; type: Happened["type"]; created_at: number; track_id: number; title: string; sender: string; place: string | null }>(
+      `SELECT e.id, e.type, e.created_at, e.track_id, t.title, s.name AS sender, c.name AS place FROM events e
+       JOIN tracks t ON t.id = e.track_id AND t.user_id = e.user_id JOIN senders s ON s.id = e.sender_id
+       LEFT JOIN collections c ON c.id = t.collection_id AND c.user_id = t.user_id
+       WHERE e.user_id = ? AND t.deleted_at IS NULL AND e.type IN (${HAPPENED.map(() => "?").join(",")}) AND e.created_at >= ? AND e.created_at < ?
+       ORDER BY e.created_at DESC, e.id DESC LIMIT ?`,
+      desk.id, ...HAPPENED, range.from, range.to, cap,
+    ),
+  );
+  return rows.map((r) => ({ id: Number(r.id), type: r.type, at: Number(r.created_at), trackId: Number(r.track_id), title: r.title, sender: r.sender, place: r.place ?? "" }));
 }
 
 /** Each callout that got tracks in the span: its name, tracks sent in and how many different senders, busiest first. */

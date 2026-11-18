@@ -30,10 +30,10 @@ export default async function Emails() {
   return (
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4">
-        <Link href="/dashboard/account" className="tap-text -ml-0.5 inline-flex w-fit items-center gap-1.5 text-[12px] text-mute hover:text-bone md:hidden">
+        <Link href="/dashboard/settings" className="tap-text -ml-0.5 inline-flex w-fit items-center gap-1.5 text-[12px] text-mute hover:text-bone md:hidden">
           <Icon name="chev" className="size-3.5 rotate-180" />
           <span>
-            <span className="sr-only">Back to </span>Account
+            <span className="sr-only">Back to </span>Settings
           </span>
         </Link>
         <PageHead label="What FloorTest told senders on your behalf, newest first." title="Emails to senders" />
