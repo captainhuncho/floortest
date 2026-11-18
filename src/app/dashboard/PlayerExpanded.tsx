@@ -36,20 +36,31 @@ function JumpIcon({ back = false }: { back?: boolean }) {
   );
 }
 
-/** Laptops: the speaker (mute), the slider and the level, always on show (Design: never behind a hover). */
-function VolumeRow() {
+/** Back or forward 15 seconds. Phones: either side of play or pause. Laptops: the row under Keep and Not for me. */
+function JumpButton({ back = false, className = "" }: { back?: boolean; className?: string }) {
+  const { seekBy } = usePlayer();
+  return (
+    <button type="button" onClick={() => seekBy(back ? -JUMP : JUMP)} aria-label={`${back ? "Back" : "Forward"} ${JUMP} seconds`} className={`${CONTROL} ${className}`}>
+      <JumpIcon back={back} />
+    </button>
+  );
+}
+
+/** Laptops: the speaker (mute), the slider and the level, always on show (Design: never behind a hover). The slider
+ * takes the rest of the bottom row (owner, 18 Nov: "the volume should be below, it should continue"). */
+function Volume() {
   const { volume, muted, setVolume } = usePlayer();
   const level = muted ? 0 : volume;
   const percent = `${Math.round(level * 100)}%`;
   return (
-    <div className="hidden items-center justify-center gap-2 min-[1024px]:flex">
+    <div className="flex min-w-0 flex-1 items-center gap-2">
       <button type="button" onClick={() => setVolume(volume, !muted)} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} className={CONTROL}>
         <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M4 9.5h3l4.5-3.7v12.4L7 14.5H4z" fill="currentColor" />
           {level === 0 ? <path d="m16 9.5 5 5M21 9.5l-5 5" /> : <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11" />}
         </svg>
       </button>
-      <input type="range" min={0} max={1} step={0.05} value={level} onChange={(e) => setVolume(Number(e.target.value), false)} aria-label="Volume" aria-valuetext={percent} className="h-11 w-[200px] cursor-pointer accent-bone" />
+      <input type="range" min={0} max={1} step={0.05} value={level} onChange={(e) => setVolume(Number(e.target.value), false)} aria-label="Volume" aria-valuetext={percent} className="h-11 min-w-0 flex-1 cursor-pointer accent-bone" />
       <span aria-hidden className="w-10 text-[12px] text-mute tnum">
         {percent}
       </span>
@@ -58,8 +69,7 @@ function VolumeRow() {
 }
 
 /**
- * Play or pause, in the middle of the row between back and forward 15 seconds (owner, 18 Nov; the cover beside the
- * title is art only in here). Focus starts on it when the player opens. The buffering ring shows while audio loads.
+ * Play or pause, in the middle of the playback row (owner, 18 Nov; the cover beside the title is art only in here). Focus starts on it when the player opens. The buffering ring shows while audio loads.
  */
 function PlayPause() {
   const { current, playing, buffering, toggle } = usePlayer();
@@ -87,7 +97,7 @@ function PlayPause() {
  * what opened it, Escape and the chevron shut it. It plays what the bar plays: nothing in here loads anything.
  */
 export function PlayerExpanded() {
-  const { current, duration, seek, seekBy, skip, hasNext, hasPrev, upNext, play } = usePlayer();
+  const { current, duration, seek, skip, hasNext, hasPrev, upNext, play } = usePlayer();
   const wanted = useSyncExternalStore(subscribePlayerExpanded, playerExpanded, () => false);
   const open = wanted && !!current;
   const { modalProps } = useModalDialog(open, close);
@@ -142,24 +152,28 @@ export function PlayerExpanded() {
                 {current.decision !== undefined && <KeepHeart track={current} />}
               </div>
 
-              <div role="group" aria-label="Playback" className="flex items-center justify-center gap-3 min-[390px]:gap-5 min-[1024px]:justify-between min-[1024px]:gap-0 min-[1024px]:px-2.5">
+              {/* Phones: Previous, Back 15, play or pause, Forward 15, Next (Design's pick 22). Laptops: the essentials close
+                  together, Previous, play or pause, Next (owner, 18 Nov: "controls are too wide apart"). */}
+              <div role="group" aria-label="Playback" className="flex items-center justify-center gap-3 min-[390px]:gap-5 min-[1024px]:gap-6">
                 <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={CONTROL}>
                   <SkipIcon back />
                 </button>
-                <button type="button" onClick={() => seekBy(-JUMP)} aria-label={`Back ${JUMP} seconds`} className={CONTROL}>
-                  <JumpIcon back />
-                </button>
+                <JumpButton back className="min-[1024px]:hidden" />
                 <PlayPause />
-                <button type="button" onClick={() => seekBy(JUMP)} aria-label={`Forward ${JUMP} seconds`} className={CONTROL}>
-                  <JumpIcon />
-                </button>
+                <JumpButton className="min-[1024px]:hidden" />
                 <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={CONTROL}>
                   <SkipIcon />
                 </button>
               </div>
 
-              <VolumeRow />
               <PlayerActions key={current.id} track={current} onLeave={close} />
+
+              {/* Laptops, the rest below: back and forward 15 seconds, then the volume across the row. */}
+              <div role="group" aria-label="More playback" className="hidden items-center gap-1 min-[1024px]:flex">
+                <JumpButton back />
+                <JumpButton />
+                <Volume />
+              </div>
             </div>
 
             <section aria-label="Up next" className="flex shrink-0 flex-col min-[1024px]:min-h-0 min-[1024px]:overflow-y-auto min-[1024px]:border-l min-[1024px]:border-(--glass-line) min-[1024px]:pl-[18px]">
