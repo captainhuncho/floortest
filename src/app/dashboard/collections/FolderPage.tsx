@@ -15,12 +15,12 @@ export const WIDE = "flex min-h-12 w-full items-center justify-center gap-2 roun
 
 /**
  * A folder's page, the same for a callout and a project (owner, 17 Nov: option 43): back and its tools across the top,
- * a big cover (centred on phones, on the left from lg), the name, one or two lines of facts, shuffle and play, one wide
- * button, then what's in it. Prepare is the same page (option 44): no back (it's a tab), a small label over the name,
- * and its own cover made from the covers inside.
+ * a big cover (option 57 I: the music, centred on phones, on the left from lg; it fades in over 240ms, at once with Reduce
+ * Motion), the name, one or two lines of facts, shuffle and play, one wide button, then what's in it. Prepare is the same
+ * page (option 44): no back (it's a tab), a small label over the name, and its own cover made from the covers inside.
  */
-export function FolderPage({ back, tools, art = null, cover, label, name, lines, play, action, children }: { back?: { href: string; label: string }; /** Link and ··· on the right of the top row. */ tools?: React.ReactNode; art?: string | null; /** Drawn in the cover's box instead of `art` (Prepare's crate). */ cover?: React.ReactNode; /** A small line over the name (Prepare). */ label?: string; name: string; lines: React.ReactNode[]; /** Shuffle and play. */ play?: React.ReactNode; /** The wide button. */ action?: React.ReactNode; children: React.ReactNode }) {
-  const box = "mx-auto h-40 w-40 rounded-[16px] lg:sticky lg:top-4 lg:mx-0 lg:aspect-square lg:h-auto lg:w-full";
+export function FolderPage({ back, tools, covers = [], empty, cover, label, name, lines, play, action, children }: { back?: { href: string; label: string }; /** Link and ··· on the right of the top row. */ tools?: React.ReactNode; /** Up to four art URLs (FolderCover). */ covers?: string[]; /** Nothing inside: the dashed cover. */ empty?: boolean; /** Drawn in the cover's box instead of `covers` (Prepare's crate). */ cover?: React.ReactNode; /** A small line over the name (Prepare). */ label?: string; name: string; lines: React.ReactNode[]; /** Shuffle and play. */ play?: React.ReactNode; /** The wide button. */ action?: React.ReactNode; children: React.ReactNode }) {
+  const box = "mx-auto size-[200px] rounded-[14px] motion-safe:animate-[badge-fade-in_240ms_ease-out] lg:sticky lg:top-4 lg:mx-0 lg:aspect-square lg:size-auto lg:w-full";
   return (
     <div className="page-gutter py-3 sm:py-6">
       <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-3 sm:gap-4">
@@ -38,7 +38,7 @@ export function FolderPage({ back, tools, art = null, cover, label, name, lines,
               {cover}
             </span>
           ) : (
-            <FolderCover art={art} className={box} />
+            <FolderCover covers={covers} empty={empty} eager className={box} />
           )}
           <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
             <div className="flex items-end gap-3">

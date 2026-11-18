@@ -2,6 +2,7 @@ import { trackUse } from "@/lib/usage";
 import { canRunCallouts } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { listDeskFolders } from "@/lib/desk-folders";
+import { calloutCovers, collectionArtUrl } from "@/lib/covers";
 import { listFolders } from "@/lib/library";
 import { recordId } from "@/lib/ids";
 import { switchOn } from "@/lib/switches";
@@ -37,7 +38,7 @@ export default async function Collections({ searchParams }: { searchParams: Prom
   const canManage = user.role !== "member";
   // Making and editing callouts: owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov). The actions check too.
   const callouts = await canRunCallouts(user);
-  const [collections, sharing, viaLinks, folders] = await Promise.all([collectionsFor(user.id), switchOn("sharing"), sharedLinksFor(user), listDeskFolders(user, "callout")]);
+  const [collections, sharing, viaLinks, folders, covers] = await Promise.all([collectionsFor(user.id), switchOn("sharing"), sharedLinksFor(user), listDeskFolders(user, "callout"), calloutCovers(user)]);
   // Inside a folder (?folder=), only its callouts; at the top, the folders and then what is in none.
   const folderId = recordId(params.folder);
   const folder = folderId === null ? null : (folders.find((f) => f.id === folderId) ?? null);
@@ -65,7 +66,7 @@ export default async function Collections({ searchParams }: { searchParams: Prom
           at: c.created_at,
           node: (
             <CollectionTile
-              c={{ id: c.id, name: c.name, closesAt: c.closes_at, closesLabel: c.closes_at ? fmtDay(c.closes_at) : null, count: c.count, needsReview: c.needs_review, kept: c.kept, briefWanted: c.brief_wanted, bpmMin: c.bpm_min, bpmMax: c.bpm_max, briefNote: c.brief_note, allowSharing: !!c.allow_sharing, sharingAvailable: sharing, genres, brief: briefItems(c, genres, user.tz), maxTracks: c.max_tracks, full: !!c.full_at, art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null, canCap: canCapCallouts(user.plan) }}
+              c={{ id: c.id, name: c.name, closesAt: c.closes_at, closesLabel: c.closes_at ? fmtDay(c.closes_at) : null, count: c.count, needsReview: c.needs_review, kept: c.kept, briefWanted: c.brief_wanted, bpmMin: c.bpm_min, bpmMax: c.bpm_max, briefNote: c.brief_note, allowSharing: !!c.allow_sharing, sharingAvailable: sharing, genres, brief: briefItems(c, genres, user.tz), maxTracks: c.max_tracks, full: !!c.full_at, art: c.art_key ? collectionArtUrl(c.id, c.art_key) : null, covers: covers.get(c.id) ?? [], canCap: canCapCallouts(user.plan) }}
               receiving={c.id === user.active_collection_id}
               closed={isClosed(c)}
               canManage={canManage}
