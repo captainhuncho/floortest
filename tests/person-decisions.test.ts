@@ -51,3 +51,28 @@ test("per-person rules: Keep, Not for me, clear and undo run as the signed-in pe
   assert.equal(await decision(kofiTrack.id), null);
   assert.equal(await events(kofiTrack.id), 0);
 });
+
+test("keeping a track that's already kept adds no second history entry, and its undo keeps it kept", async () => {
+  const { q, asPerson } = await import("../src/lib/db");
+  const { decide, undoDecision } = await import("../src/lib/review");
+  const now = Date.now();
+  const id = (await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES ('rekeep@decide.io', 'h', 'rk', 'rekeep', 'free', 'UTC', ?, ?) RETURNING id",
+    now, now,
+  ))!.id;
+  const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 'rk@send.io', 'S', ?) RETURNING id", id, now))!.id;
+  const t = (await q.get<{ id: number; sender_id: number }>(
+    "INSERT INTO tracks (user_id, sender_id, token, title, artist, original_name, mime, size, created_at) VALUES (?, ?, 'tok-rekeep', 'T', 'A', 't.wav', 'audio/wav', 1, ?) RETURNING id, sender_id",
+    id, sender, now,
+  ))!;
+  const desk = { id, actor_id: id, role: "owner" } as never;
+  const kept = (n: number) => q.count("SELECT COUNT(*)::int AS n FROM events WHERE track_id = ? AND type = 'kept'", n);
+
+  await asPerson(id, () => decide(desk, t as never, "kept"));
+  const again = await asPerson(id, () => decide(desk, t as never, "kept"));
+  assert.ok(again);
+  assert.equal(await kept(t.id), 1, "one You kept, not two");
+  await asPerson(id, () => undoDecision(desk, t as never, again.prev, again.eventId));
+  assert.equal((await q.get<{ d: string | null }>("SELECT decision AS d FROM tracks WHERE id = ?", t.id))!.d, "kept");
+  assert.equal(await kept(t.id), 1, "the first keep's entry stays");
+});
