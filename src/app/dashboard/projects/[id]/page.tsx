@@ -13,8 +13,8 @@ import { ProjectTools } from "../ProjectsUI";
 export const metadata = { title: "Project — FloorTest" };
 
 /**
- * A project's folder page (owner, 17 Nov: option 43; the same page as a callout's): the folder shape for a cover
- * (projects have no artwork), its name, its tracks and length in one line, shuffle and play, "Add tracks", then its
+ * A project's folder page (owner, 17 Nov: option 43; the same page as a callout's): the plain music tile for a cover
+ * (option 57 I; project tracks carry no artwork yet), a dashed one while it's empty, its name, its tracks and length in one line, shuffle and play, "Add tracks", then its
  * tracks, numbered.
  */
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +29,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     <FolderPage
       back={{ href: "/dashboard/projects", label: "Projects" }}
       tools={canEdit && <ProjectTools p={{ id: project.id, name: project.name, count: project.count, duration: project.duration }} />}
-      art={null}
+      covers={[]}
+      empty={!project.count}
       name={project.name}
       lines={[project.count ? `Project · ${trackCount(project.count)}${project.duration ? ` · ${fmtLength(project.duration)}` : ""}` : "Project · no tracks yet"]}
       play={<PlayAll queue={items.map(musicToPlayer)} name={project.name} />}

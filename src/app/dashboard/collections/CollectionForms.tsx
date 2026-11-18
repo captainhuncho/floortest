@@ -42,6 +42,8 @@ type C = {
   full: boolean;
   /** URL of the collection's artwork, if it has one. */
   art: string | null;
+  /** Its cover in the list and on its page: up to four art URLs, its own artwork first (src/lib/covers.ts). */
+  covers: string[];
 };
 
 const toDateInput = (ts: number | null) => {
@@ -287,7 +289,8 @@ export function CollectionTile({ c, receiving, closed, canManage = true, canEdit
       href={`/dashboard/collections/${c.id}`}
       name={c.name}
       spoken={`Open ${c.name}, callout, ${state}, ${trackCount(c.count)}`}
-      art={c.art}
+      covers={c.covers}
+      empty={c.count === 0 && c.covers.length === 0}
       line={
         <>
           <CalloutState live={live} closed={closed} full={c.full} closesLabel={c.closesLabel} /> · Callout · {trackCount(c.count)}
