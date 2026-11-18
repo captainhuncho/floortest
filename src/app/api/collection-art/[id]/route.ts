@@ -12,6 +12,7 @@ import { readFormUpTo } from "@/lib/bounded-form";
 import { storage } from "@/lib/storage";
 import { reserveFile, settleFile } from "@/lib/file-reservations";
 import { quarantined, recordDigest } from "@/lib/file-digests";
+import { thumbResponse, wantsThumb } from "@/lib/art-thumb";
 
 export const runtime = "nodejs";
 
@@ -72,7 +73,7 @@ export async function DELETE(_req: Request, ctx: RouteContext<"/api/collection-a
  * The artwork: for its owner, or for anyone while the collection is the one their link is receiving into (it shows
  * on the public link page). The URL carries ?v=<key>, so responses can be cached hard.
  */
-export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
+export async function GET(req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const c = await collectionOf((await ctx.params).id);
   if (!c?.art_key) return new Response("Not found", { status: 404 });
   const owner = await q.get<{ active_collection_id: number | null }>("SELECT active_collection_id FROM users WHERE id = ? AND suspended_at IS NULL", c.user_id);
@@ -81,6 +82,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/
   if (!isPublic && viewer?.id !== c.user_id) return new Response("Not found", { status: 404 });
   // Artwork that failed its fingerprint check is held back, like every other stored file.
   if (await quarantined(c.art_key)) return new Response("Not found", { status: 404 });
+  // ?size=thumb: a small copy for list rows and tiles, after the same checks, kept as long as the redirect would be.
+  if (wantsThumb(req)) return thumbResponse(c.art_key, 600);
   const store = await storage();
   const type = TYPES[c.art_key.split(".").pop() as keyof typeof TYPES] ?? "application/octet-stream";
   // Private artwork: an hour-long link, like the audio, so access that ends (a teammate removed) ends within the hour.
