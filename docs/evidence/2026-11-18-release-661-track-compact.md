@@ -36,5 +36,5 @@ owner tried it on `mobile-next`: "I tried the compact track page", then "Good, r
 Live: Floor, Analytics, Prepare, the sign-in screens, Collections covers, Settings, the Projects rights change, the
 wave detail, the delete-account steps, the expanded player, the email erase limits and the compact track page. On
 `mobile-next` for the owner's try, e2e passed and Safety cleared: folder covers in the players (#663), Send music
-option 58 A (#662). Waiting for Safety: the picomatch audit exception removal (#664). In tests: the full player's
+option 58 A (#662). Ready for the owner's word, Safety cleared and CI green: the picomatch audit exception removal (#664). In tests: the full player's
 volume reveal (`build/player-volume-reveal`).
