@@ -19,7 +19,8 @@ import type { CollectionsFilter } from "./CollectionsTabs";
  * holds only callouts, a project folder only projects; the server checks every change (actions/folders.ts).
  */
 export type FolderKind = "callout" | "project";
-export type FolderView = { id: number; name: string; count: number };
+/** preview: up to four of what's inside, newest first; their art makes the folder's cover (option 57 I). */
+export type FolderView = { id: number; name: string; count: number; preview: { art: string | null }[] };
 type Item = { label: string; icon: "folder" | "tag" | "x"; run: () => void };
 
 const BASE: Record<FolderKind, string> = { callout: "/dashboard/collections", project: "/dashboard/projects" };
@@ -240,7 +241,7 @@ export function FolderArea({ view, folder, canEdit, canCreate = canEdit, label, 
   );
 }
 
-/** One of your own folders in the list: the folder shape, its name and how much is in it. The whole row opens it; ··· renames or deletes. */
+/** One of your own folders in the list: the covers of what's inside (newest first), its name and how much is in it. The whole row opens it; ··· renames or deletes. */
 export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderView; canEdit: boolean }) {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
@@ -253,7 +254,8 @@ export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderVi
       href={`${BASE[kind]}?folder=${f.id}`}
       name={f.name}
       spoken={`Open ${f.name}, folder, ${holds}`}
-      art={null}
+      covers={f.preview.flatMap((p) => (p.art ? [p.art] : []))}
+      empty={f.count === 0}
       line={`Folder · ${holds}`}
       menu={
         canEdit && (

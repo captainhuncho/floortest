@@ -106,12 +106,14 @@ export async function submitLogin(page: Page, email: string, landing: RegExp, pa
 export type NewAccount = { kind: string; first: string; last: string; handle: string; email: string; password: string };
 
 /**
- * Walks the guided sign-up (/signup): welcome, name, link, role, email and password, then "Create my link". With
+ * Walks the guided sign-up (/signup): the welcome story (skipped to its end), name, link, role, email and password, then "Create my link". With
  * `finish` (the default) it also goes through check-your-email, skips the photo and opens the desk; without it, it
  * stops after "Create my link" so a test can read the answer.
  */
 export async function signUp(page: Page, a: NewAccount, { finish = true }: { finish?: boolean } = {}) {
   await page.goto("/signup");
+  // The welcome story plays first; its end card is the only place that asks.
+  await page.getByRole("button", { name: "Skip to the end" }).click();
   await page.getByRole("button", { name: "Claim your link" }).click();
   await page.getByLabel("First name").fill(a.first);
   await page.getByLabel("Surname").fill(a.last);

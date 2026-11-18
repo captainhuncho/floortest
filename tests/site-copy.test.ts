@@ -33,7 +33,7 @@ test("site copy: new fields start with the wording the page had", () => {
     ["Sat 19:30", "Into the crate", "Rekordbox XML and M3U8", "Downloaded"],
     ["Sun 01:12", "On the floor", null, "Played out"],
   ]);
-  assert.equal(SITE_PAGES.auth.fields.login_intro.start, "Sign in to your music desk.");
+  assert.equal(SITE_PAGES.auth.fields.login_intro.start, "", "log in shows no intro line unless one is saved");
   assert.equal(SITE_PAGES.pricing.fields.pricing_back.start, "← Back to home");
   assert.equal(SITE_PAGES.receipt.fields.history_title.start, "What's happened");
   assert.equal(SITE_PAGES.link.fields.receiving_for.start, "Receiving for");

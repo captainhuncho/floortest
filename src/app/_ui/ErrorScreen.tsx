@@ -20,7 +20,8 @@ export type ErrorProps = { error: Error & { digest?: string }; retry?: () => voi
  * stack or digest, and no framework name: the error and its digest go to Sentry and the server log, where the digest
  * matches the server's own log line. The message is read only to spot the after-update case, never shown.
  * `page`: the whole page (logo, centred, follows the device's light or dark). Without it, a block for inside a frame
- * that already has its own (the desk keeps its menu). `home`: the way out.
+ * that already has its own (the desk keeps its menu). `home`: the way out (null on the page that is the way out).
+ * `title` and `body`: a page's own words for a failed load (the Floor's); the update case keeps its own.
  */
 export function ErrorScreen({
   error,
@@ -29,7 +30,9 @@ export function ErrorScreen({
   page = true,
   home = { href: "/", label: "Go to FloorTest" },
   ops = false,
-}: ErrorProps & { page?: boolean; home?: { href: string; label: string }; ops?: boolean }) {
+  title = "This page didn't load",
+  body,
+}: ErrorProps & { page?: boolean; home?: { href: string; label: string } | null; ops?: boolean; title?: string; body?: React.ReactNode }) {
   const stale = isStaleDeploy(error);
   const reloading = useBrowserValue(() => stale && reloadOnce(), false);
 
@@ -62,8 +65,8 @@ export function ErrorScreen({
     : {
         icon: "x" as const,
         tone: "off" as const,
-        title: "This page didn't load",
-        children: (
+        title,
+        children: body ?? (
           <p>
             Try again. If it keeps happening,{" "}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- after an error, a full page load is the safer way out */}
@@ -78,9 +81,11 @@ export function ErrorScreen({
             <button type="button" onClick={again} className={PRIMARY}>
               Try again
             </button>
-            <Link href={home.href} className={SECONDARY}>
-              {home.label}
-            </Link>
+            {home && (
+              <Link href={home.href} className={SECONDARY}>
+                {home.label}
+              </Link>
+            )}
           </>
         ),
       };
