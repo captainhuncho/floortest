@@ -606,6 +606,8 @@ export async function forgetLinkEmail(db: Queryable, email: string) {
   await db.run("DELETE FROM link_events WHERE lower(email) = ?", e);
   await db.run("DELETE FROM link_requests WHERE lower(email) = ? AND status NOT IN ('declined', 'blocked')", e);
   await db.run("DELETE FROM link_codes WHERE lower(email) = ?", e);
+  // The per-email code and request limits are keyed by the address; they would expire by themselves within 2 days.
+  await db.run("DELETE FROM rate_events WHERE bucket IN ('link_code_email', 'link_request_email') AND lower(key) = ?", e);
 }
 
 /** On account deletion: the account's place on other people's links, and its visits, requests and activity. */
