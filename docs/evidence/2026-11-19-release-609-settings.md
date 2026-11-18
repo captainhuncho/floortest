@@ -36,7 +36,7 @@ earlier e2e ran on.
 
 ## Live versus unfinished
 Live: Floor (#596), Analytics (#599), Prepare (#606), the sign-in screens (#617), Collections covers (#621) and
-Settings. Ready for the owner's word: Projects rights tick (#581, legal item 13 confirmed by the lawyer), the e2e test
+Settings. Ready for the owner's word: Projects rights tick (#581; legal item 13: the owner told the Backend session on 19 Nov that the lawyer confirmed it, to be confirmed by the owner in the Desk), the e2e test
 fix (#635, after #642). Tried or on `mobile-next` for the owner's try, e2e passed: Review Queue keeps its place
 (#601), the feedback card fix (#642). On `mobile-next`, e2e queued: the coming-soon page with day glass (#625), the
 expanded player (#600). Waiting for the owner's try and e2e: the sign-in day glass (#641). Next build: wave detail
