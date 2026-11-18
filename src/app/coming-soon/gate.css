@@ -97,16 +97,17 @@
   }
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .af-page.theme-system .cs-sheet {
-      background: rgb(252 250 245 / 0.74);
-      -webkit-backdrop-filter: blur(20px) saturate(1.2);
-      backdrop-filter: blur(20px) saturate(1.2);
+      /* a little see-through, so the photo shows behind (owner, 18 Nov: was .74, blur 20px) */
+      background: rgb(252 250 245 / 0.55);
+      -webkit-backdrop-filter: blur(12px) saturate(1.3);
+      backdrop-filter: blur(12px) saturate(1.3);
     }
   }
   @media (prefers-reduced-transparency: reduce) {
     .af-page.theme-system .cs-sheet { background: rgb(252 250 245); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
-  /* field edge 0.55, not the spec's 0.18: 0.18 measured 1.1-1.3:1 against the card; 0.55 is 3.1-3.5:1 (18 Nov) */
-  .af-page.theme-system .cs-sheet .af-fld { background: rgb(255 255 255 / 0.9); border-color: rgb(18 19 16 / 0.55); }
+  /* field edge 0.7: on the see-through card 0.55 measured 2.6:1 on phones; 0.7 reaches 3:1 (owner via DESIGN, 18 Nov) */
+  .af-page.theme-system .cs-sheet .af-fld { background: rgb(255 255 255 / 0.9); border-color: rgb(18 19 16 / 0.7); }
   .af-page.theme-system .cs-sheet .af-fld.af-bad { border-color: #e5484d; }
   .af-page.theme-system .cs-top .aw-login {
     color: #121310;
