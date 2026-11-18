@@ -36,20 +36,31 @@ function JumpIcon({ back = false }: { back?: boolean }) {
   );
 }
 
-/** Laptops: the speaker (mute), the slider and the level, always on show (Design: never behind a hover). */
-function VolumeRow() {
+/** Back or forward 15 seconds. Phones: either side of play or pause. Laptops: the row under Keep and Not for me. */
+function JumpButton({ back = false, className = "" }: { back?: boolean; className?: string }) {
+  const { seekBy } = usePlayer();
+  return (
+    <button type="button" onClick={() => seekBy(back ? -JUMP : JUMP)} aria-label={`${back ? "Back" : "Forward"} ${JUMP} seconds`} className={`${CONTROL} ${className}`}>
+      <JumpIcon back={back} />
+    </button>
+  );
+}
+
+/** Laptops: the speaker (mute), the slider and the level, always on show (Design: never behind a hover). The slider
+ * takes the rest of the bottom row (owner, 18 Nov: "the volume should be below, it should continue"). */
+function Volume() {
   const { volume, muted, setVolume } = usePlayer();
   const level = muted ? 0 : volume;
   const percent = `${Math.round(level * 100)}%`;
   return (
-    <div className="hidden items-center justify-center gap-2 min-[1024px]:flex">
+    <div className="flex min-w-0 flex-1 items-center gap-2">
       <button type="button" onClick={() => setVolume(volume, !muted)} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} className={CONTROL}>
         <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M4 9.5h3l4.5-3.7v12.4L7 14.5H4z" fill="currentColor" />
           {level === 0 ? <path d="m16 9.5 5 5M21 9.5l-5 5" /> : <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11" />}
         </svg>
       </button>
-      <input type="range" min={0} max={1} step={0.05} value={level} onChange={(e) => setVolume(Number(e.target.value), false)} aria-label="Volume" aria-valuetext={percent} className="h-11 w-[200px] cursor-pointer accent-bone" />
+      <input type="range" min={0} max={1} step={0.05} value={level} onChange={(e) => setVolume(Number(e.target.value), false)} aria-label="Volume" aria-valuetext={percent} className="h-11 min-w-0 flex-1 cursor-pointer accent-bone" />
       <span aria-hidden className="w-10 text-[12px] text-mute tnum">
         {percent}
       </span>
@@ -58,8 +69,7 @@ function VolumeRow() {
 }
 
 /**
- * Play or pause, in the middle of the row between back and forward 15 seconds (owner, 18 Nov; the cover beside the
- * title is art only in here). Focus starts on it when the player opens. The buffering ring shows while audio loads.
+ * Play or pause, in the middle of the playback row (owner, 18 Nov; the cover beside the title is art only in here). Focus starts on it when the player opens. The buffering ring shows while audio loads.
  */
 function PlayPause() {
   const { current, playing, buffering, toggle } = usePlayer();
@@ -87,7 +97,7 @@ function PlayPause() {
  * what opened it, Escape and the chevron shut it. It plays what the bar plays: nothing in here loads anything.
  */
 export function PlayerExpanded() {
-  const { current, duration, seek, seekBy, skip, hasNext, hasPrev, upNext, play } = usePlayer();
+  const { current, duration, seek, skip, hasNext, hasPrev, upNext, play } = usePlayer();
   const wanted = useSyncExternalStore(subscribePlayerExpanded, playerExpanded, () => false);
   const open = wanted && !!current;
   const { modalProps } = useModalDialog(open, close);
@@ -116,18 +126,22 @@ export function PlayerExpanded() {
             <p className="truncate text-center text-[12px] font-semibold text-mute">{sourceLabel(current)}</p>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-[18px] pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-1.5 min-[1024px]:grid min-[1024px]:grid-cols-[minmax(0,1fr)_240px] min-[1024px]:gap-[26px] min-[1024px]:overflow-hidden min-[1024px]:px-[26px] min-[1024px]:pb-[22px] min-[1024px]:pt-2.5">
-            <div className="flex min-w-0 flex-col gap-3 min-[1024px]:justify-center min-[1024px]:gap-3.5">
-              <p className="flex items-baseline justify-center gap-2.5 tnum">
-                <PlayerClock className="text-[28px] font-bold leading-none text-bone" />
-                <span className="text-[18px] leading-none text-mute">{fmtTime(d)}</span>
-              </p>
-              {/* Short screens (a phone on its side): the wave drops to 80px so Keep and Not for me stay on screen. */}
-              <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} className="[@media(max-height:500px)]:h-20!" />
+          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-[18px] pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-1.5 min-[1024px]:grid min-[1024px]:grid-cols-[minmax(0,1fr)_240px] min-[1024px]:gap-[26px] min-[1024px]:overflow-hidden min-[1024px]:px-[26px] min-[1024px]:pb-[22px] min-[1024px]:pt-2.5">
+            <div className="flex min-w-0 flex-col gap-5 min-[1024px]:justify-center min-[1024px]:gap-3.5 [@media(max-height:500px)]:gap-3">
+              {/* Under 1024px (owner, 16 Nov: "space at the top of the player", so the wave has its moment): 56px of nothing
+                  over the time, the time at the left at 30px, a 124px wave. Short screens (a phone on its side) get no space,
+                  an 80px wave, a 44px cover and 12px gaps, so Keep and Not for me stay on screen. */}
+              <div data-player-top className="flex flex-col gap-3 pt-14 min-[1024px]:gap-3.5 min-[1024px]:pt-0 [@media(max-height:500px)]:pt-0">
+                <p className="flex items-baseline gap-2 tnum min-[1024px]:justify-center min-[1024px]:gap-2.5">
+                  <PlayerClock className="text-[30px] font-bold leading-none text-bone min-[1024px]:text-[28px] [@media(max-height:500px)]:text-[28px]" />
+                  <span className="text-[14px] leading-none text-mute min-[1024px]:text-[18px]">{fmtTime(d)}</span>
+                </p>
+                <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} className="max-[1023.98px]:h-[124px]! [@media(max-height:500px)]:h-20!" />
+              </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3 min-[1024px]:gap-2.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0 rounded-[10px]" />
+                <img src="/icons/mini-art.svg" alt="" data-player-cover className="size-14 shrink-0 rounded-xl min-[1024px]:size-11 min-[1024px]:rounded-[10px] [@media(max-height:500px)]:size-11" />
                 {/* The title opens the track's page, whatever its state (Design, 18 Nov). */}
                 <Link href={trackHref(current)} onClick={close} data-open-track className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-md">
                   <h2 id={titleId} className="truncate text-[18px] font-bold leading-6 text-bone">
@@ -138,24 +152,28 @@ export function PlayerExpanded() {
                 {current.decision !== undefined && <KeepHeart track={current} />}
               </div>
 
-              <div role="group" aria-label="Playback" className="flex items-center justify-between px-2.5">
+              {/* Phones: Previous, Back 15, play or pause, Forward 15, Next (Design's pick 22). Laptops: the essentials close
+                  together, Previous, play or pause, Next (owner, 18 Nov: "controls are too wide apart"). */}
+              <div role="group" aria-label="Playback" className="flex items-center justify-center gap-3 min-[390px]:gap-5 min-[1024px]:gap-6">
                 <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={CONTROL}>
                   <SkipIcon back />
                 </button>
-                <button type="button" onClick={() => seekBy(-JUMP)} aria-label={`Back ${JUMP} seconds`} className={CONTROL}>
-                  <JumpIcon back />
-                </button>
+                <JumpButton back className="min-[1024px]:hidden" />
                 <PlayPause />
-                <button type="button" onClick={() => seekBy(JUMP)} aria-label={`Forward ${JUMP} seconds`} className={CONTROL}>
-                  <JumpIcon />
-                </button>
+                <JumpButton className="min-[1024px]:hidden" />
                 <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={CONTROL}>
                   <SkipIcon />
                 </button>
               </div>
 
-              <VolumeRow />
               <PlayerActions key={current.id} track={current} onLeave={close} />
+
+              {/* Laptops, the rest below: back and forward 15 seconds, then the volume across the row. */}
+              <div role="group" aria-label="More playback" className="hidden items-center gap-1 min-[1024px]:flex">
+                <JumpButton back />
+                <JumpButton />
+                <Volume />
+              </div>
             </div>
 
             <section aria-label="Up next" className="flex shrink-0 flex-col min-[1024px]:min-h-0 min-[1024px]:overflow-y-auto min-[1024px]:border-l min-[1024px]:border-(--glass-line) min-[1024px]:pl-[18px]">
