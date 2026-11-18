@@ -139,13 +139,12 @@ function VolumeControl() {
 }
 
 /** The cover is the play button: the art with a play or pause mark on it, and the buffering ring while audio loads. */
-export function CoverPlay({ focusFirst = false }: { focusFirst?: boolean }) {
+export function CoverPlay() {
   const { current, playing, buffering, toggle } = usePlayer();
   if (!current) return null;
   return (
     <button
       type="button"
-      data-autofocus={focusFirst ? "" : undefined}
       onClick={toggle}
       className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-[10px]"
       aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}

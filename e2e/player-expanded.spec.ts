@@ -34,13 +34,15 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   await expect(player).toHaveAccessibleName(title);
   // The wave is 150px tall.
   expect(await player.getByRole("slider", { name: /^Seek / }).evaluate((el) => Math.round(el.getBoundingClientRect().height))).toBe(150);
-  // Top row: the chevron, then where the track sits. The cover is the play button, and focus starts on it.
+  // Top row: the chevron, then where the track sits. Play or pause sits in the transport row, and focus starts on it.
   await expect(player.getByText(/^(Waiting|Playing from (Kept|Not for me))$/)).toBeVisible();
   await expect(player.locator("[data-autofocus]")).toBeFocused();
   await expect(player.locator("[data-autofocus]")).toHaveAccessibleName(/^(Play|Pause) /);
-  expect(await player.locator("[data-autofocus] img").count()).toBe(1);
-  // Previous, Back 15, Forward 15, Next, in that order.
-  expect(await player.getByRole("group", { name: "Playback" }).getByRole("button").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")))).toEqual(["Previous track", "Back 15 seconds", "Forward 15 seconds", "Next track"]);
+  // The cover beside the title is art only in here.
+  expect(await player.locator("[data-autofocus] img").count()).toBe(0);
+  expect(await player.locator("[data-autofocus]").evaluate((el) => Math.round(el.getBoundingClientRect().width))).toBe(56);
+  // Previous, Back 15, play or pause in the middle, Forward 15, Next, in that order.
+  expect(await player.getByRole("group", { name: "Playback" }).getByRole("button").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")!.replace(/^(Play|Pause) .*/, "Play or pause")))).toEqual(["Previous track", "Back 15 seconds", "Play or pause", "Forward 15 seconds", "Next track"]);
   // Volume is on show with its level, with no pointer near it.
   await page.mouse.move(5, 5);
   const volume = player.getByRole("slider", { name: "Volume" });
