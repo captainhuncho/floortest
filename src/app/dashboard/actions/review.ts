@@ -92,9 +92,10 @@ export async function clearKept() {
   done();
 }
 
-/** Kept tracks only: tells the sender it was played in a set. */
+/** Kept tracks only: tells the sender it was played in a set. DJ desks only, owner and A&R / Admin, as the batch below. */
 export async function playedOut(trackId: number, note: string) {
   const u = await requireUser();
+  if (!canMarkPlayedOut(u)) return false;
   const t = await ownedTrack(u, trackId);
   if (!t || t.decision !== "kept") return false;
   await trackUse(u.id, "played_out");

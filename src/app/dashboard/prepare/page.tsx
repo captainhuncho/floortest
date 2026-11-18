@@ -1,104 +1,125 @@
-import { EmptyState } from "@/components/Feedback";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { canMarkPlayedOut } from "@/lib/played-out-prompt";
-import { CARD, Chip, Icon, PageHead, SectionHead, StatTile } from "@/components/Kit";
-import { ExportButton } from "../ExportButton";
+import { toPlayer } from "@/lib/player-track";
+import { fmtLength, FolderPage, WIDE } from "../collections/FolderPage";
+import { PlayAll } from "../collections/PlayAll";
 import { loadRows } from "../rows";
 import { ClearKept } from "./ClearKept";
-import { KeptCards } from "./KeptCards";
+import { DownloadCrate } from "./DownloadCrate";
+import { crateExtras } from "./KeptCards";
+import { KeptCardsList } from "./KeptCardsList";
 import { GHOST_BTN } from "./buttons";
 import { OfflineSave } from "./OfflineSave";
 
 export const metadata = { title: "Prepare — FloorTest" };
 
+/** A quiet text link (Mark what I played on phones; Start a new batch has the same look). */
+const QUIET_LINK = "inline-flex min-h-11 items-center rounded-[10px] text-[13px] font-medium text-mute underline-offset-4 transition-colors hover:text-bone hover:underline";
+
 /**
- * Everything you kept, ready to take to the booth, plus crate downloads (owner, 30 Oct: the redesign mocks). Three
- * counts on top, then the crate card (download, Files only, new batch) and the kept list. From 1280px the list sits on
- * the left and the crate and offline cards on the right; on phones the crate comes first, since downloading is the job.
+ * The crate's cover: up to four covers from inside it, two by two. A crate with fewer than four shows the first one
+ * whole; with none (or nothing kept) the box stays a plain square.
+ */
+function CrateCover({ arts }: { arts: string[] }) {
+  if (!arts.length) return null;
+  const tiles = arts.length === 4 ? arts : arts.slice(0, 1);
+  return (
+    <span className={`grid size-full ${tiles.length === 4 ? "grid-cols-2 grid-rows-2" : ""}`}>
+      {tiles.map((src) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={src} src={src} alt="" decoding="async" className="size-full min-h-0 object-cover" />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Your kept tracks as one crate, laid out like a folder's page in Collections (owner, 17 Nov: option 44). Downloading
+ * is the main job, so Download crate is the one lime button; the counts are two lines under the name. Phones: cover,
+ * name, Download crate, Save on this phone (the phone apps), the tracks, then Start a new batch as a quiet link. From
+ * lg the cover sits on the left and the three actions share one row.
  */
 export default async function PrepareForSet() {
   const user = await requireUser();
   await trackUse(user.id, "prepare");
   const kept = await loadRows(user.id, { inSet: true, actor: user.actor_id });
+  const { status, senders, arts } = await crateExtras(user.id, kept);
   const canMark = canMarkPlayedOut(user);
   // Starting a new batch is for the owner and admins.
   const canClear = user.role !== "member";
   const n = kept.length;
+
+  if (!n)
+    return (
+      <FolderPage
+        cover={<CrateCover arts={[]} />}
+        label="Prepare"
+        name="Your crate"
+        lines={["Nothing kept yet"]}
+        action={
+          <>
+            <p className="text-[13px] leading-[1.5] text-mute">Tracks you keep in the Queue land here, ready to download with a playlist.</p>
+            <Link href="/dashboard/review" className={WIDE}>
+              Open the Queue
+            </Link>
+          </>
+        }
+      >
+        <OfflineSave count={0} />
+      </FolderPage>
+    );
+
   const downloaded = kept.filter((r) => r.downloaded).length;
-  const prepped = kept.filter((r) => r.energy || r.cueCount).length;
+  const playedOut = kept.filter((r) => status[r.id]?.at).length;
+  // The total length only when every track has one stored.
+  const length = kept.every((r) => r.duration) ? kept.reduce((sum, r) => sum + (r.duration ?? 0), 0) : 0;
+  const counts = [downloaded ? `${downloaded} downloaded` : null, playedOut ? `${playedOut} played out` : null].filter(Boolean).join(" · ");
+  const mark = canMark ? "/dashboard/played-out" : null;
 
   return (
-    <div className="page-gutter py-4 sm:py-7">
-      <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 sm:gap-5 xl:max-w-6xl">
-        <PageHead label="Every track you keep lands here, ready to download with a Rekordbox playlist." title="Prepare" />
-
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <StatTile icon="heart" label="Kept, ready" value={String(n)} />
-          <StatTile icon="dl" label="Downloaded" value={String(downloaded)} chip={n ? <Chip>of {n}</Chip> : undefined} />
-          {/* Phones: the third tile takes the whole row rather than leaving a gap. */}
-          <div className="col-span-2 grid sm:col-span-1">
-            <StatTile icon="star" label="Prepped" value={String(prepped)} chip={n ? <Chip>of {n}</Chip> : undefined} />
-          </div>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:grid-rows-[auto_1fr] xl:items-start">
-          {/* Every option visible, same size: people use different ones. Starting a new batch is quiet, and still confirms. */}
-          <section aria-labelledby="crate-h" className={`${CARD} flex flex-col gap-2.5 p-3 xl:col-start-2 xl:row-start-1`}>
-            <SectionHead id="crate-h" icon="prep" title="Download your crate" />
-            <ExportButton
-              collectionId={null}
-              count={n}
-              label="Download kept"
-              icon="dl"
-              align="start"
-              showCount={false}
-              buttonClassName="btn-lime w-full min-h-11 rounded-[13px]"
-            />
-            <div className={canClear ? "grid grid-cols-2 gap-2" : "grid"}>
-              {n > 0 ? (
-                // eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download, not a page
-                <a href="/api/export?files=1" className={GHOST_BTN} title="The original audio files, no playlist or XML">
-                  Files only
-                </a>
-              ) : (
-                <span className={`pointer-events-none opacity-40 ${GHOST_BTN}`}>Files only</span>
-              )}
-              {canClear && <ClearKept count={n} />}
-            </div>
-            {canClear && <p className="text-[11px] leading-[1.45] text-faint">A new batch empties Prepare. Tracks stay Kept and still count toward your desk.</p>}
-          </section>
-
-          <section aria-labelledby="kept-h" className={`${CARD} flex min-w-0 flex-col gap-1.5 p-3 xl:col-start-1 xl:row-span-2 xl:row-start-1`}>
-            <SectionHead
-              id="kept-h"
-              title={
-                <>
-                  Kept tracks <span className="text-[13px] font-medium text-mute tnum">{n}</span>
-                </>
-              }
-              aside={
-                canMark && n > 0 ? (
-                  <Link href="/dashboard/played-out" className={`${GHOST_BTN} gap-1.5 px-3!`}>
-                    <Icon name="check" className="size-4" />
-                    Mark what I played
-                  </Link>
-                ) : undefined
-              }
-            />
-            {n ? (
-              <KeptCards rows={kept} canMark={canMark} />
-            ) : (
-              <EmptyState action={{ href: "/dashboard/review", label: "Open the Review Queue" }}>
-                Nothing ready for your set yet. Tracks you keep in the Review Queue show up here.
-              </EmptyState>
+    <FolderPage
+      cover={<CrateCover arts={arts} />}
+      label="Prepare"
+      name="Your crate"
+      lines={[`${n} kept ${n === 1 ? "track" : "tracks"}${length ? ` · ${fmtLength(length)}` : ""}`, ...(counts ? [counts] : [])]}
+      play={<PlayAll queue={kept.map(toPlayer)} name="your crate" />}
+      action={
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <DownloadCrate count={n} />
+          {/* From lg the other two actions share this row; on phones they sit by the tracks and under them. */}
+          <span className="hidden lg:contents">
+            {mark && (
+              <Link href={mark} className={`${GHOST_BTN} min-h-12 w-auto! rounded-[14px]! px-4!`}>
+                Mark what I played
+              </Link>
             )}
-          </section>
-
-          <OfflineSave count={n} className="xl:col-start-2 xl:row-start-2" />
+            {canClear && <ClearKept count={n} />}
+          </span>
         </div>
-      </div>
-    </div>
+      }
+    >
+      <OfflineSave count={n} />
+      <section aria-labelledby="tracks-h" className="flex flex-col gap-1">
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <h2 id="tracks-h" className="text-[13px] font-semibold text-mute">
+            Tracks
+          </h2>
+          {mark && (
+            <Link href={mark} className={`${QUIET_LINK} lg:hidden`}>
+              Mark what I played
+            </Link>
+          )}
+        </div>
+        <KeptCardsList rows={kept} status={status} senders={senders} canMark={canMark} />
+      </section>
+      {canClear && (
+        <div className="flex flex-col items-start lg:hidden">
+          <ClearKept count={n} />
+          <p className="text-[12px] leading-[1.45] text-faint">Empties Prepare. Tracks stay Kept and still count toward your desk.</p>
+        </div>
+      )}
+    </FolderPage>
   );
 }
