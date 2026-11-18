@@ -95,6 +95,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     for (const [id, c] of clocks.current) if (!c.timer) runClock(id, Math.max(1500, c.remaining));
   };
 
+  // The messages moved into or out of a modal: the region was mounted again, so a hover, focus or touch that was
+  // holding the clocks will never report its end. Let them run.
+  useEffect(() => {
+    resume("hover");
+    resume("focus");
+    resume("touch");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the host changes
+  }, [host]);
+
   const show = useCallback(
     ({ message, tone = "done", action }: ShowArgs) => {
       if (action && action.undoable !== false) lastAction.current = action;
