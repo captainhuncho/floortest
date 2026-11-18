@@ -209,7 +209,10 @@ function SignOut({ open, confirming, everywhere, twoFactor, onEverywhere, onClos
         <div className="flex flex-col gap-2">
           <form action={logout}>
             <button className={`${DIALOG_MAIN} ${WIDE}`}>
-              Sign out on this <Device />
+              {/* One span, so the flex button keeps the space before "phone" / "computer". */}
+              <span>
+                Sign out on this <Device />
+              </span>
             </button>
           </form>
           {everywhere && (
