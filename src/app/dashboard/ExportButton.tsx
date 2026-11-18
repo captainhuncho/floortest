@@ -5,7 +5,8 @@ import { Icon, type IconName } from "@/components/Kit";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
 import { FIELD_LABEL, GHOST, GHOST_TALL, LIME, LIME_SM } from "./kitButtons";
 
-const KEY = "floortest.exportBase";
+/** Where this device keeps the music folder a Rekordbox XML points at (Prepare's Download crate reads it too). */
+export const KEY = "floortest.exportBase";
 
 /** "Prepare for set": downloads kept originals into a new, named folder. A Rekordbox XML is optional (it needs to know where the folder is unzipped). */
 export function ExportButton({

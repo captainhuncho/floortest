@@ -1,5 +1,6 @@
 import { CuePoint } from "@/components/CuePoint";
 import { currentUser } from "@/lib/auth";
+import { canMarkPlayedOut } from "@/lib/played-out-prompt";
 import { decisionLocked } from "@/lib/review";
 import { ProfileLinks } from "@/components/ProfileLinks";
 import { readLinks } from "@/lib/socials";
@@ -255,9 +256,11 @@ export async function ReviewPanel({
 
           {t.decision === "kept" && (
             <>
-              <div className={card}>
-                <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
-              </div>
+              {desk && canMarkPlayedOut(desk) && (
+                <div className={card}>
+                  <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
+                </div>
+              )}
               <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
             </>
           )}
