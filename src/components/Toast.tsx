@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * Short messages after something happened: "Saved", "Link copied", or that it didn't work and what to do. One calm card
@@ -19,6 +20,16 @@ type ShowArgs = { message: string; tone?: Tone; action?: Action };
 type Ctx = { show: (t: ShowArgs) => void; undoLatest: () => boolean };
 
 const ToastContext = createContext<Ctx | null>(null);
+const ToastHostContext = createContext<(el: HTMLElement | null) => void>(() => {});
+
+/**
+ * For a modal that stays open while its own actions show messages (the full player): put `<div ref={useToastHost()} />`
+ * inside its `<dialog>`. A modal makes the page behind it inert and covers it, so messages drawn in the page could be
+ * neither seen nor pressed; while the host is mounted they are drawn inside the modal, in the same place on screen.
+ */
+export function useToastHost() {
+  return useContext(ToastHostContext);
+}
 export const useToast = () => {
   const c = useContext(ToastContext);
   if (!c) throw new Error("useToast outside ToastProvider");
@@ -37,6 +48,7 @@ type Clock = { timer: ReturnType<typeof setTimeout> | null; remaining: number; d
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [host, setHost] = useState<HTMLElement | null>(null);
   // The list lives in a ref too, so show() and the timers work from the current list without side effects in an updater.
   const list = useRef<Toast[]>([]);
   const commit = useCallback((next: Toast[]) => {
@@ -121,38 +133,42 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const region = (
+    <div
+      aria-live="polite"
+      aria-label="Messages"
+      role="region"
+      data-toast-region
+      className="pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4"
+      onMouseEnter={() => pause("hover")}
+      onMouseLeave={() => resume("hover")}
+      onFocus={() => pause("focus")}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) resume("focus");
+      }}
+      onTouchStart={() => pause("touch")}
+      onTouchEnd={() => resume("touch")}
+      onTouchCancel={() => resume("touch")}
+    >
+      {toasts.map((t) => (
+        <ToastCard
+          key={t.id}
+          toast={t}
+          onAction={() => {
+            if (t.action && t.action.undoable !== false) lastAction.current = undefined;
+            void t.action?.run();
+            remove(t.id);
+          }}
+          onDismiss={() => remove(t.id)}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <ToastContext.Provider value={{ show, undoLatest }}>
-      {children}
-      <div
-        aria-live="polite"
-        aria-label="Messages"
-        role="region"
-        data-toast-region
-        className="pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4"
-        onMouseEnter={() => pause("hover")}
-        onMouseLeave={() => resume("hover")}
-        onFocus={() => pause("focus")}
-        onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) resume("focus");
-        }}
-        onTouchStart={() => pause("touch")}
-        onTouchEnd={() => resume("touch")}
-        onTouchCancel={() => resume("touch")}
-      >
-        {toasts.map((t) => (
-          <ToastCard
-            key={t.id}
-            toast={t}
-            onAction={() => {
-              if (t.action && t.action.undoable !== false) lastAction.current = undefined;
-              void t.action?.run();
-              remove(t.id);
-            }}
-            onDismiss={() => remove(t.id)}
-          />
-        ))}
-      </div>
+      <ToastHostContext.Provider value={setHost}>{children}</ToastHostContext.Provider>
+      {host ? createPortal(region, host) : region}
     </ToastContext.Provider>
   );
 }
