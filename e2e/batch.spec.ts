@@ -63,11 +63,12 @@ test("the review panel keeps the decision in view and folds the rest into Detail
   await expect(panel.getByText(/\d+ BPM ·/).locator("visible=true").first()).toBeVisible();
 
   // Details starts closed: Delete and Move aren't on screen until it's opened.
-  const details = panel.locator("details").filter({ hasText: "file, dates, move" });
+  const details = panel.locator("details[data-panel-details]");
   await expect(details.getByRole("button", { name: "Delete" })).toBeHidden();
   await details.locator("summary").click();
   await expect(details.getByRole("button", { name: "Delete" })).toBeVisible();
-  await expect(details.getByText("Full history →")).toBeVisible();
+  // The sender sits in its own card beside Details (owner, 18 Nov), always open.
+  await expect(panel.getByText("Full history →").locator("visible=true").first()).toBeVisible();
 });
 
 /** The owner adds their own file on Projects (1b); a callout page has no Add tracks; strangers are refused. */

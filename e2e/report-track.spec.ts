@@ -8,8 +8,8 @@ import { expect, logIn, test } from "./fixtures";
 test("a receiver reports a track from the desk", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/review?view=queue&s=all");
-  // Report lives in the track's Details, whose summary names it.
-  const details = page.locator("summary").filter({ hasText: "report" });
+  // Report lives in the track's Details.
+  const details = page.locator("details[data-panel-details] summary");
   if (!(await page.getByRole("button", { name: "Report", exact: true }).isVisible())) await details.click();
   await page.getByRole("button", { name: "Report", exact: true }).click();
 
