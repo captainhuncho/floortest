@@ -1,5 +1,6 @@
 import Link from "next/link";
 import "./auth.css";
+import { AuthScene } from "./AuthScene";
 
 /**
  * Sign in, sign up, recovery and signed out (owner, 31 Oct, the guided sign-up look): each page draws its own
@@ -12,14 +13,7 @@ import "./auth.css";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="af-page theme-system">
-      <div className="af-scene" aria-hidden>
-        <span className="af-l af-l-photo" />
-        <span className="af-l af-l-tone" />
-        <span className="af-l af-l-beam" />
-        <span className="af-l af-l-haze" />
-        <span className="af-l af-l-box af-l-top" />
-        <span className="af-l af-l-box af-l-bottom" />
-      </div>
+      <AuthScene />
       {children}
       <nav aria-label="Legal" className="af-legal">
         <Link href="/terms">Terms</Link>
