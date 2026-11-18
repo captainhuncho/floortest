@@ -116,18 +116,22 @@ export function PlayerExpanded() {
             <p className="truncate text-center text-[12px] font-semibold text-mute">{sourceLabel(current)}</p>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-[18px] pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-1.5 min-[1024px]:grid min-[1024px]:grid-cols-[minmax(0,1fr)_240px] min-[1024px]:gap-[26px] min-[1024px]:overflow-hidden min-[1024px]:px-[26px] min-[1024px]:pb-[22px] min-[1024px]:pt-2.5">
-            <div className="flex min-w-0 flex-col gap-3 min-[1024px]:justify-center min-[1024px]:gap-3.5">
-              <p className="flex items-baseline justify-center gap-2.5 tnum">
-                <PlayerClock className="text-[28px] font-bold leading-none text-bone" />
-                <span className="text-[18px] leading-none text-mute">{fmtTime(d)}</span>
-              </p>
-              {/* Short screens (a phone on its side): the wave drops to 80px so Keep and Not for me stay on screen. */}
-              <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} className="[@media(max-height:500px)]:h-20!" />
+          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-[18px] pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-1.5 min-[1024px]:grid min-[1024px]:grid-cols-[minmax(0,1fr)_240px] min-[1024px]:gap-[26px] min-[1024px]:overflow-hidden min-[1024px]:px-[26px] min-[1024px]:pb-[22px] min-[1024px]:pt-2.5">
+            <div className="flex min-w-0 flex-col gap-5 min-[1024px]:justify-center min-[1024px]:gap-3.5">
+              {/* Under 1024px (owner, 16 Nov: "space at the top of the player", so the wave has its moment): 56px of nothing
+                  over the time, the time at the left at 30px, a 124px wave. Short screens (a phone on its side) get no space
+                  and an 80px wave, so Keep and Not for me stay on screen. */}
+              <div data-player-top className="flex flex-col gap-3 pt-14 min-[1024px]:gap-3.5 min-[1024px]:pt-0 [@media(max-height:500px)]:pt-0">
+                <p className="flex items-baseline gap-2 tnum min-[1024px]:justify-center min-[1024px]:gap-2.5">
+                  <PlayerClock className="text-[30px] font-bold leading-none text-bone min-[1024px]:text-[28px]" />
+                  <span className="text-[14px] leading-none text-mute min-[1024px]:text-[18px]">{fmtTime(d)}</span>
+                </p>
+                <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} className="max-[1023.98px]:h-[124px]! [@media(max-height:500px)]:h-20!" />
+              </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3 min-[1024px]:gap-2.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0 rounded-[10px]" />
+                <img src="/icons/mini-art.svg" alt="" data-player-cover className="size-14 shrink-0 rounded-xl min-[1024px]:size-11 min-[1024px]:rounded-[10px]" />
                 {/* The title opens the track's page, whatever its state (Design, 18 Nov). */}
                 <Link href={trackHref(current)} onClick={close} data-open-track className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-md">
                   <h2 id={titleId} className="truncate text-[18px] font-bold leading-6 text-bone">
@@ -138,7 +142,7 @@ export function PlayerExpanded() {
                 {current.decision !== undefined && <KeepHeart track={current} />}
               </div>
 
-              <div role="group" aria-label="Playback" className="flex items-center justify-between px-2.5">
+              <div role="group" aria-label="Playback" className="flex items-center justify-center gap-3 min-[390px]:gap-5 min-[1024px]:justify-between min-[1024px]:gap-0 min-[1024px]:px-2.5">
                 <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={CONTROL}>
                   <SkipIcon back />
                 </button>

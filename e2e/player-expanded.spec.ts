@@ -22,14 +22,14 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   const chevron = bar.getByRole("button", { name: "Open the player", exact: true });
   await chevron.click();
   await expect(player).toBeVisible();
-  // A card, not the window: 80% of its width and height (1280 × 800), centred, with our corners.
+  // A card, not the window: 70% of its width and 80% of its height (1280 × 800), centred, with our corners.
   const box = () =>
     player.evaluate((el) => {
       const r = el.getBoundingClientRect();
       return { width: Math.round(r.width), height: Math.round(r.height), centred: Math.abs(r.left - (window.innerWidth - r.right)) <= 1, radius: getComputedStyle(el).borderRadius, inside: r.top >= 0 && r.bottom <= window.innerHeight };
     });
   // Read once it has finished scaling in.
-  await expect.poll(box).toEqual({ width: 1024, height: 640, centred: true, radius: "22px", inside: true });
+  await expect.poll(box).toEqual({ width: 896, height: 640, centred: true, radius: "22px", inside: true });
   const title = await player.getByRole("heading", { level: 2 }).innerText();
   await expect(player).toHaveAccessibleName(title);
   // The wave is 150px tall.
@@ -112,6 +112,18 @@ test("phone: the mini player's title opens the player full window; Keep and Not 
     );
   await expect.poll(small).toEqual([]);
   expect(await player.evaluate((el) => el.firstElementChild!.scrollWidth <= el.clientWidth)).toBe(true);
+  // Space at the top: 56px of nothing between the top row and the time; then a 124px wave and a 56px cover.
+  expect(
+    await player.evaluate((el) => {
+      const px = (n: Element) => n.getBoundingClientRect();
+      const top = el.querySelector("[data-player-top]")!;
+      return {
+        space: Math.round(px(top.querySelector("p")!).top - px(top).top),
+        wave: Math.round(px(el.querySelector('[role="slider"][aria-label^="Seek "]')!).height),
+        cover: Math.round(px(el.querySelector("[data-player-cover]")!).width),
+      };
+    }),
+  ).toEqual({ space: 56, wave: 124, cover: 56 });
 
   const heart = player.locator("[data-heart]");
   await expect(heart).toHaveAttribute("aria-pressed", "false");
