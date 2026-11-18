@@ -53,6 +53,10 @@
   /* the scene's layers and the glass over it (option 54); day values below */
   --af-tone: linear-gradient(90deg, rgb(16 17 15 / 0.82) 0%, rgb(16 17 15 / 0.55) 45%, rgb(16 17 15 / 0.25) 100%);
   --af-tone-phone: linear-gradient(rgb(16 17 15 / 0.66), rgb(16 17 15 / 0.9));
+  /* phones at night: the night photo is dark already, so a lighter tone lets the DJ, booth and beam show above the words */
+  --af-tone-small: linear-gradient(rgb(16 17 15 / 0.35), rgb(16 17 15 / 0.75));
+  /* short phones, the end card: its words sit high, where the beam crosses them, so the top stays a little darker */
+  --af-tone-small-end: linear-gradient(rgb(16 17 15 / 0.52), rgb(16 17 15 / 0.75));
   --af-grade: none;
   --af-beam: radial-gradient(ellipse 16% 42% at 71% 28%, rgb(255 247 232 / 0.2), transparent 70%);
   --af-beam-blend: screen;
@@ -105,6 +109,8 @@
     --af-shadow-text: none;
     --af-tone: radial-gradient(130% 100% at 32% 38%, transparent 52%, rgb(42 32 18 / 0.26));
     --af-tone-phone: var(--af-tone);
+    --af-tone-small: var(--af-tone);
+    --af-tone-small-end: var(--af-tone);
     --af-grade: contrast(1.05) saturate(0.88) sepia(0.06);
     --af-beam: radial-gradient(ellipse 22% 48% at 64% 22%, rgb(255 252 240 / 0.35), transparent 72%);
     --af-beam-blend: soft-light;
@@ -637,6 +643,12 @@ input.af-fld:focus, select.af-fld:focus, div.af-fld:focus-within { border-color:
 @media (max-width: 1023px), (max-height: 499px) {
   .af-page:has(.aw) .af-l-tone { background: var(--af-tone-phone); }
   .af-page:has(.aw) .af-l-photo { background-position: 62% 100%, 62% 100%, 0 0; }
+}
+@media (max-width: 639px) {
+  .af-page:has(.aw) .af-l-tone { background: var(--af-tone-small); }
+}
+@media (max-width: 480px) and (max-height: 700px) {
+  .af-page:has(.aw-end) .af-l-tone { background: var(--af-tone-small-end); }
 }
 @media (max-width: 639px), (max-height: 499px) {
   .af-page:has(.aw) .af-scene { opacity: 0; }
