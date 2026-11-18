@@ -74,3 +74,16 @@ test("a callout's cover reaches the owner and every teammate on the desk, and no
   assert.equal(await cover(await signIn(stranger, owner), callout), 404, "a stranger naming the desk in the cookie");
   assert.equal(await cover(new Map(), callout), 404, "signed out");
 });
+
+test("signed out, only the callout the public link is receiving into shows its cover", async () => {
+  const { q } = await import("../src/lib/db");
+  const owner = await person();
+  const live = await calloutWithArt(owner);
+  const other = await calloutWithArt(owner);
+  await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", live, owner);
+
+  assert.equal(await cover(new Map(), live), 200, "the live callout, on the public link page");
+  assert.equal(await cover(new Map(), other), 404, "any other callout on the same desk");
+  await q.run("UPDATE users SET suspended_at = ? WHERE id = ?", Date.now(), owner);
+  assert.equal(await cover(new Map(), live), 404, "not once the desk is suspended");
+});
