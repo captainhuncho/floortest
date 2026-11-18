@@ -88,7 +88,7 @@ export default async function Settings() {
           <Icon name="chev" className="size-5 rotate-180" />
         </Link>
         <h1 className="flex-1 text-center text-[28px] font-bold leading-9 tracking-[-0.02em] text-bone">Settings</h1>
-        <SettingsMenu everywhere={show.signOutAllMyDevices} canDelete={show.deleteAccount} handle={user.handle} twoFactor={!!user.totp_enabled_at} />
+        <SettingsMenu everywhere={show.signOutAllMyDevices} canDelete={show.deleteAccount} twoFactor={!!user.totp_enabled_at} />
       </header>
 
       <section aria-label="You" className="flex flex-wrap items-center gap-3.5 rounded-[20px] border border-line bg-card p-4 min-[1180px]:flex-nowrap min-[1180px]:px-6 min-[1180px]:py-[22px]">
@@ -187,7 +187,7 @@ export default async function Settings() {
 
       {/* In plain sight as well as behind the ••• (owner, 18 Nov). Same sheets, same server checks. */}
       <section aria-label="Sign out and delete account" className="mt-3 w-full min-[1180px]:mx-auto min-[1180px]:max-w-[420px]">
-        <SettingsMenu variant="buttons" everywhere={show.signOutAllMyDevices} canDelete={show.deleteAccount} handle={user.handle} twoFactor={!!user.totp_enabled_at} />
+        <SettingsMenu variant="buttons" everywhere={show.signOutAllMyDevices} canDelete={show.deleteAccount} twoFactor={!!user.totp_enabled_at} />
       </section>
     </div>
   );
