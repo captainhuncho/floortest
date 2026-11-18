@@ -1,7 +1,8 @@
 # Release: #599, Analytics laid out as drawn in option 41 (18 Nov 2026)
 
 The Analytics page as drawn in option 41. A track kept on a day with no new arrivals now shows in the bars (the bug found
-during review, fixed in `badcf64b`). 21 files, +923 −617. Shipped on the owner's "ship it #599" in the Desk
+during review, fixed in `badcf64b`). Added to `main`: 7 files, +357 −166 (`git diff 2396ef37 91b8a3d3`); the PR's 21
+files, +923 −617 include #596's Floor work, which shipped with #596. Shipped on the owner's "ship it #599" in the Desk
 (lane:standard), after the owner tried it on `mobile-next` with Floor, Prepare and Collections covers: "They look good,
 close to the design."
 
