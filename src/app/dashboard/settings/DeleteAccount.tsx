@@ -4,7 +4,7 @@ import { useActionForm } from "@/components/useActionForm";
 import { DELETE_PHRASE, deletePhraseOk } from "@/lib/delete-phrase";
 import { useRef, useState } from "react";
 import { deleteAccount } from "../actions/settings";
-import { BTN_DANGER, BTN_GHOST, FIELD, HELP, Notice, SettingLine } from "./ui";
+import { BTN_DANGER, BTN_GHOST, FIELD, Notice, SettingLine } from "./ui";
 
 export function DeleteAccount({ twoFactor, sub = "Want a copy first? Ask for your data from the Account page before you delete." }: { twoFactor: boolean; sub?: string }) {
   const [state, onSubmit, pending] = useActionForm(deleteAccount, undefined);
@@ -39,12 +39,7 @@ export function DeleteAccount({ twoFactor, sub = "Want a copy first? Ask for you
           </div>
           <label className="flex flex-col gap-1.5">
             <span className={FIELD}>Type {DELETE_PHRASE} to confirm</span>
-            <input className="input text-[16px]! sm:text-[14px]!" name="confirm" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="characters" spellCheck={false} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={FIELD}>Password</span>
-            <input className="input" type="password" name="password" required autoComplete="current-password" />
-            <span className={HELP}>Signed up with Google or an email code? Set a password with &ldquo;Forgot your password?&rdquo; on the log-in page first.</span>
+            <input className="input text-[16px]! sm:text-[14px]!" name="confirm" placeholder={DELETE_PHRASE} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="characters" spellCheck={false} />
           </label>
           {twoFactor && (
             <label className="flex flex-col gap-1.5">

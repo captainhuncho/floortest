@@ -30,8 +30,8 @@ function Device() {
 /**
  * Sign out, and Delete account on your own desk. As "menu" it is the ••• at the top right of Settings; as "buttons" it
  * is the same two actions as plain buttons at the bottom of the page, so nobody has to hunt for them. Each opens its
- * own sheet (a centred panel on laptops). Signing out everywhere and deleting keep their checks: the password, and the
- * two-step code when it's on, are checked on the server before anything changes.
+ * own sheet (a centred panel on laptops). Signing out everywhere asks for the password; deleting asks for DELETE FLOORTEST
+ * typed out. Both also ask for the two-step code when it's on, and the server checks them before anything changes.
  */
 export function SettingsMenu({ everywhere, canDelete, twoFactor, variant = "menu" }: { everywhere: boolean; canDelete: boolean; twoFactor: boolean; variant?: "menu" | "buttons" }) {
   const [layer, setLayer] = useState<Layer>(null);
@@ -230,7 +230,7 @@ function SignOut({ open, confirming, everywhere, twoFactor, onEverywhere, onClos
   );
 }
 
-/** Delete account, step 2: DELETE FLOORTEST typed exactly, then the password (and two-step code), all checked on the server. */
+/** Delete account, step 2: DELETE FLOORTEST typed exactly, and the two-step code when it's on, both checked on the server. No password (owner, 18 Nov). */
 function DeleteForGood({ open, twoFactor, onClose }: { open: boolean; twoFactor: boolean; onClose: () => void }) {
   const [state, onSubmit, pending] = useActionForm(deleteAccount, undefined);
   const [typed, setTyped] = useState("");
@@ -244,21 +244,12 @@ function DeleteForGood({ open, twoFactor, onClose }: { open: boolean; twoFactor:
       onClose={done}
       busy={pending}
       title="Are you sure?"
-      description={
-        <>
-          Type <b className="font-semibold text-bone">{DELETE_PHRASE}</b> to confirm.
-        </>
-      }
     >
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className={FIELD}>Type {DELETE_PHRASE}</span>
-          <input className="input text-[16px]! sm:text-[14px]!" name="confirm" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="characters" spellCheck={false} data-autofocus="" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={FIELD}>Password</span>
-          <input className="input text-[16px]! sm:text-[14px]!" type="password" name="password" required autoComplete="current-password" />
-          <span className={HELP}>Signed up with Google or an email code? Set a password with &ldquo;Forgot your password?&rdquo; on the log-in page first.</span>
+          <span className={FIELD}>Type {DELETE_PHRASE} to confirm</span>
+          {/* The phrase shows inside the box as a grey hint, never filled in for them (owner, 18 Nov). */}
+          <input className="input text-[16px]! sm:text-[14px]!" name="confirm" placeholder={DELETE_PHRASE} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="characters" spellCheck={false} data-autofocus="" />
         </label>
         {twoFactor && (
           <label className="flex flex-col gap-1.5">

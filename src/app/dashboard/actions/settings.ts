@@ -2,7 +2,7 @@
 
 /** Settings: alerts, profile and public page, plans and checkout, identity, email change, theme and deleting the account. */
 import { revalidatePath } from "next/cache";
-import { stepUp } from "@/lib/step-up";
+import { codeStepUp, stepUp } from "@/lib/step-up";
 import { allow } from "@/lib/ratelimit";
 import { sendMail } from "@/lib/mail";
 import { LINK_FIELD_CHARS, MAX_LINKS, profileKey, requestLink, slotLink, type ProfileLink } from "@/lib/socials";
@@ -184,7 +184,8 @@ export async function submitIdentity(_: SettingsState, form: FormData): Promise<
 }
 
 /**
- * Deletes the account (owner, 15 Nov): password (and two-step code) first, then it is switched off at once and every
+ * Deletes the account (owner, 15 Nov): DELETE FLOORTEST typed and the two-step code when it's on (no password, owner,
+ * 18 Nov) first, then it is switched off at once and every
  * session ends; it is purged after 14 days unless the owner signs in and restores it (lib/account-deletion.ts).
  */
 export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
@@ -192,7 +193,8 @@ export async function deleteAccount(_: SettingsState, form: FormData): Promise<S
   const u = await requireOwnAccount();
   // The typed phrase first: checked here, not only by the button (owner, 18 Nov).
   if (!deletePhraseOk(form.get("confirm"))) return { error: `Type ${DELETE_PHRASE} to confirm. Nothing has been deleted.` };
-  const problem = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
+  // No password (owner, 18 Nov); the two-step code still when it's on.
+  const problem = await codeStepUp(u.id, String(form.get("code") || ""));
   if (problem) return { error: problem };
   await requestDeletion(u.id);
   await destroySession();

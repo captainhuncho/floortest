@@ -84,11 +84,12 @@ test("sign out everywhere checks the password (and two-step code) before it ends
   assert.ok(fn.indexOf("stepUp(") < fn.indexOf("revokeAllSessions(userId)"), "checked first, then every session, none kept");
 });
 
-test("delete account keeps the password and two-step check on the server", () => {
+test("delete account keeps the two-step check on the server, no password (owner, 18 Nov)", () => {
   const body = action("settings.ts", "deleteAccount");
-  assert.ok(body.indexOf("stepUp(") < body.indexOf("requestDeletion("), "checked before anything is deleted");
+  assert.ok(body.indexOf("codeStepUp(") > 0 && body.indexOf("codeStepUp(") < body.indexOf("requestDeletion("), "checked before anything is deleted");
   const sheet = read("app/dashboard/settings/(index)/SettingsMenu.tsx");
-  assert.match(sheet, /name="password"/);
-  assert.match(sheet, /name="code"/);
+  const del = sheet.slice(sheet.indexOf("function DeleteForGood("));
+  assert.doesNotMatch(del, /name="password"/);
+  assert.match(del, /name="code"/);
   assert.match(sheet, /!deletePhraseOk\(typed\)/, "the button stays off until DELETE FLOORTEST is typed (owner, 18 Nov)");
 });
