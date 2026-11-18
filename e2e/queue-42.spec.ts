@@ -1,4 +1,4 @@
-import { expect, logIn, test } from "./fixtures";
+import { expect, hydrated, logIn, test } from "./fixtures";
 
 // The final Queue (Design option 42): the open track decides, the playlist plays, the floating player shows progress.
 
@@ -123,6 +123,8 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   // The BPM head sorts the rows on the page, up then down.
   const bpms = async () => (await list.locator('[role="row"][aria-current], [role="row"]:has(a)').evaluateAll((rows) => rows.map((r) => Number(r.querySelectorAll('[role="cell"]')[4]?.textContent)))).filter((n) => n > 0);
   const bpmHead = list.getByRole("columnheader", { name: "BPM" });
+  // The page was just reloaded: a click before the head is hydrated does nothing.
+  await hydrated(bpmHead.getByRole("button"));
   await bpmHead.getByRole("button").click();
   await expect(bpmHead).toHaveAttribute("aria-sort", "ascending");
   const up = await bpms();
