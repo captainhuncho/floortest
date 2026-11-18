@@ -25,7 +25,9 @@ import {
   type SignupStep,
   type StepIssue,
 } from "@/lib/signup-flow";
-import { AuthFrame, AuthIcon, CrestMoment, LinkCard, type AuthIconName } from "../AuthFrame";
+import { AuthFrame, AuthIcon, LinkCard, type AuthIconName } from "../AuthFrame";
+import { Welcome } from "../Story";
+import { storyChapters } from "../chapters";
 import { signup, type FormState } from "../actions";
 
 const ROLE_ICONS: Record<string, AuthIconName> = { dj: "head", producer_dj: "wave", ar: "star", label: "sleeve", radio: "radio", artist: "mic", curator: "disc", music_pro: "case" };
@@ -45,9 +47,10 @@ const stepFromUrl = (v: string | null): SignupStep => {
 };
 
 /**
- * Sign-up, one question per screen (owner, 31 Oct): welcome, name, link, role, then email and password. Every field
- * stays mounted in one form (only the current step shows), and "Create my link" posts it once to the same `signup`
- * action with the same field names. The step lives in the URL (?step=), so the phone's Back works; answers live in
+ * Sign-up, one question per screen (owner, 31 Oct): the welcome story (Story.tsx; owner, 17 Nov), name, link, role,
+ * then email and password. Every field stays mounted in one form (only the current step shows; the form is hidden,
+ * not removed, while the story plays), and "Create my link" posts it once to the same `signup` action with the same
+ * field names. The step lives in the URL (?step=), so the phone's Back works; answers live in
  * memory and in sessionStorage, the password only in this component's state.
  */
 export function GuidedSignup({
@@ -58,7 +61,7 @@ export function GuidedSignup({
   canSignUp,
   initialHandle,
   google,
-  welcome,
+  sendOn,
   notice,
   waitlistNote,
   claimTitle,
@@ -70,7 +73,8 @@ export function GuidedSignup({
   canSignUp: boolean;
   initialHandle?: string;
   google: boolean;
-  welcome: { headline: string; italic: string; intro: string };
+  /** Receivers can send from FloorTest (the `send_music` switch): the story gets its seventh chapter. */
+  sendOn: boolean;
   notice?: React.ReactNode;
   waitlistNote?: React.ReactNode;
   claimTitle: React.ReactNode;
@@ -84,6 +88,7 @@ export function GuidedSignup({
   const [issue, setIssue] = useState<StepIssue>(null);
   const [avail, setAvail] = useState<{ handle: string; status: Avail } | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [storyAt, setStoryAt] = useState(0);
   const [state, formAction, actionPending] = useActionState<FormState, FormData>(signup, undefined);
   const [transitioning, start] = useTransition();
   const pending = actionPending || transitioning;
@@ -216,49 +221,19 @@ export function GuidedSignup({
   ) : null;
 
   const name = `${answers.first_name} ${answers.last_name}`.trim();
-  const aside =
-    step === 1 ? (
-      <CrestMoment line={welcome.intro.split(/(?<=\.)\s/)[0]} />
-    ) : (
-      <LinkCard
-        label="Your link, so far"
-        host={host}
-        name={name || undefined}
-        handle={answers.handle && HANDLE.test(answers.handle) ? answers.handle : undefined}
-        role={ACCOUNT_TYPES[answers.kind as keyof typeof ACCOUNT_TYPES]}
-        initials={initials(answers.first_name, answers.last_name)}
-      />
-    );
+  const aside = (
+    <LinkCard
+      label="Your link, so far"
+      host={host}
+      name={name || undefined}
+      handle={answers.handle && HANDLE.test(answers.handle) ? answers.handle : undefined}
+      role={ACCOUNT_TYPES[answers.kind as keyof typeof ACCOUNT_TYPES]}
+      initials={initials(answers.first_name, answers.last_name)}
+    />
+  );
 
   const footer =
-    step === 1 ? (
-      canSignUp ? (
-        <>
-          <button type="button" className="af-btn af-prime" onClick={() => go(2)}>
-            Claim your link →
-          </button>
-          <Link href="/login" className="af-btn">
-            I already have one
-          </Link>
-          {google && (
-            <p className="af-row">
-              Or
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- the route sets up the hand-off to Google */}
-              <a href="/api/auth/google">sign up with Google</a>
-            </p>
-          )}
-        </>
-      ) : (
-        <>
-          <Link href="/#waitlist" className="af-btn af-prime">
-            Join the waitlist →
-          </Link>
-          <Link href="/login" className="af-btn">
-            I already have one
-          </Link>
-        </>
-      )
-    ) : (
+    step === 1 ? null : (
       <>
         {serverLine}
         <button className="af-btn af-prime" disabled={pending}>
@@ -268,6 +243,21 @@ export function GuidedSignup({
     );
 
   return (
+    <>
+      {step === 1 && (
+        <Welcome
+          chapters={storyChapters(sendOn)}
+          at={storyAt}
+          onAt={setStoryAt}
+          host={host}
+          canSignUp={canSignUp}
+          google={google}
+          notice={notice}
+          waitlistNote={waitlistNote}
+          onClaim={() => go(2)}
+        />
+      )}
+      <div className="af-hold" hidden={step === 1}>
     <AuthFrame
       step={progressOf(step)}
       back={
@@ -280,7 +270,6 @@ export function GuidedSignup({
       aside={aside}
       footer={footer}
       form={{ noValidate: true, onSubmit, "aria-busy": pending }}
-      photo={step === 1}
     >
       <input type="hidden" name="tz" value={tz} />
       {Object.entries(hidden ?? {}).map(([k, v]) => (
@@ -288,18 +277,6 @@ export function GuidedSignup({
       ))}
       <SourceField />
       {step > 1 && <span className="sr-only" aria-live="polite">{`Step ${progressOf(step)} of 7`}</span>}
-
-      <div className="af-step" data-step="1" hidden={step !== 1}>
-        <h1 className="af-h af-xl" tabIndex={-1}>
-          {welcome.headline}
-          <span className="af-ser">{welcome.italic}</span>
-        </h1>
-        <p className="af-sub">{welcome.intro}</p>
-        {canSignUp ? notice && <div className="af-notice">{notice}</div> : <p className="af-notice">{waitlistNote}</p>}
-        <noscript>
-          <p className="af-notice">Sign-up needs JavaScript for its bot check. Turn it on, then reload this page.</p>
-        </noscript>
-      </div>
 
       <div className="af-step" data-step="2" hidden={step !== 2}>
         <h1 className="af-h" tabIndex={-1}>What&apos;s your name?</h1>
@@ -402,5 +379,7 @@ export function GuidedSignup({
         <Turnstile action="auth" siteKey={botKey} />
       </div>
     </AuthFrame>
+      </div>
+    </>
   );
 }
