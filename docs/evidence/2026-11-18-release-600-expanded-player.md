@@ -36,11 +36,14 @@ on phone and laptop: worked" (typed in Safety, on `e1f3ede4` = `5cc721a1`). Layo
 ## Other releases since the last code report
 - #651 (queue-42 test waits for hydration), carried in #600's merge.
 
+Merged after this release, evidence only, no deploy change of their own: #655 (report for #652, merge `6b255b10`) and
+#654 (report for #650, merge `4d1130cb`).
+
 ## After the merge
 `main` merged into `mobile-next` as `cb201550`, no conflicts.
 
 ## Live versus unfinished
 Live: everything in the #652 report, plus the expanded player. Ready for the owner's word: the cover access test
-(#653), and reports #647, #648, #649, #654, #655; #645 waits for its wording fix. Next for the player: folder covers
+(#653), and reports #647, #648, #649; #645 waits for its wording fix. Next for the player: folder covers
 as cover art and clearer buttons (OPTION-27 sends plans first). Open for the owner: privacy and terms lines for the
 14-day switch-off and the 6-year record.
