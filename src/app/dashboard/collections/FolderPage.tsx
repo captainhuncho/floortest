@@ -16,23 +16,34 @@ export const WIDE = "flex min-h-12 w-full items-center justify-center gap-2 roun
 /**
  * A folder's page, the same for a callout and a project (owner, 17 Nov: option 43): back and its tools across the top,
  * a big cover (centred on phones, on the left from lg), the name, one or two lines of facts, shuffle and play, one wide
- * button, then what's in it.
+ * button, then what's in it. Prepare is the same page (option 44): no back (it's a tab), a small label over the name,
+ * and its own cover made from the covers inside.
  */
-export function FolderPage({ back, tools, art, name, lines, play, action, children }: { back: { href: string; label: string }; /** Link and ··· on the right of the top row. */ tools?: React.ReactNode; art: string | null; name: string; lines: React.ReactNode[]; /** Shuffle and play. */ play?: React.ReactNode; /** The wide button. */ action?: React.ReactNode; children: React.ReactNode }) {
+export function FolderPage({ back, tools, art = null, cover, label, name, lines, play, action, children }: { back?: { href: string; label: string }; /** Link and ··· on the right of the top row. */ tools?: React.ReactNode; art?: string | null; /** Drawn in the cover's box instead of `art` (Prepare's crate). */ cover?: React.ReactNode; /** A small line over the name (Prepare). */ label?: string; name: string; lines: React.ReactNode[]; /** Shuffle and play. */ play?: React.ReactNode; /** The wide button. */ action?: React.ReactNode; children: React.ReactNode }) {
+  const box = "mx-auto h-40 w-40 rounded-[16px] lg:sticky lg:top-4 lg:mx-0 lg:aspect-square lg:h-auto lg:w-full";
   return (
     <div className="page-gutter py-3 sm:py-6">
       <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-3 sm:gap-4">
-        <div className="-mx-2 flex items-center justify-between gap-2">
-          <Link href={back.href} aria-label={`Back to ${back.label}`} className={ROUND}>
-            <Icon name="chev" className="size-[18px] rotate-180" />
-          </Link>
-          <div className="flex items-center">{tools}</div>
-        </div>
+        {back && (
+          <div className="-mx-2 flex items-center justify-between gap-2">
+            <Link href={back.href} aria-label={`Back to ${back.label}`} className={ROUND}>
+              <Icon name="chev" className="size-[18px] rotate-180" />
+            </Link>
+            <div className="flex items-center">{tools}</div>
+          </div>
+        )}
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[180px_minmax(0,1fr)] lg:items-start lg:gap-8 min-[1180px]:grid-cols-[260px_minmax(0,1fr)]">
-          <FolderCover art={art} className="mx-auto h-40 w-40 rounded-[16px] lg:sticky lg:top-4 lg:mx-0 lg:aspect-square lg:h-auto lg:w-full" />
+          {cover ? (
+            <span aria-hidden className={`block shrink-0 overflow-hidden border border-line bg-well ${box}`}>
+              {cover}
+            </span>
+          ) : (
+            <FolderCover art={art} className={box} />
+          )}
           <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
             <div className="flex items-end gap-3">
               <div className="min-w-0 flex-1">
+                {label && <p className="mb-1 text-[11.5px] font-semibold text-mute">{label}</p>}
                 <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone [overflow-wrap:anywhere] lg:text-[28px]">{name}</h1>
                 {lines.map((l, i) => (
                   <p key={i} className="mt-1 text-[12.5px] text-mute tnum">
