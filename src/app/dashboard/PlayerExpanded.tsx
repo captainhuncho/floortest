@@ -95,7 +95,8 @@ export function PlayerExpanded() {
                 <PlayerClock className="text-[28px] font-bold leading-none text-bone" />
                 <span className="text-[18px] leading-none text-mute">{fmtTime(d)}</span>
               </p>
-              <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} />
+              {/* Short screens (a phone on its side): the wave drops to 80px so Keep and Not for me stay on screen. */}
+              <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} className="[@media(max-height:500px)]:h-20!" />
 
               <div className="flex items-center gap-2.5">
                 <CoverPlay focusFirst />
