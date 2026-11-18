@@ -14,7 +14,7 @@ const OPTIONS = [
 export function ThemeSwitch({ current }: { current: string }) {
   const [pending, start] = useTransition();
   return (
-    <div role="radiogroup" aria-label="Appearance" className={SEG}>
+    <div role="radiogroup" aria-label="Theme" className={SEG}>
       {OPTIONS.map((o) => (
         <button
           key={o.id}

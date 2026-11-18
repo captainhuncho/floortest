@@ -43,8 +43,8 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   return (
     <div id="plans-root" data-period={yearly ? "year" : "month"} className="page-gutter py-4 text-bone sm:py-7">
       <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-5 sm:gap-7">
-      <Link href="/dashboard/account" className="tap-text -my-2 w-fit text-[11.5px] font-medium text-faint hover:text-bone">
-        ← Account
+      <Link href="/dashboard/settings" className="tap-text -my-2 w-fit text-[11.5px] font-medium text-faint hover:text-bone">
+        ← Settings
       </Link>
       <PlansIntro billing={billing} title="Choose your plan" sub="Same desk. Pick the room you need.">
         {hasYearly(plans) && (

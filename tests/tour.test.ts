@@ -63,7 +63,7 @@ test("the tour opens once per person, never in an admin's view, and closing it m
   const tour = read("../src/app/dashboard/Tour.tsx");
   assert.match(tour, /onClose=\{\(\) => \{\s*setOpen\(false\);[^]*?markTourSeen\(\)\.catch\(\(\) => undefined\);/, "any close (X, Escape, Skip, finish) marks it seen, and a failed save never throws");
   assert.match(read("../src/app/dashboard/Sidebar.tsx"), /href: "\/dashboard\/how-it-works", label: "How it works"/);
-  assert.match(read("../src/app/dashboard/account/page.tsx"), /<Row href="\/dashboard\/how-it-works"/);
+  assert.match(read("../src/app/dashboard/settings/(index)/page.tsx"), /<Row href="\/dashboard\/how-it-works"/);
 });
 
 test("0135: accounts from before see no pop-up; new accounts get it once", async () => {
