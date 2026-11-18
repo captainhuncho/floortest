@@ -204,6 +204,14 @@ export async function requireRole(min: TeamRole): Promise<User> {
   return u;
 }
 
+/** The desk, for someone who may run callouts on it: owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov). */
+export async function requireCallouts(): Promise<User> {
+  const u = await requireUser();
+  const { canRunCallouts } = await import("./account-members");
+  if (!(await canRunCallouts(u))) redirect("/dashboard/collections?denied=callouts");
+  return u;
+}
+
 /** The signed-in person (never a team desk), or to the login page. */
 export async function requirePerson(): Promise<User> {
   const u = await currentPerson();

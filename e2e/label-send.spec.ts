@@ -15,22 +15,22 @@ const OK = () => `Label Play ${stamp}-${test.info().repeatEachIndex}`;
 async function send(page: import("@playwright/test").Page, title: string, play: "Evaluation only" | "OK to play") {
   await page.goto("/dashboard/send?to=lunalabel");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: `${title}.wav`, mimeType: "audio/wav", buffer: wav(4) });
-  await expect(page.getByText(/WAV · \d+ KB · \d+:\d+/)).toBeVisible({ timeout: 60_000 });
-  await page.getByLabel("Track title").fill(title);
+  await expect(page.getByText(/WAV · \d+:\d+/)).toBeVisible({ timeout: 60_000 });
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
   await page.getByLabel("Artist").fill("Lou Sender");
   const genre = page.getByRole("combobox", { name: "Genre" });
   if (await genre.count()) await genre.selectOption({ index: 1 });
-  else await page.getByRole("group", { name: /^Genre/ }).getByRole("radio").first().check({ force: true });
-  await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
-  await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
-  await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
+  else await page.getByRole("group", { name: /^Genre/ }).getByRole("button").first().click();
+  await page.getByRole("group", { name: /^Mix/ }).getByRole("button", { name: "Mixed, not mastered" }).click();
+  await page.getByRole("group", { name: /^Release/ }).getByRole("button", { name: "Unreleased" }).click();
+  await page.getByRole("group", { name: /^AI use/ }).getByRole("button", { name: "None", exact: true }).click();
   const choice = page.getByRole("group", { name: /^Sending to a label/ });
   // Evaluation only is the default; the sender has to choose OK to play.
-  await expect(choice.getByRole("radio", { name: "Evaluation only" })).toBeChecked();
-  if (play === "OK to play") await choice.getByText("OK to play").click();
-  await expect(choice.getByRole("radio", { name: play })).toBeChecked();
+  await expect(choice.getByRole("button", { name: "Evaluation only" })).toHaveAttribute("aria-pressed", "true");
+  if (play === "OK to play") await choice.getByRole("button", { name: "OK to play" }).click();
+  await expect(choice.getByRole("button", { name: play })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: /^Send to / }).click();
-  await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByText(/Your receipt is on its way to/)).toBeVisible({ timeout: 180_000 });
 }
 
 test("a signed-in sender picks Evaluation only or OK to play when sending to a label", async ({ page }) => {
@@ -45,8 +45,11 @@ test("the label's desk shows each choice, and the pick page holds back the evalu
   await logIn(page, "label@floortest.test");
   for (const [title, chip] of [[EVAL(), "Evaluation only: ask before playing it out"], [OK(), "OK to play"]] as const) {
     // The queue view's review card shows the choice; searching by title opens that track's card.
-    await page.goto(`/dashboard/review?view=queue&q=${encodeURIComponent(title)}`);
-    await expect(page.getByRole("complementary", { name: "Review" }).getByText(title).first()).toBeVisible();
+    // Under a full run the list can trail the tab counts by a moment, so the search is loaded again until the card shows.
+    await expect(async () => {
+      await page.goto(`/dashboard/review?view=queue&q=${encodeURIComponent(title)}`);
+      await expect(page.getByRole("complementary", { name: "Review" }).getByText(title).first()).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 60_000 });
     await expect(page.getByText(chip, { exact: true }).locator("visible=true").first()).toBeVisible();
     // Keep it and let the save finish (the card clears at once, before the save lands), then find it under Kept.
     // A click that lands before the page is ready does nothing, so the whole step is tried again.
@@ -55,7 +58,9 @@ test("the label's desk shows each choice, and the pick page holds back the evalu
       await page.goto(`/dashboard/review?view=queue&q=${encodeURIComponent(title)}`);
       const keep = card.getByRole("button", { name: /^Keep/ });
       if (await keep.isVisible()) {
-        const saved = page.waitForResponse((r) => r.request().method() === "POST", { timeout: 10_000 });
+        // The Keep save itself, not any POST: the reply box loads its templates with a POST of its own, and going on
+        // when that one answers would leave the page before the save lands.
+        const saved = page.waitForResponse((r) => r.request().method() === "POST" && (r.request().postData() ?? "").includes('"kept"'), { timeout: 10_000 });
         await keep.click();
         await saved;
       }

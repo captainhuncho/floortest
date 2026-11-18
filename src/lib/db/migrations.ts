@@ -2450,4 +2450,57 @@ create index if not exists account_evidence_expiry on account_evidence (keep_fro
 alter table restore_tickets enable row level security;
 alter table account_evidence enable row level security;`,
   },
+  {
+    // Folders to organise callouts and projects (owner, 16 Nov, in the Desk: "A"): a desk's callout folders hold only
+    // callouts, its project folders only projects, never both. One level, private to the desk. Each link is a composite
+    // foreign key (folder, desk, kind), so the database itself refuses a folder of another desk or of the other kind on
+    // any path; deleting a folder unfiles what was in it (SET NULL on the folder column only). As the person: a folder's
+    // only changeable field is its name (as library_folders, 0142). Additive only: new table,
+    // new nullable columns and constants, nothing dropped or rewritten; old code ignores them.
+    id: "0151_desk_folders",
+    sql: `create table if not exists desk_folders (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  kind text not null check (kind in ('callout', 'project')),
+  name text not null check (char_length(name) between 1 and 60),
+  created_at bigint not null,
+  unique (id, user_id, kind)
+);
+create index if not exists desk_folders_user on desk_folders(user_id, kind, created_at);
+alter table desk_folders enable row level security;
+grant select, insert, delete on desk_folders to ft_person;
+grant update (name) on desk_folders to ft_person;
+create policy person_desk_folders on desk_folders for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+alter table collections add column if not exists desk_folder_id bigint;
+alter table collections add column if not exists desk_folder_kind text not null default 'callout' check (desk_folder_kind = 'callout');
+alter table collections add constraint collections_folder_fk foreign key (desk_folder_id, user_id, desk_folder_kind) references desk_folders(id, user_id, kind) on delete set null (desk_folder_id);
+create index if not exists collections_folder on collections(desk_folder_id, user_id, desk_folder_kind) where desk_folder_id is not null;
+alter table library_folders add column if not exists desk_folder_id bigint;
+alter table library_folders add column if not exists desk_folder_kind text not null default 'project' check (desk_folder_kind = 'project');
+alter table library_folders add constraint library_folders_folder_fk foreign key (desk_folder_id, user_id, desk_folder_kind) references desk_folders(id, user_id, kind) on delete set null (desk_folder_id);
+create index if not exists library_folders_folder on library_folders(desk_folder_id, user_id, desk_folder_kind) where desk_folder_id is not null;
+grant update (desk_folder_id) on library_folders to ft_person;`,
+  },
+  {
+    // Owner, 16 Nov: owners and A&R / Admins run callouts by their role; a Member only once an owner or admin ticks
+    // them. Additive: everyone starts unticked. The person role keeps select only on account_members, so nobody can
+    // tick themselves from the database; the tick is changed by the app connection after its own checks.
+    // The revoke is belt and braces: ft_person was already select-only on account_members.
+    id: "0154_member_callouts",
+    sql: `alter table account_members add column if not exists callouts boolean not null default false;
+revoke update on account_members from ft_person;`,
+  },
+  {
+    // Search that forgives typos and ranks the closest match first (owner, 17 Nov: "In-house pg_trgm"), in our own
+    // database: nothing leaves it. The extension in public (on ft_person's search_path, so searches under asPerson can
+    // call it) and trigram indexes on the fields the top bar searches, so `<%` and LIKE use an index, not a scan.
+    // Additive only: no table, column or grant changes. Plain CREATE INDEX blocks writes while it builds: fine at
+    // today's size. Independent of 0152/0153/0154: the runner applies any id not yet in schema_migrations, in list order.
+    id: "0155_search_trgm",
+    sql: `create extension if not exists pg_trgm with schema public;
+create index if not exists tracks_title_trgm on tracks using gin (lower(title) gin_trgm_ops);
+create index if not exists tracks_artist_trgm on tracks using gin (lower(artist) gin_trgm_ops);
+create index if not exists tracks_genre_trgm on tracks using gin (lower(coalesce(genre, '')) gin_trgm_ops);
+create index if not exists senders_name_trgm on senders using gin (lower(name) gin_trgm_ops);`,
+  },
 ];

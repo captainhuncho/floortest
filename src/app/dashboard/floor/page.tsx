@@ -4,69 +4,85 @@ import { showsGettingStarted } from "@/lib/getting-started";
 import { Suspense } from "react";
 import Link from "next/link";
 import { requireUser, viewingAs } from "@/lib/auth";
-import { switchOn } from "@/lib/switches";
 import { VerifyBanner } from "../VerifyBanner";
-import { activeCollectionForView, calloutBlock, canAddCollection, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
+import { activeCollectionForView, calloutBlock, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { now, q } from "@/lib/db";
-import { atLeast, canApprove, heldReplies, seatsFor, seatsUsed, teamsOn } from "@/lib/account-members";
-import { ago, fmtDay } from "@/lib/format";
+import { atLeast, canApprove, heldReplies } from "@/lib/account-members";
+import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { localHour, prefsForView } from "@/lib/notify";
 import { homeStats } from "@/lib/stats";
-import { planOf } from "@/lib/plan-store";
+import { toPlayer } from "@/lib/player-track";
 import { SwitchCollection } from "./SwitchCollection";
-import { SendMusicCard } from "./SendMusicCard";
-import { UpNext } from "./UpNext";
-import { UpNextHero } from "./UpNextHero";
 import { PlayedOutCard } from "./PlayedOutCard";
-import { playedOutPrompt } from "@/lib/played-out-prompt";
-import { Chip, DeskStrip, FloorIcon, IconBox, InfoRow, Legend, StatTile } from "./FloorBits";
-import { LinkRow, WeekChart } from "./FloorClient";
-import { GHOST, LIME_SM } from "../kitButtons";
+import { canMarkPlayedOut, playedOutPrompt } from "@/lib/played-out-prompt";
+import { Crate, FloorRow, LABEL, Notice, QUIET, type CrateCover } from "./Crates";
+import { LinkRow, PlayAllKept } from "./FloorClient";
+import type { IconName } from "@/components/Kit";
+import { perDay, periodRange } from "@/lib/analytics";
 import { FirstVisitTour } from "../Tour";
 import { tourTip } from "@/lib/tour";
 import { shareCardTarget } from "../collections/callout-card";
 
 export const metadata = { title: "Floor — FloorTest" };
 
+/** Waiting longer than this is called out on the Waiting crate: the desk aims to decide within 7 days of a track arriving. */
+const STALE_DAYS = 7;
+const DAY_MS = 86_400_000;
+/** From this share of the plan's track limit the Floor says the desk is nearly full. */
+const NEARLY_FULL = 0.8;
+
+/** A lime button at the Floor's size ("Review what's waiting" from 1024px; "Mark what I played" uses the same). */
+const LIME = "btn-lime min-h-11 rounded-[14px] px-5! text-[14px]! font-semibold";
+
+/** What "Earlier" says for each kind of thing that happened. */
+const EARLIER: Record<string, { icon: IconName; says: (sender: string) => string }> = {
+  submitted: { icon: "music", says: (s) => `Came in from ${s}` },
+  kept: { icon: "heart", says: () => "Kept" },
+  played_out: { icon: "wave", says: () => "Played out" },
+  downloaded: { icon: "dl", says: () => "Downloaded" },
+};
+
+const art = (t: { id: number; art_key: string | null }) => (t.art_key ? `/api/track-art/${t.id}?v=${encodeURIComponent(t.art_key)}` : null);
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 /**
- * The Floor answers "what needs my attention?" before anything else (owner, 30 Oct: the elevated Floor): four tiles
- * (waiting, kept this week, first listen, decided), the oldest waiting track big with its details and the one lime
- * button, the newest arrivals under it, anything wrong with the link, and on the desk side how full the desk is, its
- * links and the week's chart. From 1280px the two sit side by side. Nothing here repeats a page of its own.
+ * The Floor, final (Design's option 41, owner 16 Nov). Top to bottom, the same order at every size: the greeting and
+ * one line about the week, the receiving link, two crates (what's waiting, what was kept this week), Monday's
+ * played-out question on DJ desks, and the week in one row that opens Analytics. Phones show the link after the
+ * crates; from 1024px it sits beside the greeting. A new desk gets the link and Getting started instead of crates;
+ * a week with nothing new gets the last few things that happened. Nothing here repeats a page of its own.
  */
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string; desk?: string }> }) {
   const user = await requireUser();
+  const t = now();
   // Everything below is independent, so it all goes to the database at once.
-  const [, sp, prefs, collections, active, cap, upNextRows, oldestTrack, recentSends, staleRow, view, plan, tourSeen] = await Promise.all([
+  const [, sp, prefs, collections, active, cap, waitingNew, keptRows, staleRow, view, held, approver, tourSeen] = await Promise.all([
     trackUse(user.id, "floor"),
     searchParams,
     prefsForView(user.id),
     collectionsForView(user.id),
     activeCollectionForView(user.active_collection_id),
     capacityForView(user.id, user.plan),
-    q.all<{ id: number; title: string; artist: string; genre: string; duration: number | null; peaks: string | null; played_at: number | null; created_at: number; sender: string }>(`SELECT t.id, t.title, t.artist, t.genre, t.duration, t.peaks, t.played_at, t.created_at, s.name AS sender FROM tracks t
-         JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.decision IS NULL
-         ORDER BY t.created_at DESC, t.id DESC LIMIT 6`, user.id),
-    // The longest-waiting track: the Floor's big card, where the queue starts (it plays oldest first).
-    q.get<{ id: number; title: string; artist: string; genre: string; bpm: number | null; duration: number | null; peaks: string | null; played_at: number | null; created_at: number; sender: string; collection: string | null }>(
-      `SELECT t.id, t.title, t.artist, t.genre, t.bpm, t.duration, t.peaks, t.played_at, t.created_at, s.name AS sender, c.name AS collection FROM tracks t
-         JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
-         WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.decision IS NULL ORDER BY t.created_at ASC, t.id ASC LIMIT 1`,
+    // The Waiting crate's covers: the three newest tracks still waiting.
+    q.all<{ id: number; title: string; art_key: string | null }>(
+      "SELECT id, title, art_key FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL ORDER BY created_at DESC, id DESC LIMIT 3",
       user.id,
     ),
-    // FloorTest users you've sent music to from your account, most recent first.
-    q.all<{ handle: string; name: string }>(
-      `SELECT u.handle, u.name FROM senders s JOIN users u ON u.id = s.user_id
-       WHERE s.account_id = ? AND u.suspended_at IS NULL
-       GROUP BY u.id, u.handle, u.name ORDER BY MAX(s.created_at) DESC LIMIT 6`,
+    // This week's kept tracks, newest first: the Kept crate's covers and what Play all plays.
+    q.all<{ id: number; title: string; artist: string; duration: number | null; peaks: string | null; played_at: number | null; art_key: string | null }>(
+      `SELECT id, title, artist, duration, peaks, played_at, art_key FROM tracks
+       WHERE user_id = ? AND deleted_at IS NULL AND decision = 'kept' AND decided_at >= ?
+       ORDER BY decided_at DESC, id DESC LIMIT 50`,
       user.id,
+      t - 7 * DAY_MS,
     ),
-    // Tracks close to the 7-day mark (the north star: a decision within 7 days of arriving).
-    q.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL AND created_at < ?", user.id, now() - STALE_DAYS * 86_400_000),
+    // Tracks past the 7-day mark (the north star: a decision within 7 days of arriving).
+    q.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL AND created_at < ?", user.id, t - STALE_DAYS * DAY_MS),
     // An admin viewing this desk doesn't get the confirm-your-email banner.
     viewingAs(),
-    planOf(user.plan),
+    heldReplies(user),
+    canApprove(user),
     // The tour opens by itself once per person (their own row, so each teammate gets it).
     // A failed read counts as seen: the tour waits for the next visit and the Floor still loads.
     q.get<{ t: number | null }>("SELECT tour_seen_at AS t FROM users WHERE id = ?", user.actor_id).catch((e) => {
@@ -78,344 +94,262 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const welcome = !!sp.welcome;
   // Never in an admin's view.
   const tourDue = !view && !tourSeen?.t;
-  const stats = await homeStats(user.id, prefs.tz);
-  const weekend = await playedOutPrompt({ ...user, tz: prefs.tz });
+  const dj = canMarkPlayedOut(user);
+  // Analytics numbers are for the owner and A&R / Admins; members get the week from the Floor's own stats.
+  const analyst = atLeast(user.role, "admin");
+  const [stats, week, weekend] = await Promise.all([
+    homeStats(user.id, prefs.tz),
+    // If the Analytics read fails, the Floor still loads with its own week figures instead of the error screen.
+    analyst
+      ? perDay(user, periodRange("7d", user.tz)).catch((e) => {
+          console.error("[floor] perDay failed, using homeStats", e);
+          return null;
+        })
+      : null,
+    playedOutPrompt({ ...user, tz: prefs.tz }),
+  ]);
   const paused = isPaused(user);
+  const member = user.role === "member";
   const link = `${APP_URL}/${user.handle}`;
   const card = shareCardTarget({ isOwner: user.role === "owner", viewingAs: !!view, active, blocked: !!calloutBlock(user, active ?? undefined, cap.full) });
-  // Each row's age is worked out here, once, so the server and the browser agree on it.
-  const upNext = upNextRows.map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at, age: ago(Number(t.created_at)) }));
-  const oldest = oldestTrack ? { ...oldestTrack, peaks: oldestTrack.peaks ? JSON.parse(oldestTrack.peaks) : null, played: !!oldestTrack.played_at } : null;
-  // Under the big card: the newest arrivals, without the one already shown big.
-  const justIn = upNext.filter((t) => t.id !== oldest?.id);
   const kept = collections.reduce((n, c) => n + c.kept, 0);
   const stale = Number(staleRow?.n ?? 0);
-  // A desk that has never had a track: sharing the link is the first job, so the link comes first.
+  // A desk that has never had a track: sharing the link is the first job, so the link comes first and there are no crates.
   const fresh = welcome || (!stats.waiting && !kept && stats.receivedWeek + stats.receivedPrev === 0 && !stats.listenedSample);
-  // First visit only: a greeting by first name; the public name can be a stage name or just the username.
-  const first = user.first_name?.trim() || user.name.split(/\s+/)[0];
-  const hour = localHour(prefs.tz);
-  const greeting = hour < 5 ? "Late night" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const today = new Intl.DateTimeFormat("en-GB", { timeZone: prefs.tz, weekday: "long", day: "numeric", month: "long" }).format(now());
 
-  // Link health: the one thing to fix, if anything.
+  // The greeting is for the person looking; the public name can be a stage name, so the first name is used.
+  const deskFirst = user.first_name?.trim() || user.name.split(/\s+/)[0];
+  // On someone else's desk (a teammate), the lines name whose desk and whose link it is.
+  const guest = user.actor_id !== user.id;
+  const first = guest ? user.actor_name.split(/\s+/)[0] : deskFirst;
+  const hour = localHour(prefs.tz);
+  const greeting = hour < 5 ? "Late night" : hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
+
+  // The week's figures: the same ones on the summary line, the Kept crate and the Your week row.
+  const wkIn = week ? week.totals.in : stats.receivedWeek;
+  const wkKept = week ? week.totals.kept : stats.keptWeek;
+  const wkSenders = week ? week.totals.senders : 0;
+  const wkThird = week ? (dj ? week.totals.playedOut : week.totals.downloaded) : 0;
+  const thirdWord = dj ? "played out" : "downloaded";
+  const summary = fresh
+    ? "Your link is ready. Share it and tracks land here."
+    : wkIn === 0
+      ? "No new tracks this week."
+      : `${plural(wkIn, "track")} came in${guest ? ` on ${deskFirst}’s desk` : wkSenders > 0 ? ` from ${plural(wkSenders, "sender")}` : ""} this week.`;
+
+  // A week with nothing new: the last few things that happened, so the Floor isn't bare.
+  const earlier =
+    !fresh && wkIn === 0
+      ? await q.all<{ id: number; type: string; created_at: number; track_id: number; title: string; sender: string }>(
+          `SELECT e.id, e.type, e.created_at, e.track_id, t.title, s.name AS sender FROM events e
+           JOIN tracks t ON t.id = e.track_id JOIN senders s ON s.id = e.sender_id
+           WHERE e.user_id = ? AND t.deleted_at IS NULL AND e.type IN ('submitted', 'kept', 'played_out', 'downloaded')
+           ORDER BY e.created_at DESC, e.id DESC LIMIT 3`,
+          user.id,
+        )
+      : [];
+
+  // Notices, one at a time: an unconfirmed email first, then the link not taking tracks, then a desk filling up.
+  const verify = !view && !user.email_verified_at;
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
-  const canSend = user.role !== "member" && (await switchOn("send_music", user));
-  const canAdd = !openAlternative && active && isClosed(active) ? await canAddCollection(user.id) : true;
-  const problem: { text: string; action?: React.ReactNode } | null = paused
-    ? // The Link open switch lives on Account (the sidebar only links there), so the fix points there.
-      {
-        text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until)}` : ""}. Turn it back on in Account when you're ready.`,
-        action: user.role === "member" ? undefined : (
-          <Link href="/dashboard/account" className={GHOST}>
-            Open Account
-          </Link>
-        ),
-      }
-    : // No collection is not a problem: the link stays open and tracks land in the Review Queue, unsorted (intake.ts).
-      active && isClosed(active)
-      ? {
-          text: `Your link sends tracks to “${active.name}”, which closed on ${fmtDay(active.closes_at!)}. Nobody can send you music right now.`,
-          // Pointing the link elsewhere is for the owner and admins.
-          action: user.role === "member" ? undefined : openAlternative ? (
-            <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
-          ) : (
-            <Link href="/dashboard/collections" className={LIME_SM}>
-              {canAdd ? "New collection" : "Open Collections"}
+  // Buttons that change the desk are the owner's and admins', and never shown in an admin's read-only view.
+  const canFix = !member && !view;
+  const count = `${cap.used.toLocaleString("en-GB")} of ${cap.limit.toLocaleString("en-GB")} tracks`;
+  const prepare = (
+    <Link href="/dashboard/prepare" className={QUIET}>
+      Prepare
+    </Link>
+  );
+  const notice: { text: string; action?: React.ReactNode } | null = verify
+    ? null
+    : paused
+      ? // The Link open switch lives on Account, so the fix points there.
+        {
+          text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until, prefs.tz)}` : ""}.`,
+          action: member ? undefined : (
+            <Link href="/dashboard/account" className={QUIET}>
+              Open Account
             </Link>
           ),
         }
-      : cap.full
+      : // No collection is not a problem: the link stays open and tracks land in the Review Queue, unsorted (intake.ts).
+        active && isClosed(active)
         ? {
-            // Every track that isn't deleted counts toward the limit (kept ones too, even after a new batch in Prepare),
-            // so room comes from deleting tracks you're done with, or a bigger plan.
-            text: `Your desk holds ${cap.limit.toLocaleString("en-GB")} active tracks and it's full, so your link has stopped taking new ones. Download what you need from Prepare, then delete tracks you're done with in the Review Queue to make room.`,
-            action: (
-              <span className="flex flex-wrap gap-2">
-                <Link href="/dashboard/prepare" className={LIME_SM}>
-                  Open Prepare
-                </Link>
-                <Link href="/dashboard/plans" className={GHOST}>
-                  See plans
-                </Link>
-              </span>
+            text: `${active.name} closed on ${fmtDay(active.closes_at!, prefs.tz)}. Nobody can send you music right now.`,
+            // Pointing the link elsewhere is for the owner and admins.
+            action: !canFix ? undefined : openAlternative ? (
+              <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
+            ) : (
+              <Link href="/dashboard/collections" className={QUIET}>
+                New collection
+              </Link>
             ),
           }
-        : null;
+        : cap.full
+          ? // Every track that isn't deleted counts toward the limit, so room comes from clearing tracks you're done with.
+            { text: `Your desk is full: ${count}, so your link has stopped taking new ones. Download your kept tracks, then clear them.`, action: prepare }
+          : cap.used >= cap.limit * NEARLY_FULL
+            ? { text: `Your desk is nearly full: ${count}. Download your kept tracks, then clear them.`, action: prepare }
+            : null;
 
-  // The four tiles. A figure with no data yet says so rather than showing a zero that means nothing.
-  const keptDelta = stats.keptWeek - stats.keptPrev;
-  const tiles = (
-    <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-      <StatTile icon="inbox" label="Waiting" value={String(stats.waiting)} chip={stale > 0 ? <Chip tone="warn">{stale} over {STALE_DAYS} days</Chip> : undefined} />
-      <StatTile
-        icon="heart"
-        label="Kept this week"
-        value={String(stats.keptWeek)}
-        chip={keptDelta > 0 ? <Chip tone="up"><FloorIcon name="up" className="size-3" />{keptDelta}</Chip> : keptDelta < 0 ? <Chip>−{Math.abs(keptDelta)}</Chip> : undefined}
-      />
-      <StatTile icon="head" label="First listen" value={stats.medianListenMs !== null ? waitShort(stats.medianListenMs) : "–"} chip={<Chip>{stats.medianListenMs !== null ? "usual" : "no plays yet"}</Chip>} />
-      <StatTile icon="check" label="Decided" value={stats.decisionRate !== null ? `${stats.decisionRate}%` : "–"} chip={<Chip>30 days</Chip>} />
-    </div>
-  );
+  const waitingCovers: CrateCover[] = waitingNew.map((r) => ({ id: r.id, title: r.title, art: art(r) }));
+  const keptCovers: CrateCover[] = keptRows.slice(0, 3).map((r) => ({ id: r.id, title: r.title, art: art(r) }));
+  const playAll = keptRows.map((r) => toPlayer({ ...r, peaks: r.peaks ? JSON.parse(r.peaks) : null, played: !!r.played_at }));
+  const showKept = wkKept > 0;
 
-  // Your desk: what needs you (approvals, lime) and seats as links; then how full it is, collections, contacts and plan.
-  const teamDesk = (await teamsOn(user.id)) && atLeast(user.role, "admin");
-  const [seats, used, held, approver, contacts] = await Promise.all([
-    teamDesk ? seatsFor(user.id) : 0,
-    teamDesk ? seatsUsed(user.id) : 0,
-    heldReplies(user),
-    canApprove(user),
-    q.get<{ n: number }>("SELECT COUNT(*) AS n FROM senders WHERE user_id = ?", user.id),
-  ]);
-  const contactCount = Number(contacts?.n ?? 0);
-  const nearLimit = cap.used >= cap.limit * 0.8;
-  // Near the limit with kept tracks, the way out is downloading and clearing them (Prepare), before any upgrade.
-  const capHref = nearLimit && kept > 0 ? "/dashboard/prepare" : "/dashboard/account";
-  const passed = Math.max(0, cap.used - stats.waiting - kept);
-  const free = Math.max(0, cap.limit - cap.used);
-  const deskLinks: { key: string; href: string; text: string; urgent?: boolean }[] = [
-    ...(held.length
-      ? [{ key: "held", href: "/dashboard/settings/team", urgent: true, text: approver ? `${held.length} repl${held.length === 1 ? "y" : "ies"} waiting for your approval` : `${held.length} of your repl${held.length === 1 ? "y is" : "ies are"} waiting for approval` }]
-      : []),
-    ...(teamDesk && seats > 1 ? [{ key: "seats", href: "/dashboard/settings/team", text: `${used} of ${seats} seats` }] : []),
-  ];
-
-  // Where the link sends, as the label over it (owner, 30 Oct mock: "Your link · sends to “Friday residency”").
-  const linkWhere = problem
-    ? "Your link · not taking uploads right now"
-    : active
-      ? `Your link · sends to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at)}` : ""}`
-      : "Your link · sends to your Review Queue";
-
-  // A new desk's link, on its own above the checklist.
-  const linkSection = (
-    <section id="your-link" aria-labelledby="link-h" className="flex scroll-mt-20 flex-col gap-2.5 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-      <h2 id="link-h" className="text-[15px] font-semibold text-bone">Your link</h2>
-      <p className="text-[11.5px] text-mute">{linkWhere.replace(/^Your link · sends to/, "Sends tracks to").replace(/^Your link · n/, "N")}</p>
-      <LinkRow link={link} card={card} />
-    </section>
-  );
-
-  // The desk card (the mock's "Your desk"): how full it is as ticks, what needs you, its figures and the link.
-  const deskCard = !fresh && (
-    <section aria-labelledby="desk-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="desk-h" className="text-[15px] font-semibold text-bone">Your desk</h2>
-        <Link href={capHref} className={`text-[12px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}>
-          <strong className={`text-[16px] font-semibold ${nearLimit ? "" : "text-bone"}`}>{cap.used.toLocaleString("en-GB")}</strong> of {cap.limit.toLocaleString("en-GB")} tracks
-        </Link>
-      </div>
-      <DeskStrip waiting={stats.waiting} kept={kept} passed={passed} limit={cap.limit} />
-      <Legend
-        items={[
-          { label: `Waiting ${stats.waiting}`, tone: "bg-lime" },
-          { label: `Kept ${kept}`, tone: "bg-[color-mix(in_oklab,var(--color-lime)_45%,var(--color-line-2))]" },
-          ...(passed ? [{ label: `Not for me ${passed}`, tone: "bg-mute/55" }] : []),
-          { label: `Free ${free}`, tone: "bg-line-2" },
-        ]}
-      />
-      {deskLinks.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
-          {deskLinks.map((d) => (
-            <li key={d.key}>
-              <Link
-                href={d.href}
-                className={`group flex min-h-11 items-center gap-2 rounded-[11px] border px-2.5 text-[12.5px] ${d.urgent ? "border-lime/40 font-semibold text-lime" : "border-line bg-well text-mute hover:text-bone"}`}
-              >
-                {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
-                <span className="min-w-0 flex-1">{d.text}</span>
-                <FloorIcon name="chev" className="size-4 text-faint transition-transform duration-150 ease-out group-hover:translate-x-0.5" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="grid grid-cols-3 border-y border-dashed border-line-2 py-1.5 text-center">
-        <Link href="/dashboard/collections" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
-          <span className="text-[11.5px] text-mute">Collections</span>
-          <span className="text-[14px] font-semibold text-bone tnum">{collections.length}</span>
-        </Link>
-        <Link href="/dashboard/contacts" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
-          <span className="text-[11.5px] text-mute">Contacts</span>
-          <span className="text-[14px] font-semibold text-bone tnum">{contactCount}</span>
-        </Link>
-        <Link href="/dashboard/plans" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
-          <span className="text-[11.5px] text-mute">Plan</span>
-          <span className="text-[14px] font-semibold text-bone">{plan.name}</span>
-        </Link>
-      </div>
-      <div id="your-link" className="flex scroll-mt-20 flex-col gap-1.5">
-        <h3 id="link-h" className="text-[11.5px] text-mute">{linkWhere}</h3>
-        <LinkRow link={link} card={card} />
-      </div>
-    </section>
-  );
-
-  // The week: a Received / Kept / Listened switch over the last seven days, the totals in the chip.
-  const week = stats.daily.slice(-7);
-  const receivedDelta = stats.receivedWeek - stats.receivedPrev;
-  const weekCard = !fresh && stats.receivedWeek + stats.receivedPrev + stats.keptWeek > 0 && (
-    <section aria-labelledby="week-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="week-h" className="text-[15px] font-semibold text-bone">This week</h2>
-        <Chip tone={receivedDelta > 0 ? "up" : "flat"}>
-          {stats.receivedWeek} received · {receivedDelta === 0 ? "same as last week" : receivedDelta > 0 ? `${receivedDelta} more` : `${-receivedDelta} fewer`}
-        </Chip>
-      </div>
-      <WeekChart days={week} />
-    </section>
+  const weekDetail = `${plural(wkIn, "track")} in · ${wkKept} kept${week ? ` · ${wkThird} ${thirdWord}` : ""}`;
+  const showWeek = !fresh && wkIn + wkKept + stats.receivedPrev > 0;
+  const heldText = approver
+    ? `${held.length} repl${held.length === 1 ? "y" : "ies"} waiting for your approval`
+    : `${held.length} of your repl${held.length === 1 ? "y is" : "ies are"} waiting for approval`;
+  const showStart = showsGettingStarted(user, !!view);
+  const start = showStart && (
+    <Suspense fallback={<OnboardingSkeleton />}>
+      <Onboarding user={user} />
+    </Suspense>
   );
 
   return (
     <>
-    {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
-    {tourDue && <FirstVisitTour tip={tourTip(user.kind)} />}
-    {/*
-      The elevated Floor (owner, 30 Oct). One column on phones and tablets; from 1280px the work on the left (Up next,
-      setting up, what's ready for a set) and the desk on the right (how full it is, the link, the week, sending).
-      What needs you stays on top at every width: the tiles, the one lime button, anything wrong.
-    */}
-    <div className="page-gutter py-4 sm:py-7">
-      <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 sm:gap-5 xl:max-w-6xl">
-        {sp.desk === "ended" && (
-          <p role="alert" className="rounded-[13px] border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-bone">
-            You don&apos;t have access to that team&apos;s desk any more, so nothing was changed. This is your own desk.
-          </p>
-        )}
-        <header className="flex min-w-0 flex-col gap-1">
-          <p className="text-[12px] text-mute">{today}</p>
-          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone sm:text-[26px]">
-            {welcome ? `Welcome, ${first}.` : `${greeting}, ${first}`}
-          </h1>
-          {welcome && <p className="max-w-[46ch] text-[14px] leading-snug text-mute">Your link is ready. Share it and the first track lands here.</p>}
-          {!welcome && !stats.waiting && (
-            <p className="max-w-[46ch] text-[14px] leading-snug text-mute">
-              {kept ? `You're all caught up. ${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.` : "You're all caught up. New tracks will show up here first."}
+      {verify && <VerifyBanner email={user.email} />}
+      {tourDue && <FirstVisitTour tip={tourTip(user.kind)} />}
+      {/* The main column: 20px sides on phones, 920px wide at most and centred. The layout pads the bottom for the player and menu. */}
+      <div className="relative px-5 py-4 sm:py-7 md:px-8">
+        <div className="relative mx-auto flex w-full min-w-0 max-w-[920px] flex-col gap-4 lg:gap-5">
+          {sp.desk === "ended" && (
+            <p role="alert" className="rounded-[13px] border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-bone">
+              You don&apos;t have access to that team&apos;s desk any more, so nothing was changed. This is your own desk.
             </p>
           )}
-        </header>
+          {notice && <Notice action={notice.action}>{notice.text}</Notice>}
 
-        {problem && (
-          <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[14px] border border-danger/40 bg-danger/10 px-3.5 py-3">
-            <span aria-hidden className="size-2 shrink-0 rounded-full bg-danger" />
-            <p className="min-w-[12rem] flex-1 text-[13px] font-medium leading-snug text-bone">{problem.text}</p>
-            {problem.action}
-          </div>
-        )}
-
-        {/* A desk that has never had a track: sharing the link is the first job, so it comes straight after the welcome. */}
-        {fresh && linkSection}
-
-        {!fresh && tiles}
-
-        {weekend && <PlayedOutCard titles={weekend.tracks.map((t) => t.title)} />}
-
-        <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-          <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
-            {oldest && (
-              <section aria-labelledby="next-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <IconBox name="wave" small />
-                    <h2 id="next-h" className="text-[15px] font-semibold text-bone">Up next</h2>
-                  </div>
-                  <Link href="/dashboard/review?view=queue" className={GHOST}>
-                    {stats.waiting > 1 ? <span className="tnum">All {stats.waiting}</span> : "Open the queue"}
-                    <FloorIcon name="chev" className="size-3.5" />
-                  </Link>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11.5px] text-mute">{stats.waiting > 1 ? "Oldest waiting" : "Waiting"}</p>
-                  <p className="mt-0.5 truncate text-[20px] font-semibold leading-tight tracking-[-0.03em] text-bone">{oldest.title}</p>
-                  <p className="truncate text-[13px] text-mute">{oldest.artist}</p>
-                </div>
-                <UpNextHero track={oldest} queue={upNext} />
-                <dl className="flex flex-col gap-1.5">
-                  {(oldest.genre || oldest.bpm) && (
-                    <InfoRow icon="tag" label="Genre">
-                      {[oldest.genre, oldest.bpm ? `${Math.round(oldest.bpm)} BPM` : null].filter(Boolean).join(" · ")}
-                    </InfoRow>
-                  )}
-                  {oldest.sender !== oldest.artist && <InfoRow icon="user" label="Sender">{oldest.sender}</InfoRow>}
-                  <InfoRow icon="folder" label="Collection">{oldest.collection ?? "Review Queue"}</InfoRow>
-                  <InfoRow icon="clock" label="Arrived">
-                    {now() - Number(oldest.created_at) > STALE_DAYS * 86_400_000 && <span aria-hidden className="mr-1.5 inline-block size-1.5 rounded-full bg-[#e89a3c] align-middle" />}
-                    {ago(Number(oldest.created_at))}
-                  </InfoRow>
-                </dl>
-                <Link
-                  href="/dashboard/review?view=queue"
-                  className="btn-lime min-h-12 w-full px-6 text-[15px]! transition-transform duration-100 active:scale-[0.97] motion-reduce:active:scale-100"
-                >
-                  {stats.waiting === 1 ? "Listen now" : "Start with the oldest"}
-                </Link>
-                <p className="text-center text-[11.5px] text-faint">Senders see Listened once you play past 30 seconds.</p>
-                {justIn.length > 0 && (
-                  <div className="flex flex-col gap-2 border-t border-dashed border-line-2 pt-3">
-                    <h3 className="text-[11.5px] text-mute">Just in</h3>
-                    <UpNext items={justIn} />
-                  </div>
-                )}
-              </section>
-            )}
-
-            {/* Getting started helps a new desk; on a busy one the queue comes first. Only the account owner on their own
-                desk sees it: not team members, not an admin in View as. */}
-            {showsGettingStarted(user, !!view) && (
-              <Suspense fallback={<OnboardingSkeleton />}>
-                <Onboarding user={user} />
-              </Suspense>
-            )}
-
-            {kept > 0 && (
-              <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <IconBox name="heart" />
-                  <div className="min-w-0">
-                    <h2 id="set-h" className="text-[14px] font-semibold text-bone">
-                      <span className="tnum">{kept}</span> kept track{kept === 1 ? "" : "s"} ready for your set
-                    </h2>
-                    <p className="text-[12px] text-faint">
-                      {nearLimit
-                        ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then delete the ones you're done with to make room.`
-                        : "Download them as a crate with a Rekordbox playlist."}
-                    </p>
-                  </div>
-                </div>
-                <Link href="/dashboard/prepare" className={GHOST}>
-                  Prepare
-                </Link>
-              </section>
-            )}
-          </div>
-
-          {(!fresh || canSend) && (
-            <aside aria-label="Your desk" className="flex min-w-0 flex-col gap-4 sm:gap-5">
-              {deskCard}
-              {weekCard}
-              {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
-              {canSend && (
-                <div className="overflow-hidden rounded-[18px] border border-line bg-card shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-                  <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
-                </div>
+          {/* In the page's order (and the tab order) the link follows the greeting; phones show it after the crates. A new desk
+              has no crates, so the link row is full width under the greeting at every size (option 41, new desk). */}
+          <div className={fresh ? "contents" : "contents lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,400px)] lg:items-end lg:gap-6"}>
+            <header className="flex min-w-0 flex-col gap-1.5 max-lg:order-1">
+              <h1 className="text-[26px] font-bold leading-tight tracking-[-0.03em] text-bone lg:text-[34px]">{fresh ? `Welcome, ${first}` : `${greeting}, ${first}`}</h1>
+              <p className="max-w-[46ch] text-[14px] leading-snug text-mute tnum lg:text-[15px]">{summary}</p>
+            </header>
+            <div id="your-link" className={`flex min-w-0 scroll-mt-20 flex-col gap-1.5 ${fresh ? "max-lg:order-1" : "max-lg:order-3"}`}>
+              <LinkRow link={link} card={card} owner={guest ? deskFirst : undefined} />
+              {fresh && (
+                <p className="text-[12px] text-mute">
+                  {notice ? "Not taking uploads right now" : active ? `Sends tracks to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at, prefs.tz)}` : ""}` : "Sends tracks to your Review Queue"}
+                </p>
               )}
-            </aside>
+            </div>
+          </div>
+
+          {!fresh && (
+            <div className="grid grid-cols-2 gap-3 max-lg:order-2 lg:gap-5">
+              <Crate
+                label="Waiting"
+                covers={waitingCovers}
+                hot={stats.waiting > 0}
+                wide={!showKept}
+                n={stats.waiting}
+                lines={
+                  stats.waiting > 0 ? (
+                    <>
+                      <p>waiting</p>
+                      {stale > 0 && (
+                        <p className="text-[#d98a2b]">
+                          {stale}
+                          <span className="hidden lg:inline">{stale === 1 ? " has waited" : " have waited"}</span> over {STALE_DAYS} days
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p>nothing waiting</p>
+                  )
+                }
+                actions={
+                  stats.waiting > 0 ? (
+                    // As drawn in option 41: quiet on phones, lime from 1024px. One is shown at a time.
+                    <>
+                      <Link href="/dashboard/review?view=queue" className={`${QUIET} lg:hidden`}>
+                        Review <span aria-hidden>→</span>
+                      </Link>
+                      <Link href="/dashboard/review?view=queue" className={`${LIME} max-lg:hidden`}>
+                        Review what&apos;s waiting <span aria-hidden>→</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <a href="#your-link" className={QUIET}>
+                      Share your link
+                    </a>
+                  )
+                }
+              />
+              {showKept && (
+                <Crate
+                  label="Kept this week"
+                  covers={keptCovers}
+                  n={wkKept}
+                  lines={
+                    <p>
+                      kept this week{wkThird > 0 ? ` · ${wkThird} ${thirdWord}` : ""}
+                    </p>
+                  }
+                  actions={
+                    <>
+                      {playAll.length > 0 && <PlayAllKept tracks={playAll} />}
+                      <Link href="/dashboard/review?view=list&s=kept" className={QUIET} aria-label="Open your kept tracks">
+                        Open
+                      </Link>
+                    </>
+                  }
+                />
+              )}
+            </div>
           )}
+
+          <div className="flex min-w-0 flex-col gap-4 max-lg:order-4 lg:gap-5">
+            {/* A new desk: Getting started comes straight after the link. */}
+            {fresh && start}
+
+            {weekend && <PlayedOutCard titles={weekend.tracks.map((x) => x.title)} readOnly={!!view} />}
+
+            {held.length > 0 && (
+              <section aria-label="Your desk" className="flex flex-col">
+                <p className={LABEL}>Needs you</p>
+                <FloorRow icon="reply" title={heldText} detail="Open Team to read and approve" href="/dashboard/settings/team" />
+              </section>
+            )}
+
+            {showWeek && (
+              <div className="flex flex-col">
+                <p className={LABEL}>This week</p>
+                <section aria-label="Your week">
+                  <FloorRow icon="analytics" title="Your week" detail={weekDetail} href={analyst ? "/dashboard/analytics?p=7d" : undefined} />
+                </section>
+              </div>
+            )}
+
+            {earlier.length > 0 && (
+              <section aria-labelledby="earlier-h" className="flex flex-col">
+                <h2 id="earlier-h" className={LABEL}>
+                  Earlier
+                </h2>
+                {earlier.map((e) => (
+                  <FloorRow
+                    key={e.id}
+                    icon={EARLIER[e.type].icon}
+                    title={e.title}
+                    detail={EARLIER[e.type].says(e.sender)}
+                    when={fmtDay(Number(e.created_at), prefs.tz)}
+                    href={`/dashboard/review?view=queue&s=all&t=${e.track_id}`}
+                  />
+                ))}
+              </section>
+            )}
+
+            {/* On a desk that already has tracks, Getting started sits last: the crates come first. Only the account
+                owner on their own desk sees it: not team members, not an admin in View as. */}
+            {!fresh && start}
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
-}
-
-/** Waiting this long gets a nudge on the Floor, two days before the 7-day mark the desk aims for. */
-const STALE_DAYS = 5;
-
-/** How long a first listen usually takes, as a readout: "<1h", "5h", "1d", "3d". */
-function waitShort(ms: number) {
-  const h = ms / 3_600_000;
-  if (h < 1) return "<1h";
-  if (h < 24) return `${Math.round(h)}h`;
-  return `${Math.round(h / 24)}d`;
 }

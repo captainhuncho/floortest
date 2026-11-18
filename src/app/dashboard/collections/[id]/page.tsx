@@ -1,5 +1,5 @@
 import { trackUse } from "@/lib/usage";
-import { atLeast } from "@/lib/account-members";
+import { atLeast, canRunCallouts } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import { notFound } from "next/navigation";
@@ -12,20 +12,26 @@ import { briefItems } from "@/lib/brief";
 import { DownloadActions } from "../../DownloadActions";
 import { LinkRow } from "../../floor/FloorClient";
 import { APP_URL } from "@/lib/mail";
-import { CARD, InfoRow, SectionHead } from "@/components/Kit";
+import Link from "next/link";
+import { Icon, InfoRow } from "@/components/Kit";
 import { ListRows, type ListRow } from "../../list/ListRows";
 import { LIST_COLUMNS, type ListTrack } from "../../rows";
-import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
+import { CalloutTools, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
+import { fmtLength, FolderPage, WIDE } from "../FolderPage";
+import { CalloutState, trackCount } from "../FolderRow";
+import { PlayAll } from "../PlayAll";
+import { toPlayer } from "@/lib/player-track";
 import { shareCardTarget } from "../callout-card";
-import { OwnerUpload } from "../OwnerUpload";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 import { ShareLinks, type ShareLinkView } from "../ShareLinks";
 import { linksFor, sharingOn } from "@/lib/share-links";
 
 export const metadata = { title: "Collection — FloorTest" };
 
 /**
- * A collection: every track in it, whatever its status, beside its details (owner, 30 Oct: the redesign mock's detail
- * card: numbers, brief, dates, the link while it's receiving, download, edit and add tracks).
+ * A callout's folder page (owner, 17 Nov: option 43; the same page as a project's): a big cover, its name, its facts in
+ * one or two lines, shuffle and play, "Review N new", then every track in it, numbered, with its status. Its details
+ * (brief, dates, download, edit), share links and delete come after the tracks.
  */
 export default async function CollectionFolder({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -38,6 +44,8 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const genres = genresFor(c);
   // Team and link controls are for the owner and admins (their actions check this too).
   const admin = atLeast(user.role, "admin");
+  // Editing a callout: owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov).
+  const callouts = await canRunCallouts(user);
   // Share links (behind the "sharing" switch): only while sharing is switched on.
   const links = admin && (await sharingOn()) ? await linksFor(user, c.id) : null;
   // Track and sender reads run under the per-person rules (B8) as well as the desk filter; share links stay the app's.
@@ -105,11 +113,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
 
   // The mock's detail card: the numbers, the brief, the facts as rows, the link while it's receiving, then the actions.
   const details = (
-    <section aria-labelledby="about-h" className={`flex flex-col gap-3 ${CARD} p-3`}>
-      <h2 id="about-h" className="sr-only">
-        About this collection
-      </h2>
-      <p className="font-mono text-[11.5px] text-mute tnum">{readout}</p>
+    <CollapsiblePanel collectionId={c.id} summary={readout}>
       <div className="border-t border-dashed border-line-2" />
       <div>
         <h3 className="mb-1.5 text-[11.5px] text-mute">Brief</h3>
@@ -141,48 +145,58 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
       )}
       {/* The shared download pair, laid out side by side and full width in this card. */}
       <div className="[&>div]:flex! [&>div]:gap-2 [&>div>*]:min-w-0 [&>div>*]:flex-1 [&_.btn-lime]:min-h-11 [&>div>a]:min-h-11 [&>div>span]:min-h-11">
-        <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} />
+        <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} quiet />
       </div>
       <div className="flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:flex-1">
-        <EditCollectionInfo c={editable} receiving={receiving} closed={closed} canManage={admin} />
-        {/* Your own tracks go to Projects, never into a collection (owner, 13 Nov: 1b); senders send through the link. */}
-        {admin && (
-          <OwnerUpload
-            api="/api/music/upload"
-            heading="Add your own tracks"
-            note="They go to Projects, kept until you delete them, never into a collection. Senders and labels send through your link instead."
-            elsewhere={{ label: "Projects", href: "/dashboard/projects" }}
-          />
-        )}
+        {callouts && <EditCollectionInfo c={editable} receiving={receiving} closed={closed} />}
+        {/* No Add tracks on a callout (owner, 16 Nov: "keep it for Projects only"): senders send through the link, and
+            your own tracks are added on a project's page. */}
       </div>
-    </section>
+    </CollapsiblePanel>
   );
 
+  // The total length only when every track is on the page (the list stops at 500) and each has a length stored.
+  const whole = cards.length === c.count && cards.every((t) => t.duration);
+  const length = whole && cards.length ? cards.reduce((sum, t) => sum + (t.duration ?? 0), 0) : 0;
+
   return (
-    <div className="page-gutter py-4 sm:py-7">
-      <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 sm:gap-5">
-        <CollectionDetailHeader c={editable} receiving={receiving} closed={closed} canManage={admin} />
-        {/* Phones: the details first, then the tracks. From lg the tracks on the left and the details beside them. */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-          <aside aria-label="Collection details" className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-1">
-            {details}
-          </aside>
-          <div className="flex min-w-0 flex-col gap-4 sm:gap-5 lg:col-start-1 lg:row-start-1">
-            {links && <ShareLinks collectionId={c.id} links={links as ShareLinkView[]} sharedTracks={sharedTracks} at={now()} />}
-            <section aria-labelledby="tracks-h" className="flex flex-col gap-2">
-              <SectionHead id="tracks-h" icon="music" title="Tracks" aside={<span className="tnum">{c.count}</span>} />
-              {/* One list for every screen size, so keyboard shortcuts and the player are registered once. It's its own
-                  card, lined up with the others. */}
-              {cards.length ? (
-                <ListRows rows={cards} statusTag collections={all.map((x) => ({ id: x.id, name: x.name }))} />
-              ) : (
-                <p className={`${CARD} p-3 text-[12px] text-mute`}>This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
-              )}
-            </section>
-            {admin && <DeleteCollection c={{ id: c.id, name: c.name }} canDelete={all.length > 1} />}
-          </div>
-        </div>
-      </div>
-    </div>
+    <FolderPage
+      back={{ href: "/dashboard/collections", label: "Collections" }}
+      tools={<CalloutTools c={editable} receiving={receiving} closed={closed} canManage={admin} canEdit={callouts} link={live ? `${APP_URL}/${user.handle}` : undefined} card={card} />}
+      art={editable.art}
+      name={c.name}
+      lines={[
+        `Callout · ${trackCount(c.count)}${length ? ` · ${fmtLength(length)}` : ""}`,
+        <>
+          <CalloutState live={live} closed={closed} full={!!c.full_at} closesLabel={editable.closesLabel} />
+          {!closed && c.closes_at ? ` · closes ${fmtDay(c.closes_at)}` : ""}
+          {c.max_tracks ? ` · ${c.count} of ${c.max_tracks}` : ""}
+        </>,
+      ]}
+      play={<PlayAll queue={cards.map(toPlayer)} name={c.name} />}
+      action={
+        c.needs_review > 0 && (
+          <Link href={`/dashboard/review?view=queue&c=${c.id}`} className={WIDE}>
+            <Icon name="inbox" className="size-4" />
+            Review {c.needs_review} new
+          </Link>
+        )
+      }
+    >
+      <section aria-labelledby="tracks-h" className="flex flex-col gap-2">
+        <h2 id="tracks-h" className="sr-only">
+          Tracks
+        </h2>
+        {/* One list for every screen size, so keyboard shortcuts and the player are registered once. */}
+        {cards.length ? (
+          <ListRows rows={cards} statusTag numbered collections={all.map((x) => ({ id: x.id, name: x.name }))} />
+        ) : (
+          <p className="text-[12.5px] text-mute">No tracks yet. Tracks sent while it&apos;s receiving land here.</p>
+        )}
+      </section>
+      {links && <ShareLinks collectionId={c.id} links={links as ShareLinkView[]} sharedTracks={sharedTracks} at={now()} />}
+      {details}
+      {admin && <DeleteCollection c={{ id: c.id, name: c.name }} canDelete={all.length > 1} />}
+    </FolderPage>
   );
 }

@@ -200,7 +200,8 @@ Flat by default, layered by tone. Surfaces step from Booth Black (page) to Booth
 ### Shadow Vocabulary
 - **Pop** (`box-shadow: 0 24px 48px -12px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4)`): menus, dialogs and toasts.
 - **Lift** (`box-shadow: 0 2px 6px rgb(0 0 0 / 0.55)`): a raised key or card.
-- **Tactile panel** (`box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 4px rgb(0 0 0 / 0.5), 0 14px 30px -6px rgb(0 0 0 / 0.75)`): the navigation rail and floating tab bar only.
+- **Tactile panel** (`box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 4px rgb(0 0 0 / 0.5), 0 14px 30px -6px rgb(0 0 0 / 0.75)`): the navigation rail only.
+- **Glass** (the phone's player and menu pair, the laptop's player bar): frosted black glass (owner, 16 Nov: neutral, no green, no colour from the page behind): `--glass` over `blur(30px) saturate(0)`, a 1px `--glass-line` hairline, an inset `--glass-hi` top edge and one `--glass-shadow` under it (`0 12px 22px` under the pair, `0 14px 30px` under the laptop bar). Night: `rgb(8 8 8 / 0.84)`, white at 9%, white at 7%, black at 50%. Day: white at 80%, ink at 7%, white at 95%, `rgb(20 20 20 / 0.16)`. The selected tab's pill is `--glass-on` (night: black at 42%; day: ink at 7%). Without blur support: solid `--glass-solid` (night `#0c0c0c`, day Booth Card).
 
 ### Named Rules
 **The Floaters Only Rule.** Page cards have borders, not shadows. If it doesn't float above the page, it doesn't cast a shadow.
@@ -241,7 +242,7 @@ Tactile and plain: they say what you get ("Download kept", "Clear kept").
 
 ### Navigation
 - **Desktop:** a dark rail that stays dark in both themes; items in 12px uppercase with 0.5px tracking, icons at 18px, the current item raised with an inset highlight, lime count badges.
-- **Phones:** a floating dark tab bar (22px radius) above the content, current tab raised.
+- **Phones:** a floating glass menu (22px radius) with the mini player (18px) floating 8px above it as one pair; the current tab sits on a darker 16px pill in the accent colour. It follows Night and Day.
 
 ### Dialogs and Sheets
 One shell: Booth Panel, 16px radius, Pop shadow, a scrim behind modal ones. Escape closes, focus is trapped and starts on the first control. Phones get a bottom sheet, desktop a centred box.
@@ -329,6 +330,7 @@ The heart of the desk: play button, title and artist, a waveform, the Listened t
 - **Don't** add shadows to page cards or nest a card inside a card.
 - **Don't** introduce a second typeface outside the home-page serif accent.
 - **Don't** add a second accent colour or a gradient for decoration.
+  The owner (17 Nov): no coloured glow or shade behind any page; the background stays plain near-black. Glass stays for the player and menu.
 - **Don't** repeat on the page what it already says (no status chip matching the selected tab, no stat shown twice).
 - **Don't** animate keyboard-driven actions (K, X, U, Space) or start anything from scale 0.
 

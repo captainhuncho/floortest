@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, hydrated, logIn, submitLogin, TEST_PASSWORD, test } from "./fixtures";
+import { expect, hydrated, logIn, preparePage, submitLogin, TEST_PASSWORD, test } from "./fixtures";
 
 /**
  * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). Its own owner, Tia (teams@), has 3 seats
@@ -101,6 +101,12 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await page.getByText("Switch desk").click();
   await page.getByRole("button", { name: /Tia Teams/ }).click();
   await expect(page.getByText(/On Tia Teams.s desk as a member/)).toBeVisible();
+  // The Floor's week for a member: the plain line from the Floor's own stats (no played out / downloaded figure from the
+  // Analytics reads) and no link to Analytics, which is for the owner and A&R / Admins.
+  const week = page.getByRole("region", { name: "Your week" });
+  await expect(week).toBeVisible();
+  await expect(week.getByRole("link")).toHaveCount(0);
+  await expect(week).toHaveText(/^Your week · \d+ tracks? in · \d+ kept$/);
   // Members can't send as the account, so Send isn't offered; nor are the owner's setup checklist or link controls.
   await expect(page.getByRole("link", { name: /^Send$/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Hide this" })).toHaveCount(0);
@@ -110,10 +116,24 @@ test("a member switches to the team's desk, can't open owner settings, and their
   const trackDelete = page.getByRole("button", { name: "Delete", exact: true }).and(page.locator(':not([aria-label="Review together"] *)'));
   await expect(trackDelete).toHaveCount(0);
 
+  // Callouts are for members the owner or an A&R / Admin has ticked: an unticked member gets no "New folder" on Collections.
+  await page.goto("/dashboard/collections");
+  await expect(page.getByRole("heading", { name: "Collections", level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^New/ })).toHaveCount(0);
+  // Nor on Projects: uploading, projects and groups are the owner's and A&R / Admins'.
+  await page.goto("/dashboard/projects");
+  await expect(page.getByRole("heading", { name: "Collections", level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^New/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Upload audio" })).toHaveCount(0);
+
   // Owner-only and admin-only pages send members to the Team page instead.
   await page.goto("/dashboard/settings/security");
   await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
   await expect(page.getByRole("link", { name: "Security" })).toHaveCount(0);
+  // Analytics is for the owner and A&R / Admins (owner, 16 Nov): no menu entry, and the address goes to the Team page.
+  await expect(page.getByRole("link", { name: "Analytics" })).toHaveCount(0);
+  await page.goto("/dashboard/analytics");
+  await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
   // Calling the link's cover route directly is refused too (the page that offers it is A&R / Admin only).
   expect((await page.request.delete("/api/cover")).status()).toBe(403);
 
@@ -144,11 +164,12 @@ test("a member switches to the team's desk, can't open owner settings, and their
 
 test("the owner approves the held reply from the Team page", async ({ page }) => {
   await logInWithTwoStep(page);
-  // The Floor's "Your desk" line says what needs the owner (the reply waiting) and how many seats are in use.
+  // The Floor's "Needs you" row says what needs the owner (the reply waiting). Seats left the Floor with the desk card
+  // (Floor, final, 16 Nov); the Team page shows them.
   await page.goto("/dashboard/floor");
   const desk = page.getByRole("region", { name: "Your desk" });
   await expect(desk.getByRole("link", { name: "1 reply waiting for your approval" })).toBeVisible();
-  await expect(desk.getByRole("link", { name: /of \d+ seats/ })).toBeVisible();
+  await expect(desk.getByText("Needs you")).toBeVisible();
   await desk.getByRole("link", { name: "1 reply waiting for your approval" }).click();
   await page.waitForURL(/\/dashboard\/settings\/team/);
   await expect(page.getByRole("heading", { name: "Waiting for approval (1)" })).toBeVisible();
@@ -161,4 +182,61 @@ test("the owner approves the held reply from the Team page", async ({ page }) =>
   // The account log names who did each thing: the held reply was the member's.
   await page.goto("/dashboard/activity");
   await expect(page.getByText("by Lena Listener").first()).toBeVisible();
+});
+
+test("a member the owner ticks for callouts can make one; folders stay the owner's", async ({ page, browser, baseURL }) => {
+  await logInWithTwoStep(page);
+  await page.goto("/dashboard/settings/team");
+  // The people list is folded; open it to reach each member's row.
+  await page.getByRole("button", { name: /^People · / }).click();
+  const tick = page.getByRole("checkbox", { name: "Let Lena Listener run callouts" });
+  // A rerun may find the tick left on by an earlier go; turn it on either way and let the save land.
+  if (!(await tick.isChecked())) {
+    const saved = page.waitForResponse((r) => r.request().method() === "POST");
+    await tick.check();
+    await saved;
+  }
+
+  const member = await browser.newContext();
+  const lena = await member.newPage();
+  try {
+    // The second browser needs the same set-up as the test's own page: the banner choice and the fake bot check, which a
+    // full run asks for after earlier specs' sign-ins (without it, the sign-in waits for Cloudflare and never lands).
+    await preparePage(lena, baseURL ?? undefined);
+    await lena.goto("/api/health");
+    await lena.bringToFront();
+    await logIn(lena, "listener@floortest.test");
+    await lena.getByText("Switch desk").click();
+    await lena.getByRole("button", { name: /Tia Teams/ }).click();
+    await expect(lena.getByText(/On Tia Teams.s desk as a member/)).toBeVisible();
+    await lena.goto("/dashboard/collections");
+    // The New folder sheet offers a ticked member a callout and nothing else: no project, no group of either.
+    await lena.getByRole("button", { name: "New folder" }).click();
+    const sheet = lena.getByRole("dialog", { name: "New folder" });
+    await expect(sheet.getByRole("radio", { name: /^Callout/ })).toBeVisible();
+    await expect(sheet.getByRole("radio")).toHaveCount(1);
+    await expect(sheet.getByRole("radio", { name: /Project|Group/ })).toHaveCount(0);
+    await lena.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    // A callout's own menu offers Edit to a ticked member, but never Move to folder or Delete; folder tiles have no menu.
+    await lena.getByRole("button", { name: /^More for / }).first().click();
+    await expect(lena.getByRole("menuitem", { name: /^Edit/ })).toBeVisible();
+    await expect(lena.getByRole("menuitem", { name: /Move to folder|Delete|Rename/ })).toHaveCount(0);
+    await lena.keyboard.press("Escape");
+    // Projects stay the owner's and A&R / Admins': the tick adds nothing there.
+    await lena.goto("/dashboard/projects");
+    await expect(lena.getByRole("heading", { name: "Collections", level: 1 })).toBeVisible();
+    await expect(lena.getByRole("button", { name: /^New/ })).toHaveCount(0);
+    await expect(lena.getByRole("button", { name: "Upload audio" })).toHaveCount(0);
+  } finally {
+    await member.close();
+  }
+
+  // Untick again, so the member test above finds Lena unticked on the next run.
+  await page.reload();
+  await page.getByRole("button", { name: /^People · / }).click();
+  const untick = page.getByRole("checkbox", { name: "Let Lena Listener run callouts" });
+  const saved = page.waitForResponse((r) => r.request().method() === "POST");
+  await untick.uncheck();
+  await saved;
 });

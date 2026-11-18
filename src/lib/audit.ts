@@ -36,6 +36,7 @@ export const AUDIT_LABELS = {
   reply_limited: "Reply not sent (reply limit reached) to",
   played_out: "Played out",
   noted: "Added a note on",
+  reported: "Reported",
   blocked: "Blocked",
   unblocked: "Unblocked",
   collection_created: "Created collection",
@@ -65,6 +66,8 @@ export const AUDIT_LABELS = {
   team_removed: "Removed from the team:",
   team_left: "Left the team:",
   team_role: "Changed a role:",
+  team_callouts_on: "Let a member run callouts:",
+  team_callouts_off: "Stopped a member running callouts:",
   team_invite_revoked: "Cancelled an invite to",
   reply_approval_set: "Changed reply approval:",
 } as const;

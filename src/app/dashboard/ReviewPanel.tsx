@@ -1,5 +1,6 @@
 import { CuePoint } from "@/components/CuePoint";
 import { currentUser } from "@/lib/auth";
+import { canMarkPlayedOut } from "@/lib/played-out-prompt";
 import { decisionLocked } from "@/lib/review";
 import { ProfileLinks } from "@/components/ProfileLinks";
 import { readLinks } from "@/lib/socials";
@@ -15,6 +16,9 @@ import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
 import { PlayedOut } from "./PlayedOut";
 import { StemsBox } from "./StemsBox";
+import { ReportTrack } from "./ReportTrack";
+import { reportTrack } from "./actions/report";
+import { atLeast } from "@/lib/account-members";
 import { PrepBox } from "./PrepBox";
 import { parseCues } from "@/lib/cues";
 import { DetailPlayer } from "./DetailPlayer";
@@ -252,9 +256,11 @@ export async function ReviewPanel({
 
           {t.decision === "kept" && (
             <>
-              <div className={card}>
-                <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
-              </div>
+              {desk && canMarkPlayedOut(desk) && (
+                <div className={card}>
+                  <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
+                </div>
+              )}
               <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
             </>
           )}
@@ -271,7 +277,7 @@ export async function ReviewPanel({
                 <IconBox name="music" small />
                 <span className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Details</span>
               </span>
-              <span className="truncate text-[11.5px] text-mute">file, dates, move, delete, sender</span>
+              <span className="truncate text-[11.5px] text-mute">file, dates, move, delete, report, sender</span>
             </span>
           }
         >
@@ -318,8 +324,9 @@ export async function ReviewPanel({
             </form>
             {ownUpload && <MoveToProjects trackId={t.id} title={t.title} folders={projects.map((f) => ({ id: f.id, name: f.name }))} after={next?.href ?? "/dashboard/projects"} />}
           </div>
-          {desk?.role !== "member" && (
-            <div className="mt-1.5 flex justify-end">
+          <div className="mt-1.5 flex flex-wrap items-start justify-between gap-x-2">
+            <ReportTrack action={reportTrack.bind(null, t.id)} senderName={sender.name} canBlock={!!desk && atLeast(desk.role, "admin") && !sender.blocked_at} />
+            {desk?.role !== "member" && (
               <ConfirmButton
                 action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
                 message="Delete this file now? It's removed for good and its slot comes back. The sender's history stays on this desk."
@@ -328,8 +335,8 @@ export async function ReviewPanel({
               >
                 Delete
               </ConfirmButton>
-            </div>
-          )}
+            )}
+          </div>
 
           <section className="mt-4 border-t border-line pt-3" aria-labelledby="sender-h">
             <div className="flex items-center justify-between gap-2">

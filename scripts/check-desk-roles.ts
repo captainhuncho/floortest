@@ -7,6 +7,7 @@
  *   owner   requireRole("owner"): account security, billing, plan (only on your own desk)
  *   own     requireOwnAccount(): deleting the account, owner of your own desk, before the Terms tick too (owner, 15 Nov)
  *   admin   requireRole("admin"): links, routing, team tools, deleting, blocking
+ *   callouts requireCallouts(): owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov)
  *   member  requireUser(): anyone working the desk (review, notes, replies, comments)
  *   lib     requireUser(), with the role checked inside src/lib/account-members.ts (tested in tests/account-teams.test.ts)
  *   person  requirePerson(): the signed-in person, whatever desk they're on
@@ -15,13 +16,15 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-type Need = "owner" | "own" | "admin" | "member" | "lib" | "person" | "public";
+type Need = "owner" | "own" | "admin" | "callouts" | "member" | "lib" | "person" | "public";
 const ROLES: Record<string, Record<string, Need>> = {
-  "account-team.ts": { inviteTeammate: "lib", cancelTeamInvite: "lib", removeTeammate: "lib", changeTeamRole: "lib", saveReplyApproval: "lib", answerHeldReply: "lib", switchDesk: "person", joinTeam: "person" },
+  "account-team.ts": { inviteTeammate: "lib", cancelTeamInvite: "lib", removeTeammate: "lib", changeTeamRole: "lib", setTeammateCallouts: "lib", saveReplyApproval: "lib", answerHeldReply: "lib", switchDesk: "person", joinTeam: "person" },
   "batch.ts": { batchTracks: "member" }, // deleting in a batch is refused to members inside the action
-  "collections.ts": { createCollection: "member", setActiveCollection: "admin", updateCollection: "member", deleteCollection: "admin" },
+  "report.ts": { reportTrack: "member" }, // blocking in the same step is refused to members inside the action
+  "collections.ts": { createCollection: "callouts", setActiveCollection: "admin", updateCollection: "callouts", deleteCollection: "admin" },
   "desk.ts": { sendFeedback: "member", closeFeedbackAsk: "member", dismissOnboarding: "admin", markTourSeen: "person", dismissNotice: "person", markLinkShared: "person", lookupReceiver: "member", clearNotifications: "member", markNotificationsRead: "member", quickSearch: "member", pauseLink: "admin", resumeLink: "admin" },
-  "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin", moveAllToProjects: "admin" },
+  "folders.ts": { createFolder: "admin", renameFolder: "admin", deleteFolder: "admin", fileCallout: "admin", fileProject: "admin" },
+  "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin", moveAllToProjects: "admin", moveManyToProjects: "admin" },
   "links.ts": { createShareLink: "admin", resetShareLink: "admin", revokeShareLink: "admin", addLinkRecipients: "admin", removeLinkRecipient: "admin", answerLinkRequest: "admin", setLinkRequests: "admin" },
   "review.ts": {
     decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member", playedOutBatch: "admin", skipPlayedOutPrompt: "admin",
@@ -41,6 +44,7 @@ const GUARD: Record<Need, string | null> = {
   owner: 'requireRole("owner")',
   own: "requireOwnAccount()",
   admin: 'requireRole("admin")',
+  callouts: "requireCallouts()",
   member: "requireUser()",
   lib: "requireUser()",
   person: "requirePerson()",
@@ -87,9 +91,9 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts"))) {
  * outside a handler, uses `currentDeskForChange()`, which refuses a team desk the person lost (409) instead of
  * quietly working on their own desk.
  */
-const ROUTES: Record<string, Record<string, "admin" | "member" | "public">> = {
+const ROUTES: Record<string, Record<string, "admin" | "callouts" | "member" | "public">> = {
   "callout-card/[id]": { GET: "member", POST: "member" }, // stricter inside: the account owner only (POST adds a note, same checks)
-  "collection-art/[id]": { GET: "member", POST: "member", DELETE: "member" }, // like updateCollection
+  "collection-art/[id]": { GET: "member", POST: "callouts", DELETE: "callouts" }, // like updateCollection: refuses unticked Members
   "collections/[id]/upload": { POST: "admin" },
   "collections/[id]/upload/complete": { POST: "admin" },
   "cover": { POST: "admin", DELETE: "admin" }, // part of the public page (updatePublicPage)
@@ -130,6 +134,7 @@ for (const path of routeFiles(api)) {
     if (!method) continue;
     const need = listed[method];
     if (!need) problems.push(`api/${route}: ${method} isn't in ROUTES: decide who may call it`);
+    else if (need === "callouts" && !/canRunCallouts\(/.test(src)) problems.push(`api/${route}: ${method} is "callouts" so the route must check canRunCallouts()`);
     else if (need === "admin" && !REFUSES_MEMBERS.test(part)) problems.push(`api/${route}: ${method} is "admin" so it must refuse Members (!atLeast(user.role, "admin"))`);
   }
 }

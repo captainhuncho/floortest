@@ -161,15 +161,60 @@ dialog[open]::backdrop {
 @media (prefers-reduced-transparency: reduce) { .ft-dialog::backdrop { backdrop-filter: none; background: rgb(0 0 0 / 0.8); } }
 /* Toasts (src/components/Toast.tsx): bottom centre, clear of whatever floats at the bottom. Phones: above the tab bar,
    and above the mini player or the batch bar when they're up. Desktop: above the player bar or the batch bar. */
-[data-toast-region] { bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 76px); }
-html:has([data-mini-player]) [data-toast-region] { bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 148px); }
+[data-toast-region] { bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 72px); }
+html:has([data-mini-player]) [data-toast-region] { bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 144px); }
 html:has([data-batch-bar]) [data-toast-region] { bottom: calc(env(safe-area-inset-bottom) + 172px); }
 @media (min-width: 48rem) {
   [data-toast-region], html:has([data-mini-player]) [data-toast-region] { bottom: 1.5rem; }
-  html:has([data-player-bar]) [data-toast-region] { bottom: 5.5rem; }
+  html:has([data-player-bar]) [data-toast-region] { bottom: 6rem; }
   html:has([data-batch-bar]) [data-toast-region] { bottom: 6.5rem; }
   html:has([data-batch-bar]):has([data-player-bar]) [data-toast-region] { bottom: 6.5rem; }
 }
+/* The floating glass pieces (owner's pick 16 Nov, "player + menu pair"): the phone's mini player and menu, and the
+   laptop's player bar. One material: frosted black glass (owner, 16 Nov: neutral black, no green and no colour coming
+   through from the page behind) over a blur, a 1px hairline, a lit top edge and one soft shadow. Our own shapes stay
+   (player 18px, menu 22px, selected tab 16px). No blur support, or the device asks for less transparency: the solid
+   fill, same shapes. */
+.theme-root {
+  --glass: rgb(8 8 8 / 0.84);
+  --glass-solid: #0c0c0c;
+  --glass-line: rgb(255 255 255 / 0.09);
+  --glass-hi: rgb(255 255 255 / 0.07);
+  --glass-on: rgb(0 0 0 / 0.42);
+  --glass-shadow: rgb(0 0 0 / 0.5);
+}
+.theme-root.theme-day {
+  --glass: rgb(255 255 255 / 0.8); --glass-solid: var(--color-card); --glass-line: rgb(13 14 11 / 0.07); --glass-hi: rgb(255 255 255 / 0.95);
+  --glass-on: rgb(13 14 11 / 0.07); --glass-shadow: rgb(20 20 20 / 0.16);
+}
+@media (prefers-color-scheme: light) {
+  .theme-root.theme-system {
+    --glass: rgb(255 255 255 / 0.8); --glass-solid: var(--color-card); --glass-line: rgb(13 14 11 / 0.07); --glass-hi: rgb(255 255 255 / 0.95);
+    --glass-on: rgb(13 14 11 / 0.07); --glass-shadow: rgb(20 20 20 / 0.16);
+  }
+}
+.glass { background: var(--glass-solid); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hi); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: var(--glass); -webkit-backdrop-filter: blur(30px) saturate(0); backdrop-filter: blur(30px) saturate(0); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+/* One shadow under the whole pair (a filter on the pair would switch off the blur inside it, so the shadow is its own
+   layer behind both pieces), and the same shadow under the laptop bar. */
+.glass-shadow { box-shadow: 0 12px 22px var(--glass-shadow); }
+.glass.glass-float { box-shadow: inset 0 1px 0 var(--glass-hi), 0 14px 30px var(--glass-shadow); }
+/* The page fades into its own colour under the floating pieces; taps pass through. */
+.bottom-fade { pointer-events: none; background: linear-gradient(to bottom, transparent, var(--color-ink) 82%); }
+/* The pair steps aside while the on-screen keyboard is up, and the mini player rises in when a track starts. */
+[data-bottom-pair] { transition: opacity 180ms var(--ease-out), transform 220ms var(--ease-out), visibility 0s; }
+[data-bottom-pair][data-typing] { opacity: 0; transform: translateY(16px); visibility: hidden; pointer-events: none; transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms; }
+[data-mini-player], [data-player-bar] {
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+  @starting-style { opacity: 0; transform: translateY(14px); }
+}
+[data-heart] > svg { transition: transform 140ms var(--ease-out); }
+[data-heart]:active > svg { transform: scale(0.9); }
 /* The phone notifications sheet: its scrim fades with the panel instead of popping in under it. */
 [data-sheet] {
   transition: opacity 200ms var(--ease-out);
@@ -254,6 +299,9 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; transiti
   [data-instant], [data-instant] :is([role="menu"], [role="listbox"], [role="dialog"]) { transition: none !important; }
   [data-toast][data-leaving] { transform: none; }
   [data-feedback-panel] { transform: none; transition: opacity 150ms linear !important; }
+  /* The floating player and menu appear at rest: no rise, no slide. */
+  [data-bottom-pair], [data-mini-player], [data-player-bar] { transform: none !important; transition: none !important; }
+  [data-heart] > svg { transform: none !important; transition: none; }
   /* The buffering ring holds still at half strength; the Queue badge cross-fades instead of rolling. */
   [data-buffering] [data-buffer-ring] { opacity: 0.5; }
   [data-roll="out"] { animation: badge-fade-out 120ms linear both !important; }
