@@ -39,10 +39,10 @@ test("both delete dialogs send the phrase and keep the red button off until it m
   }
 });
 
-test("codeStepUp asks only for the two-step code, under the same hourly limit", () => {
+test("codeStepUp asks only for the two-step code, under its own hourly limit", () => {
   const src = read("lib/step-up.ts");
   const fn = src.slice(src.indexOf("export async function codeStepUp("), src.indexOf("\nexport ", src.indexOf("export async function codeStepUp(") + 1));
-  assert.match(fn, /allow\("step_up", String\(userId\), 10, 3_600_000\)/, "same rate limit as stepUp");
+  assert.match(fn, /allow\("delete_step", String\(userId\), 10, 3_600_000\)/, "10 an hour, apart from the password step-ups");
   assert.match(fn, /checkSecondFactor\(userId, code\.trim\(\)\)/, "the code when two-step is on");
   assert.doesNotMatch(fn, /verifyPassword/, "no password");
 });

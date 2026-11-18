@@ -24,7 +24,12 @@ async function signedIn(twoStepSecret: string | null) {
   ))!.id);
   const jar = new Map<string, string>();
   await inRequest(jar, "203.0.113.40", () => createSession(id));
-  const requested = async () => (await q.get<{ t: number | null }>("SELECT deletion_requested_at AS t FROM users WHERE id = ?", id))!.t;
+  // Both are set by a deletion; a refused try must leave the account on.
+  const requested = async () => {
+    const r = (await q.get<{ t: number | null; s: number | null }>("SELECT deletion_requested_at AS t, suspended_at AS s FROM users WHERE id = ?", id))!;
+    assert.equal(r.t === null, r.s === null, "deletion and switch-off go together");
+    return r.t;
+  };
   return { id, jar, requested };
 }
 
@@ -53,7 +58,7 @@ test("with two-step on, the right phrase without a good code is refused; with th
   const { newTotpSecret, totpCode, currentStep } = await import("../src/lib/totp");
   const secret = newTotpSecret();
   const a = await signedIn(secret);
-  for (const code of [undefined, "", "abcdef"]) {
+  for (const code of [undefined, "", "   ", "abcdef", "123"]) {
     const out = await del(a.jar, code === undefined ? { confirm: "DELETE FLOORTEST" } : { confirm: "DELETE FLOORTEST", code });
     assert.deepEqual(out.answer, { error: "That two-step code didn't work." }, `refused with code ${JSON.stringify(code)}`);
   }
@@ -61,4 +66,24 @@ test("with two-step on, the right phrase without a good code is refused; with th
   const out = await del(a.jar, { confirm: "DELETE FLOORTEST", code: totpCode(secret, currentStep()) });
   assert.equal(out.redirect, "/?deleted=pending");
   assert.ok(await a.requested(), "deletion started");
+});
+
+test("with two-step on, a recovery code works once", async () => {
+  const { q } = await import("../src/lib/db");
+  const { newTotpSecret, newRecoveryCodes, hashRecovery } = await import("../src/lib/totp");
+  const [code] = newRecoveryCodes(1);
+  const a = await signedIn(newTotpSecret());
+  await q.run("UPDATE users SET recovery_codes = ? WHERE id = ?", JSON.stringify([hashRecovery(code, process.env.APP_SECRET!)]), a.id);
+  const out = await del(a.jar, { confirm: "DELETE FLOORTEST", code });
+  assert.equal(out.redirect, "/?deleted=pending");
+  assert.ok(await a.requested(), "deletion started");
+  assert.equal((await q.get<{ r: string }>("SELECT recovery_codes AS r FROM users WHERE id = ?", a.id))!.r, "[]", "the code is used up");
+  // The same code again, by someone holding a fresh session to this account: refused.
+  await q.run("UPDATE users SET deletion_requested_at = NULL, suspended_at = NULL WHERE id = ?", a.id);
+  const { createSession } = await import("../src/lib/auth");
+  const jar = new Map<string, string>();
+  await inRequest(jar, "203.0.113.41", () => createSession(a.id));
+  const again = await del(jar, { confirm: "DELETE FLOORTEST", code });
+  assert.deepEqual(again.answer, { error: "That two-step code didn't work." });
+  assert.equal(await a.requested(), null, "not deleted the second time");
 });

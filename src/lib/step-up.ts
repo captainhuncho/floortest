@@ -20,11 +20,11 @@ export async function stepUp(userId: number, password: string, code: string): Pr
 
 /**
  * Deleting the account (owner, 18 Nov: "Password not require for that"): no password, only the two-step code (or a
- * recovery code) when two-step sign-in is on, under the same rate limit. Typing DELETE FLOORTEST and the 14-day undo
- * are the other guards. Returns an error to show, or null when it passed.
+ * recovery code) when two-step sign-in is on, with its own 10-an-hour limit so tries here can't use up the password
+ * step-ups (Safety review, 18 Nov). Typing DELETE FLOORTEST and the 14-day undo are the other guards. Returns an error to show, or null when it passed.
  */
 export async function codeStepUp(userId: number, code: string): Promise<string | null> {
-  if (!(await allow("step_up", String(userId), 10, 3_600_000))) return "Too many tries. Wait an hour and try again.";
+  if (!(await allow("delete_step", String(userId), 10, 3_600_000))) return "Too many tries. Wait an hour and try again.";
   const row = await q.get<{ totp_enabled_at: number | null }>("SELECT totp_enabled_at FROM users WHERE id = ?", userId);
   if (!row) return "That two-step code didn't work.";
   if (row.totp_enabled_at && !(await checkSecondFactor(userId, code.trim()))) return "That two-step code didn't work.";
