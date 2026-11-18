@@ -85,10 +85,10 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await page.keyboard.press("Escape");
   await expect(menu).toBeHidden();
   await expect(more).toBeFocused();
-  // Its items go to what the page already has: the private note opens inside Details with the cursor in it.
+  // Its items go to what the page already has: the private note opens in the Sender card (owner, 18 Nov) with the
+  // cursor in it, and Report opens Details.
   await more.click();
   await menu.getByRole("menuitem", { name: "Add a note" }).click();
-  await expect(page.locator("details[data-panel-details]")).toHaveAttribute("open", "");
   await expect(page.getByLabel("Private note, never sent to the sender")).toBeFocused();
   await more.click();
   await menu.getByRole("menuitem", { name: "Report" }).click();
