@@ -15,7 +15,7 @@ export default function Loading() {
         <SkBlock className="h-11 rounded-[12px] md:w-64" />
         <SkBlock className="h-11 w-56 rounded-[12px]" />
       </div>
-      <div className="flex flex-col md:grid md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] md:gap-x-4 md:gap-y-6">
+      <div className="flex flex-col md:grid md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] md:gap-x-4 md:gap-y-6">
         {["w-1/3", "w-1/2", "w-2/5", "w-1/4"].map((w) => (
           <div key={w} className="flex items-center gap-3 border-t border-line py-2 first:border-t-0 md:flex-col md:items-stretch md:gap-2 md:border-t-0 md:py-0">
             <SkBlock className="size-14 shrink-0 rounded-[10px] md:aspect-square md:size-auto md:w-full md:rounded-[14px]" />
