@@ -86,7 +86,10 @@ Floor ─► Collections (folders with covers; search · All / Callouts / Projec
    A project's folder ─► shuffle · play ─► Add tracks (owner and A&R / Admins: choose WAV/MP3s, edit titles, rights tick, upload) ─► tracks, numbered ─► ··· (Rename · Delete project)
    Projects filter ─► Upload audio ─► Not in a project (tracks in none)
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
-Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
+Floor ─► Send (option 58 A) ─► Who's it for? (type a link name, or tap someone in Sent to before) ─► who it is (card, "Add tracks for <name>")
+   ─► slim header (Change ─► back to the field) + the link page's form ─► upload ─► Sent to <name> ─► Open your receipt → /receipt/<token>
+   Your latest sends (3) ─► a row → /receipt/<token> · All N ─► /dashboard/send?all=1 (grouped This week, then by month)
+   /dashboard/send?to=<handle> ─► straight to the form once the lookup says yes · wrong name ─► reason under the field · paused ─► their note, no form
    /receipt/<token> and /sent/<link> show the sender's email masked (m•••@g•••.com); End this link now still works
    /receipt/<token> ─┬─ sent from this browser (ft_receipt) or signed in as the sending account ─► the whole receipt
                      └─ link only ─► status and dates, "The receiver …" ─► Show my details ─► "We sent a 6-digit code to m•••@g•••.com"
