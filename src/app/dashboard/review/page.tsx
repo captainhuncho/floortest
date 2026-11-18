@@ -10,7 +10,8 @@ import { ReviewPanel } from "../ReviewPanel";
 import { LIST_COLUMNS, type ListTrack } from "../rows";
 import { toPlayer } from "@/lib/player-track";
 import { SubmissionsList } from "../list/SubmissionsList";
-import { TrackList, type Row } from "../TrackList";
+import type { Row } from "../TrackList";
+import { UpNext } from "./UpNext";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu } from "../list/FilterMenu";
 import { StatusTabs } from "./StatusTabs";
@@ -19,6 +20,9 @@ import { VIEW_COOKIE } from "../view-cookie";
 import { CARD, Icon, SectionHead } from "@/components/Kit";
 
 export const metadata = { title: "Review Queue — FloorTest" };
+
+/** The list query's LIMIT below (kept as a literal there: tests/list-columns.test.ts finds the query by it). The playlist says so when a view is cut off. */
+const LIST_LIMIT = 500;
 
 const STATUSES = TRACK_STATUSES;
 type StatusKey = TrackStatus;
@@ -127,16 +131,14 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const nextRow = idx >= 0 ? rows[idx + 1] : rows.find((r) => r.id !== selected?.id);
   const prevRow = idx > 0 ? rows[idx - 1] : undefined;
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
-  const twoColumns = !!selected || totalActive > 0;
 
   const tabLabel = STATUSES.find(([k]) => k === status)![1];
   // Says how the list is sorted, matching the query's ORDER BY above.
   const orderWords = status === "review" ? "Oldest first" : status === "all" ? "Newest first" : "Latest decisions first";
 
   return (
-    // Redesign (owner, 30 Oct): the head, tabs and filters run across the top; below them the list card sits in a narrow
-    // left column and the open track's cards take the room on the right from 1280px. One order at every width: on a
-    // phone the open track comes first, then the rest of the list (the open row steps aside, so it reads as Next).
+    // Queue, final (Design option 42, 17 Nov): the head, tabs and filters run across the top; below them the open
+    // track (Now reviewing), then the playlist (Up next) across the full width. One order at every width.
     // QueueState shows a tapped or next track at once, before the server's page arrives.
     <QueueState servedId={selected?.id ?? null} status={status}>
       <div className="page-gutter py-4 sm:py-6">
@@ -198,14 +200,14 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             </div>
           </section>
 
-          <div className={`grid min-w-0 gap-4 ${twoColumns ? "xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start" : ""}`}>
+          <div className="grid min-w-0 gap-4">
             {selected && sender && (
               <aside
                 id="review-card"
                 aria-label="Review"
                 // The whole column turns like a page on a swipe (DecisionRail); it stays mounted while tracks change.
                 data-swipe-zone
-                className="min-w-0 xl:col-start-2 xl:row-start-1"
+                className="min-w-0"
               >
                 <ShownPanel servedId={selected.id}>
                   <ReviewPanel
@@ -221,15 +223,8 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
                 </ShownPanel>
               </aside>
             )}
-            {/* Wide screens keep the review column even when this tab is empty, so switching tabs never reflows the page. */}
-            {!selected && totalActive > 0 && (
-              <aside aria-label="Review" className={`${CARD} hidden min-h-64 items-center justify-center p-6 xl:col-start-2 xl:row-start-1 xl:flex`}>
-                <p className="max-w-56 text-center text-[13px] text-mute">Nothing to review in this view. Pick another tab or collection.</p>
-              </aside>
-            )}
-
             {/* Fades while a tab change loads (see StatusTabs and globals.css). */}
-            <section aria-label="Tracks in this view" className="review-list min-w-0 xl:col-start-1 xl:row-start-1">
+            <section aria-label="Tracks in this view" className="review-list min-w-0">
               {totalActive === 0 && !search ? (
                 <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
               ) : rows.length === 0 ? (
@@ -248,12 +243,15 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
                   <div className="px-0.5 pt-1 pb-2">
                     <SectionHead title={tabLabel} aside={orderWords} />
                   </div>
-                  <TrackList
+                  <UpNext
                     rows={rows}
-                    showDecision={status === "all"}
+                    showStatus={status === "all"}
                     selectedId={selected?.id ?? null}
                     hrefFor={Object.fromEntries(rows.map((r) => [r.id, href({ t: String(r.id) })]))}
                   />
+                  {tracks.length >= LIST_LIMIT && (
+                    <p className="mt-2 px-0.5 text-[11.5px] text-mute">Showing the first {LIST_LIMIT} tracks. Sorting works within these.</p>
+                  )}
                   <p className="mt-2.5 flex items-start gap-1.5 border-t border-dashed border-line px-0.5 pt-2.5 text-[11.5px] text-mute">
                     <Icon name="lock" className="mt-px size-3" />
                     Decisions stay private. Senders see Listened, Downloaded, Played out and your replies.

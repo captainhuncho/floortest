@@ -21,17 +21,16 @@ import { reportTrack } from "./actions/report";
 import { atLeast } from "@/lib/account-members";
 import { PrepBox } from "./PrepBox";
 import { parseCues } from "@/lib/cues";
-import { DetailPlayer } from "./DetailPlayer";
 import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
 import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
 import { TrackStepper } from "./review/TrackStepper";
 import type { Step } from "./review/QueueState";
-import { ReplyCard } from "./review/ReplyCard";
+import { CardControls, CoverSteps, PanelCalls, StoryBars } from "./review/NowReviewing";
 import { MoveToProjects } from "./projects/MoveToProjects";
 import { listFolders } from "@/lib/library";
-import { CARD, Chip, Cover, Icon, IconBox, InfoRow, initials } from "@/components/Kit";
+import { CARD, Chip, Icon, IconBox, InfoRow, initials } from "@/components/Kit";
 
 export async function ReviewPanel({
   track: t,
@@ -96,6 +95,8 @@ export async function ReviewPanel({
     peaks: t.peaks ? JSON.parse(t.peaks) : null,
     duration: t.duration,
     played: !!t.played_at,
+    // So the floating player's heart shows for a track started from this card.
+    decision: t.decision,
   };
   const removal = deletesAt(t);
   // A track the desk added itself (sent from its own account) can move to Projects; a sender's never can (owner, 13 Nov).
@@ -142,7 +143,26 @@ export async function ReviewPanel({
 
   // What the decision needs, in one line: tempo, key, length, genre, mix.
   const length = t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : null;
-  const meta = [t.bpm && `${Math.round(t.bpm)} BPM`, t.musical_key, length, t.genre, t.mix_status && MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS]].filter(Boolean).join(" · ");
+  // One line: genre, tempo, the key only when the sender typed one, length, mix, who sent it and how long it has waited.
+  const info = [
+    t.genre,
+    t.bpm && `${Math.round(t.bpm)} BPM`,
+    t.musical_key,
+    length,
+    t.mix_status && MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS],
+    `sent by ${sender.name}${collectionName ? ` via ${collectionName}` : ""}`,
+    t.decision ? `arrived ${ago(t.created_at)}` : `waiting ${ago(t.created_at).replace(/ ago$/, "")}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  // Up to two short facts, only from what this desk's own records say about the sender.
+  const before = stats.sent - 1;
+  const keptBefore = stats.kept - (t.decision === "kept" ? 1 : 0);
+  const facts = [
+    before > 0 && `${sender.name} has sent ${before} before`,
+    keptBefore > 0 && `You kept ${keptBefore} of them`,
+  ].filter((f): f is string => !!f);
+  const [at, total] = position ? position.split(" of ").map(Number) : [0, 0];
   // The auto-delete date matters at decision time only when it's close.
   const soon = removal && removal - now() < 7 * 86_400_000 ? Math.max(0, Math.ceil((removal - now()) / 86_400_000)) : null;
   // Signals that change the decision stay visible: may it be played out, is it out already, made with AI, a duplicate, going soon.
@@ -197,31 +217,47 @@ export async function ReviewPanel({
     // (rendered with the page, so the buttons are there before any JavaScript runs); under it the sender's note and
     // the reply on one side and the folded Details on the other, side by side when there's room.
     <div className="flex flex-col gap-4">
-      <section aria-labelledby={`track-h-${t.id}`} className={`${card} flex flex-col gap-3`}>
-        <div className="flex items-start gap-3">
-          {art ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={art} alt={`Artwork for ${t.title}`} className="size-[46px] shrink-0 rounded-[10px] border border-line object-cover md:size-14" />
-          ) : (
-            <Cover text={initials(t.title)} size="size-[46px]" />
-          )}
-          <div className="min-w-0 flex-1">
-            <h2 id={`track-h-${t.id}`} className="line-clamp-2 text-[18px] font-semibold leading-tight tracking-[-0.02em] text-bone">
+      <section aria-labelledby={`track-h-${t.id}`} className={`${card} flex flex-col gap-3.5 md:flex-row md:items-start md:gap-5`}>
+        <div className="mx-auto w-full max-w-[200px] shrink-0 md:mx-0 md:max-[1179px]:w-28 min-[1180px]:w-[168px]">
+          {at && total > 1 && <StoryBars at={at} total={total} />}
+          <div className="relative">
+            {art ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={art} alt={`Artwork for ${t.title}`} className="aspect-square w-full rounded-[14px] border border-line object-cover" />
+            ) : (
+              <div aria-hidden className="grid aspect-square w-full place-items-center rounded-[14px] border border-line bg-well text-[28px] font-semibold tracking-[-0.02em] text-mute">
+                {initials(t.title)}
+              </div>
+            )}
+            <CoverSteps fromId={t.id} prev={prev} next={next} />
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="hidden items-center justify-between gap-3 md:flex">
+            <p className="text-[11.5px] font-semibold text-mute tnum">Now reviewing{position ? ` · ${position}` : ""}</p>
+            <TrackStepper fromId={t.id} prev={prev} next={next} position={null} />
+          </div>
+          <div className="min-w-0 max-md:text-center">
+            <h2 id={`track-h-${t.id}`} className="line-clamp-2 text-[20px] font-semibold leading-tight tracking-[-0.02em] text-bone">
               {t.title}
             </h2>
-            <p className="mt-0.5 text-[11.5px] text-mute">
-              {[t.artist, collectionName && `for ${collectionName}`, `arrived ${ago(t.created_at)}`].filter(Boolean).join(" · ")}
-            </p>
+            <p className="mt-0.5 truncate text-[13px] text-mute">{t.artist}</p>
+            <p className="mt-1.5 text-[11.5px] text-mute tnum">{info}</p>
           </div>
-          <TrackStepper fromId={t.id} prev={prev} next={next} position={position ?? null} />
+          {facts.length > 0 && (
+            <ul className="flex flex-col gap-0.5 text-[12px] text-mute max-md:items-center">
+              {facts.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          )}
+          {tags}
+          {releaseBlock}
+          <CardControls track={player} prev={prev} next={next} />
+          <DecisionRail track={{ ...player, decision: t.decision }} senderName={sender.name} selfHref={selfHref} next={next} prev={prev}>
+            <PanelCalls trackId={t.id} href={selfHref} senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
+          </DecisionRail>
         </div>
-        {meta && <p className="font-mono text-[11.5px] text-mute tnum">{meta}</p>}
-        {tags}
-        {releaseBlock}
-
-        <DetailPlayer track={player} />
-
-        <DecisionRail track={{ ...player, decision: t.decision }} senderName={sender.name} selfHref={selfHref} next={next} prev={prev} />
       </section>
 
       <div className="grid min-w-0 gap-4 md:grid-cols-2 md:items-start">
@@ -248,10 +284,6 @@ export async function ReviewPanel({
             ) : (
               <p className="text-[12px] text-mute">No message with this track.</p>
             )}
-          </section>
-
-          <section aria-label={`Reply to ${sender.name}`} className={card}>
-            <ReplyCard senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
           </section>
 
           {t.decision === "kept" && (

@@ -1,10 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from "react";
 import { usePlayer, type PlayerTrack } from "@/components/Player";
 import { fmtTime } from "@/lib/format";
-import { DetailPlayer } from "../DetailPlayer";
 import { CARD, Cover, initials } from "@/components/Kit";
 
 /**
@@ -92,14 +91,36 @@ export function QueueState({ servedId, status, children }: { servedId: number | 
   return <QueueCtx.Provider value={value}>{children}</QueueCtx.Provider>;
 }
 
-/** The server's review panel, or the picked track at once while the server is still answering. */
+/**
+ * The server's review panel, or the picked track at once while the server is still answering. The stand-in keeps the
+ * height of the panel it replaces (owner, 18 Nov: "the whole Review Queue UI jumps when I click on a song"): a shorter
+ * card pulled the list up under the finger, and on a phone the page scrolled, until the full panel came back.
+ */
 export function ShownPanel({ servedId, children }: { servedId: number; children: React.ReactNode }) {
   const shown = useQueue()?.shown;
-  if (!shown || shown.id === servedId) return <>{children}</>;
+  const box = useRef<HTMLDivElement>(null);
+  const height = useRef(0);
+  const standIn = !!shown && shown.id !== servedId;
+  // Track the real panel's height while it is on screen (it grows when Details opens); the stand-in holds that space,
+  // set before paint.
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    if (standIn) {
+      el.style.minHeight = height.current ? `${height.current}px` : "";
+      return;
+    }
+    el.style.minHeight = "";
+    height.current = el.offsetHeight;
+    const watch = new ResizeObserver(() => (height.current = el.offsetHeight));
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [standIn]);
+  if (!standIn) return <div ref={box}>{children}</div>;
   const meta = [shown.bpm && `${Math.round(shown.bpm)} BPM`, shown.duration && fmtTime(shown.duration), shown.genre].filter(Boolean).join(" · ");
   const btn = "inline-flex min-h-13 items-center justify-center rounded-[15px] border text-[14.5px] font-semibold opacity-40";
   return (
-    <div className={`${CARD} flex flex-col gap-3 p-3.5 sm:p-4`} aria-busy="true">
+    <div ref={box} className={`${CARD} flex flex-col gap-3 p-3.5 sm:p-4`} aria-busy="true">
       <div className="flex items-center gap-3">
         <Cover text={initials(shown.title)} size="size-[46px]" />
         <div className="min-w-0 flex-1">
@@ -108,11 +129,10 @@ export function ShownPanel({ servedId, children }: { servedId: number; children:
         </div>
       </div>
       {meta && <p className="font-mono text-[11.5px] text-mute tnum">{meta}</p>}
-      <DetailPlayer track={shown} />
       {/* Same place and size as the real buttons, so nothing moves when they arrive a moment later. */}
       <div className="grid grid-cols-2 gap-2" aria-hidden="true">
-        <span className={`${btn} border-line-2 bg-well text-bone`}>Not for me</span>
         <span className={`${btn} border-transparent bg-lime text-ink`}>Keep</span>
+        <span className={`${btn} border-line-2 bg-well text-bone`}>Not for me</span>
       </div>
     </div>
   );
