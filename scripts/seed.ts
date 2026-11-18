@@ -386,6 +386,10 @@ async function main() {
   // tour, so its pop-up doesn't sit over the screens other tests click. Accounts a test signs up still get it
   // (e2e/fixtures.ts signUp checks it opens, e2e/tour.spec.ts walks it).
   if (process.env.SEED_TOUR_SEEN === "1") await db.run("UPDATE users SET tour_seen_at = ? WHERE tour_seen_at IS NULL", now);
+  // Test runs only (SEED_FEEDBACK_ASKED=1, set by playwright.config.ts): the seeded accounts have already had the one-time
+  // feedback ask (lib/feedback-ask), so its card and its Type radios don't turn up mid-suite after the 5th decision and
+  // trip tests that count roles on the page. The ask's rules are tests/feedback-ask.test.ts.
+  if (process.env.SEED_FEEDBACK_ASKED === "1") await db.run("UPDATE users SET feedback_asked_at = ? WHERE feedback_asked_at IS NULL", now);
   await db.close();
   console.log(`Seeded ${tracks.length} tracks into ${DATA_DIR}\nLogin: demo@floortest.test / floortest-demo  ·  Receiver link: /maxwell`);
 }

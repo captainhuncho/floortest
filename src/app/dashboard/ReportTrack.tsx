@@ -36,7 +36,7 @@ export function ReportTrack({
 
   if (!open)
     return (
-      <button type="button" className="btn btn-sm text-mute hover:text-bone" onClick={() => setOpen(true)}>
+      <button type="button" data-more="report" className="btn btn-sm text-mute hover:text-bone" onClick={() => setOpen(true)}>
         Report
       </button>
     );
