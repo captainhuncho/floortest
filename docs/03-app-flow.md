@@ -5,8 +5,8 @@ What happens when someone clicks, and which page comes next. Change a route or r
 ## Visitor (site gated until launch)
 ```
 floortest.app ──(no gate pass)──► /coming-soon ──password──► the page they wanted
-                                     ├─ Join the waitlist ──► pop-up (email, name, role, link wanted) ──► waitlist (Ops → Waitlist)
-                                     └─ Sign in ──► /login
+                                     ├─ Join the waitlist ──► same glass panel (desktop) or a full screen (phones): email, name, role, link wanted ──► waitlist (Ops → Waitlist)
+                                     └─ Log in (top right) ──► /login (open while locked)
 beta invite email ──► /signup?invite=CODE ──► /invite/CODE ──live personal invite──► gate pass + /signup (invite shown)
                                                           └─ wrong, used, revoked, shared code, or 20 tries in 10 min ──► /coming-soon
 Before launch the gate shows only "Coming soon" for the rest of the site (home, pricing, sign-up and the desk). Open without
@@ -29,7 +29,8 @@ On /signup a wrong invite code counts: 5 an hour per email, 20 an hour per conne
 ## Receiver: sign-up
 ```
 /signup ─┬─ one question per screen (owner, 31 Oct; ?step= in the URL, so the phone's Back works):
-         │   1 welcome: Claim your link → / I already have one (no invite: Join the waitlist →)
+         │   1 welcome story (owner, 17 Nov): six chapters (a seventh while switch send_music is on), Next / Skip to the end,
+         │     then the end card: Claim your link → / I already have one (text link) ─► /login (no invite: Join the waitlist →)
          │   2 first name, surname ─► 3 username (live check, checkHandle) ─► 4 account type (tap rows)
          │   5 email (locked to the invite's), password, 18+/Terms, optional emails ─► Create my link
          │   (answers kept in memory and sessionStorage, never the password; one post of the same signup action;
