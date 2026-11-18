@@ -1,4 +1,4 @@
-# Release: #642, the feedback ask waits for the next page (19 Nov 2026)
+# Release: #642, the feedback ask waits for the next page (18 Nov 2026)
 
 After a person's 5th Keep / Not for me, the one-time feedback ask used to appear at the top of the page they were on and
 push Keep / Not for me about 300 px down under the finger (desktop CLS 0.21). It now shows only from a page's first
@@ -37,6 +37,13 @@ render, so it lands at the top of the next page they open (owner, 18 Nov: "every
 ## Live versus unfinished
 Live: Floor (#596), Analytics (#599), Prepare (#606), the sign-in screens (#617), Collections covers (#621), Settings
 (#609), the Projects rights change (#581) and the feedback ask fix. Ready for the owner's word: the e2e test fix (#635,
-now that #642 is live), Review Queue keeps its place (#601, tried, e2e passed). Tried, e2e passed, being marked ready:
+now that #642 is live), the Review Queue redesign, option 42 (#601, on `mobile-next` for the owner's try, e2e passed). On `mobile-next` for the owner's try, e2e passed, being marked ready:
 the coming-soon page with day glass (#625). e2e running: the sign-in day glass (#641). On `mobile-next`, e2e queued: the
 expanded player (#600). Next build: wave detail (build/wave-rms).
+
+## Corrections (added after merge)
+This report was first filed as `2026-11-19-release-642-feedback-card.md`; the release was on 18 Nov. Earlier wording said
+#601 and #625 were "tried"; the owner had not yet given a try result for them then, so it now says they were on
+`mobile-next` for the owner's try. #601 is the whole Review Queue redesign (option 42), not a small fix. The reports
+for #609 (`2026-11-19-release-609-settings.md`) and #581 (`2026-11-19-release-581-projects-rights.md`) also carry
+19 Nov in their names and titles; both releases were on 18 Nov.
