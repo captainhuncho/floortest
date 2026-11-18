@@ -44,7 +44,7 @@ async function contactsLine(deskId: number, tz: string) {
 /**
  * Settings (option 47): profile, account and settings on one page, on every size. The You row, then labelled groups:
  * Your desk, Your link and look, Settings, Plan, Help. Laptops from 1180px show two columns (Your desk and Plan on the
- * left). Sign out and Delete account live in the ••• menu. What each role sees is decided in lib/settings-menu; the
+ * left). Sign out and Delete account live in the ••• menu and again as plain buttons at the bottom. What each role sees is decided in lib/settings-menu; the
  * pages and actions behind the rows keep their own server checks.
  */
 export default async function Settings() {
@@ -184,6 +184,11 @@ export default async function Settings() {
           </Group>
         </div>
       </div>
+
+      {/* In plain sight as well as behind the ••• (owner, 18 Nov). Same sheets, same server checks. */}
+      <section aria-label="Sign out and delete account" className="mt-3 w-full min-[1180px]:mx-auto min-[1180px]:max-w-[420px]">
+        <SettingsMenu variant="buttons" everywhere={show.signOutAllMyDevices} canDelete={show.deleteAccount} handle={user.handle} twoFactor={!!user.totp_enabled_at} />
+      </section>
     </div>
   );
 }
