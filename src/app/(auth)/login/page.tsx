@@ -6,8 +6,11 @@ import { AuthForm } from "../AuthForm";
 import { login, passkeySignIn, passkeySignInStart } from "../actions";
 import { PasskeyButton } from "../PasskeyButton";
 import { siteCopy } from "@/lib/content";
-import { env, isPreview } from "@/lib/env";
-import { AuthFrame, LinkCard } from "../AuthFrame";
+import { isPreview } from "@/lib/env";
+import { AuthFrame, AuthIcon } from "../AuthFrame";
+import { StoryCaption } from "../Story";
+import { storyChapters } from "../chapters";
+import { switchOn } from "@/lib/switches";
 import { googleConfig } from "@/lib/google-auth";
 import { inApp } from "@/lib/in-app";
 
@@ -23,36 +26,34 @@ const GOOGLE_ERRORS: Record<string, string> = {
 export const metadata = { title: "Log in — FloorTest" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
-  const [c, sp, editor] = await Promise.all([siteCopy("auth"), searchParams, siteEditor()]);
+  const [c, sp, editor, sendOn] = await Promise.all([siteCopy("auth"), searchParams, siteEditor(), switchOn("send_music", null)]);
   const { E } = editable(c, !!editor);
   // Google sign-in is offered on the website only, not inside the app (App Review 4.8, owner 15 Nov).
   const app = await inApp();
   const google = !!googleConfig() && !isPreview && !app;
   const googleError = GOOGLE_ERRORS[String(sp.google ?? "")];
-  const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
-      <AuthFrame aside={<LinkCard label="Your link" name="Username" role="DJ" handle="username" host={host} initials="U" note="Every track sent to it lands on your desk." />}>
+      <AuthFrame
+        aside={<StoryCaption chapters={storyChapters(sendOn)} />}
+        top={
+          <>
+            <span className="aw-q">New to FloorTest?</span>
+            <Link href="/signup" className="aw-login">
+              Claim your link
+            </Link>
+          </>
+        }
+      >
         <h1 className="af-h"><E k="login_title" /></h1>
-        <p className="af-sub"><E k="login_intro" /></p>
+        {/* No intro line by default (owner, 17 Nov); a saved one still shows, and the editor can always reach it. */}
+        {(c.login_intro || !!editor) && <p className="af-sub"><E k="login_intro" /></p>}
         {googleError && (
           <p role="alert" className="af-alert af-first">
             {googleError}
           </p>
         )}
         <div className="af-gap af-first">
-          {google && (
-            <>
-              {/* A plain link: the route sets up the protected hand-off to Google. */}
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-              <a href="/api/auth/google" className="af-btn">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/google.svg" alt="" className="size-[18px]" />
-                Continue with Google
-              </a>
-              <div className="af-or">or</div>
-            </>
-          )}
           {app && !!googleConfig() && (
             // Accounts made with Google have no password: the emailed code reaches the same account.
             <p className="af-row">
@@ -71,15 +72,32 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 type: "password",
                 autoComplete: "current-password",
                 hint: (
-                  // Two ways in without the password, side by side so the screen fits a small phone.
-                  <span className="af-links">
+                  <span className="af-links af-links-end">
                     <Link href="/forgot" className="af-lnk">Forgot your password?</Link>
-                    <Link href="/login/code" className="af-lnk"><E k="login_code_link" /></Link>
                   </span>
                 ),
               },
             ]}
-            extra={<PasskeyButton label="Sign in with a passkey" begin={passkeySignInStart} finish={passkeySignIn} />}
+            extra={
+              // The other ways in, one tap each, under the main button: a passkey, an emailed code, then Google.
+              <>
+                <div className="af-or">or</div>
+                <PasskeyButton label="Sign in with a passkey" className="af-btn af-sm" begin={passkeySignInStart} finish={passkeySignIn} />
+                <Link href="/login/code" className="af-btn af-sm">
+                  <AuthIcon name="mail" />
+                  <E k="login_code_link" />
+                </Link>
+                {google && (
+                  // A plain link: the route sets up the protected hand-off to Google. Website only, never in the app.
+                  // eslint-disable-next-line @next/next/no-html-link-for-pages
+                  <a href="/api/auth/google" className="af-btn af-sm">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/icons/google.svg" alt="" className="size-[18px]" />
+                    Continue with Google
+                  </a>
+                )}
+              </>
+            }
             footer={{ text: "New to FloorTest?", href: "/signup", link: "Claim your link" }}
           />
         </div>
