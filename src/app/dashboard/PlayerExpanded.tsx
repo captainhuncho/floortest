@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useSyncExternalStore } from "react";
 import { useModalDialog } from "@/components/Dialog";
 import { PlayerClock, PlayerWaveform, usePlayer, type PlayerTrack } from "@/components/Player";
+import { useToastHost } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
 import { CONTROL, CoverPlay, KeepHeart, SkipIcon, trackHref } from "./PlayerBars";
 import { PlayerActions } from "./PlayerExpandedActions";
@@ -67,6 +68,7 @@ export function PlayerExpanded() {
   const wanted = useSyncExternalStore(subscribePlayerExpanded, playerExpanded, () => false);
   const open = wanted && !!current;
   const { modalProps } = useModalDialog(open, close);
+  const toastHost = useToastHost();
   const titleId = useId();
   // The track went away while open (a sign-out, the list emptied): the flag follows, so it can't reopen by itself.
   useEffect(() => {
@@ -78,6 +80,8 @@ export function PlayerExpanded() {
 
   return (
     <dialog aria-labelledby={titleId} data-player-expanded className="ft-player" {...modalProps}>
+      {/* Keep, Not for me and their Undo messages show here while the player is open: the page behind is covered and inert. */}
+      {open && <div ref={toastHost} />}
       {current && (
         <div className="flex h-full max-h-[inherit] flex-col">
           <div className="grid shrink-0 grid-cols-[2.75rem_1fr_2.75rem] items-center px-2 pt-[max(0.625rem,env(safe-area-inset-top))]">

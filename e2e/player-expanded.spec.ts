@@ -129,7 +129,9 @@ test("phone: the mini player's title opens the player full window; Keep and Not 
   await pass.click();
   await expect(page.getByText(/^Not for me: /)).toBeVisible();
   await expect(player.getByText("Playing from Not for me")).toBeVisible();
-  await page.getByRole("button", { name: "Undo" }).click();
+  // The heart's two messages can still be on screen, each with its own Undo: take the one for Not for me.
+  // Messages are drawn inside the open player, so Undo can be pressed (the page behind a modal is inert).
+  await player.locator("[data-toast]").filter({ hasText: "Not for me: " }).getByRole("button", { name: "Undo" }).click();
   await expect(player.getByText("Waiting", { exact: true })).toBeVisible();
 
   // Kept: Open track, and no Played out (the player can't tell whether this track may be marked).
