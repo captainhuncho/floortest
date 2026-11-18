@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { normalEmail } from "@/lib/email-normal";
-import { CARD } from "@/components/Kit";
 
 type Result = { ok?: boolean; error?: string; confirmed?: boolean; termsNeeded?: boolean; termsHash?: string };
 /** What the server says about the Terms for the confirmed email: the hash to send back when a tick is needed. */
@@ -31,11 +30,13 @@ export async function startEmailCheck(email: string, turnstile: string): Promise
   return sent.ok ? "code" : sent.error || "The code didn't send. Check the email address and try again.";
 }
 
+const CODE_BOXES = [0, 1, 2, 3, 4, 5];
+
 /**
- * The confirm screen after Send, in place of the form (which stays filled in behind it): what's being sent and to
- * whom, then the 6-digit code. "Back" returns to the form as it was.
+ * The confirm step after Send, in place of the form (which stays filled in behind it): where the code went, what it
+ * sends, then the 6-digit code. "Back" returns to the form as it was.
  */
-export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel }: {
+export function EmailCode({ email, sending, onConfirmed, onCancel }: {
   email: string;
   receiverName: string;
   /** Track titles (or the folder name) being sent. */
@@ -46,7 +47,7 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
   const top = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // Smooth only for people who haven't asked their device for less motion.
-    top.current?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    top.current?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, []);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -69,53 +70,53 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
     setNote(r.ok ? { text: "New code sent.", error: false } : { text: r.error || "Couldn't send a new code.", error: true });
   }
 
+  // Typing always continues from the end, so the six boxes fill left to right.
+  const toEnd = (e: React.SyntheticEvent<HTMLInputElement>) => e.currentTarget.setSelectionRange(6, 6);
   return (
-    <div ref={top} role="group" aria-labelledby="email-code-title" className={`${CARD} scroll-mt-6 space-y-4 p-3`}>
-      <button type="button" onClick={onCancel} disabled={busy} className="-my-1.5 inline-flex min-h-11 items-center text-[13px] text-mute hover:text-bone">
-        ← Back to your details
-      </button>
-      <div>
-        <p className="text-[11.5px] text-mute">One last step</p>
-        <h2 id="email-code-title" className="mt-0.5 text-[24px] font-semibold leading-tight tracking-[-0.03em]">Check your email</h2>
-        <p className="mt-1.5 text-[13px] leading-5 text-mute">
-          We sent a 6-digit code to <span className="break-all text-bone">{email}</span>. Enter it to send to {receiverName}. This browser remembers your email for 30 days.
-        </p>
-      </div>
-      <ul className="flex flex-col gap-1.5 text-[13px] font-semibold">
-        {sending.map((t, i) => (
-          <li key={i} className="truncate rounded-[11px] border border-line bg-well px-3 py-2.5">
-            {t}
-          </li>
-        ))}
-      </ul>
-      <div className="space-y-3">
+    <div ref={top} role="group" aria-labelledby="email-code-title" className="my-auto flex scroll-mt-16 flex-col items-center gap-3 py-6 text-center">
+      <h2 id="email-code-title" className="text-[20px] font-semibold leading-tight tracking-[-0.02em]">Check your email</h2>
+      <p className="max-w-[380px] text-[13px] leading-5 text-mute">
+        We sent a 6-digit code to <span className="break-all font-semibold text-bone">{email}</span>. Enter it to send {sending.length === 1 ? sending[0] : `${sending.length} tracks`}. This browser remembers your email for 30 days.
+      </p>
+      {/* Six boxes to look at, one real field on top of them: paste and the phone's one-time-code fill land in a single input. */}
+      <div className="relative flex gap-2">
         <input
           aria-label="6-digit code"
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), confirm())}
+          onFocus={toEnd}
+          onClick={toEnd}
           inputMode="numeric"
           autoComplete="one-time-code"
           autoFocus
-          placeholder="123456"
-          className="input min-h-14 w-full rounded-[13px] text-center text-2xl! font-semibold tracking-[0.4em] tnum"
+          maxLength={6}
+          className="peer absolute inset-0 z-[1] h-full w-full cursor-text text-[16px] opacity-0"
         />
-        <button type="button" onClick={confirm} disabled={busy} className="btn-lime min-h-[52px] w-full rounded-[15px] text-[14.5px] font-bold">
-          {busy ? "Checking…" : `Confirm and send to ${receiverName}`}
-        </button>
-        {note && (
-          <p role={note.error ? "alert" : "status"} className={`text-sm ${note.error ? "text-danger" : "text-lime"}`}>
-            {note.text}
-          </p>
-        )}
-        <p className="text-center text-[13px] text-mute">
-          No email?{" "}
-          <button type="button" onClick={resend} disabled={busy} className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-bone">
-            Send a new code
-          </button>{" "}
-          or check your spam folder.
-        </p>
+        {CODE_BOXES.map((i) => (
+          <span
+            key={i}
+            aria-hidden
+            className={`grid h-[54px] w-11 place-items-center rounded-xl border bg-well text-[20px] font-semibold text-bone tnum ${i === Math.min(code.length, 5) ? "border-line-2 peer-focus:border-bone peer-focus:outline peer-focus:outline-2 peer-focus:outline-offset-1 peer-focus:outline-lime" : "border-line"}`}
+          >
+            {code[i] ?? ""}
+          </span>
+        ))}
       </div>
+      {note && (
+        <p role={note.error ? "alert" : "status"} className={`text-[13px] ${note.error ? "text-danger" : "text-bone"}`}>
+          {note.text}
+        </p>
+      )}
+      <button type="button" onClick={confirm} disabled={busy} className="btn-lime min-h-12 w-full max-w-[380px] rounded-full text-[15px] font-bold">
+        {busy ? "Checking…" : "Send"}
+      </button>
+      <button type="button" onClick={resend} disabled={busy} className="inline-flex min-h-11 items-center px-3 text-[14px] text-mute underline underline-offset-4 hover:text-bone">
+        Send a new code
+      </button>
+      <button type="button" onClick={onCancel} disabled={busy} className="inline-flex min-h-11 items-center px-3 text-[13px] text-mute underline underline-offset-4 hover:text-bone">
+        Back
+      </button>
     </div>
   );
 }

@@ -19,8 +19,17 @@ test("the owner opens Analytics, switches period, and sees the desk's own number
   for (const p of ["Last 7 days", "Last 30 days", "Last 3 months", "This year", "Lifetime"]) await expect(menu.getByRole("menuitemradio", { name: p })).toBeVisible();
   await menu.getByRole("menuitemradio", { name: "Lifetime" }).click();
   await page.waitForURL(/\?p=all/);
-  await expect(page.getByText(/\d+ tracks? in ·/)).toBeVisible();
+  // The big number with its words, then the line of real figures under it.
+  await expect(page.getByText(/^\d+ tracks? in$/)).toBeVisible();
+  await expect(page.getByText(/^From \d+ senders? · you kept \d+/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tracks in and kept, by month" })).toBeVisible();
+  // The chart's numbers are in a table for screen readers.
+  await expect(page.getByRole("table", { name: /Tracks in and kept in total/ })).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "What happened" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "See everything in Activity" })).toHaveAttribute("href", "/dashboard/activity");
   await expect(page.getByRole("heading", { name: "Who sent what" })).toBeVisible();
+  // Each sender row opens that sender's contact page.
+  await expect(page.getByRole("region", { name: "Who sent what" }).getByRole("link").first()).toHaveAttribute("href", /\/dashboard\/contacts\/\d+$/);
   // Nothing about visitors to the link, and no comparison for Lifetime.
   await expect(page.getByText(/visits? to your link/i)).toHaveCount(0);
   await expect(page.getByText(/than the/)).toHaveCount(0);
