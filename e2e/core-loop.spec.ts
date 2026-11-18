@@ -68,9 +68,14 @@ test("the receiver keeps it and downloads it from Prepare for set", async ({ pag
   await page.getByRole("button", { name: /^Keep/ }).locator("visible=true").first().click();
   await page.goto("/dashboard/prepare");
   await expect(page.getByText(title).locator("visible=true").first()).toBeVisible();
-  await page.getByRole("button", { name: "Download kept" }).click();
-  await page.getByLabel("Name the new folder").fill("E2E Set");
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Download", exact: true }).click()]);
+  await page.getByRole("button", { name: "Download crate" }).click();
+  // The sheet: a folder name, three choices (files with a playlist is the default), one download button. Counted inside
+  // the sheet only: the one-time feedback ask (its own Type radios) can be on the page by now.
+  const sheet = page.getByRole("dialog", { name: "Download crate" });
+  await expect(sheet.getByRole("radio")).toHaveCount(3);
+  await expect(sheet.getByRole("radio", { name: /^Tracks \+ playlist/ })).toBeChecked();
+  await sheet.getByLabel("Folder name").fill("E2E Set");
+  const [download] = await Promise.all([page.waitForEvent("download"), sheet.getByRole("link", { name: /^Download \d+ tracks?$/ }).click()]);
   expect(download.suggestedFilename()).toBe("E2E Set.zip");
   const zip = await download.path();
   expect(fs.statSync(zip).size).toBeGreaterThan(200_000); // the WAV went in whole
