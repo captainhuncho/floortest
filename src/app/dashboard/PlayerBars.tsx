@@ -99,7 +99,7 @@ const THUMB_PX = 16;
  * The same volume the keys change (Shift+↑ / Shift+↓, M), remembered on this device. Phones have none: they use their
  * own buttons, and iOS ignores a page's volume.
  */
-export function VolumeControl() {
+function VolumeControl() {
   const { volume, muted, setVolume } = usePlayer();
   const level = muted ? 0 : volume;
   const percent = `${Math.round(level * 100)}%`;
@@ -139,12 +139,13 @@ export function VolumeControl() {
 }
 
 /** The cover is the play button: the art with a play or pause mark on it, and the buffering ring while audio loads. */
-function CoverPlay() {
+export function CoverPlay({ focusFirst = false }: { focusFirst?: boolean }) {
   const { current, playing, buffering, toggle } = usePlayer();
   if (!current) return null;
   return (
     <button
       type="button"
+      data-autofocus={focusFirst ? "" : undefined}
       onClick={toggle}
       className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-[10px]"
       aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}

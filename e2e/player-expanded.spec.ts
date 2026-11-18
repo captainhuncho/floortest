@@ -1,7 +1,7 @@
 import { expect, hydrated, logIn, test } from "./fixtures";
 
 /**
- * The expanded player (owner's pick, 16 Nov, option 30; dashboard/PlayerExpanded.tsx). From 1024px a centred card over
+ * The expanded player (Design options 27 to 30; dashboard/PlayerExpanded.tsx). From 1024px a centred card over
  * the dimmed page; under that the whole window. One modal for the laptop bar and the phone's mini player.
  */
 test("laptop: the bar's title and chevron open the expanded player; Up next plays a row; Escape gives focus back", async ({ page }) => {
@@ -32,10 +32,22 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   await expect.poll(box).toEqual({ width: 874, centred: true, radius: "22px", inside: true });
   const title = await player.getByRole("heading", { level: 2 }).innerText();
   await expect(player).toHaveAccessibleName(title);
-  // The wave is 150px tall and the time is the big figure.
+  // The wave is 150px tall.
   expect(await player.getByRole("slider", { name: /^Seek / }).evaluate((el) => Math.round(el.getBoundingClientRect().height))).toBe(150);
-  // Focus starts on play / pause, and Tab stays inside.
+  // Top row: the chevron, then where the track sits. The cover is the play button, and focus starts on it.
+  await expect(player.getByText(/^(Waiting|Playing from (Kept|Not for me))$/)).toBeVisible();
   await expect(player.locator("[data-autofocus]")).toBeFocused();
+  await expect(player.locator("[data-autofocus]")).toHaveAccessibleName(/^(Play|Pause) /);
+  expect(await player.locator("[data-autofocus] img").count()).toBe(1);
+  // Previous, Back 15, Forward 15, Next, in that order.
+  expect(await player.getByRole("group", { name: "Playback" }).getByRole("button").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")))).toEqual(["Previous track", "Back 15 seconds", "Forward 15 seconds", "Next track"]);
+  // Volume is on show with its level, with no pointer near it.
+  await page.mouse.move(5, 5);
+  const volume = player.getByRole("slider", { name: "Volume" });
+  await expect(volume).toBeVisible();
+  expect(await volume.evaluate((el) => Math.round(el.getBoundingClientRect().width))).toBe(200);
+  await expect(volume).toHaveAttribute("aria-valuetext", /^\d+%$/);
+  // Tab stays inside.
   for (let i = 0; i < 14; i++) {
     await page.keyboard.press("Tab");
     expect(await page.evaluate(() => !!document.activeElement?.closest("dialog[data-player-expanded]"))).toBe(true);
@@ -46,6 +58,9 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   const rows = upNext.getByRole("button");
   const before = await rows.count();
   expect(before).toBeGreaterThan(0);
+  // Each row has its cover and its length.
+  expect(await rows.first().locator("img").count()).toBe(1);
+  await expect(rows.first()).toContainText(/\d:\d\d/);
   const next = (await rows.first().getAttribute("aria-label"))!.replace(/^Play /, "");
   await rows.first().click();
   await expect(player.getByRole("heading", { level: 2 })).toHaveText(next);
@@ -61,7 +76,7 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   await expect(player).toBeHidden();
 });
 
-test("phone: the mini player's title opens the player full window, and the heart there keeps", async ({ page }) => {
+test("phone: the mini player's title opens the player full window; Keep and Not for me work from it", async ({ page }) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 375, height: 812 });
   await logIn(page, "demo@floortest.test");
@@ -105,7 +120,33 @@ test("phone: the mini player's title opens the player full window, and the heart
   await heart.click();
   await expect(heart).toHaveAttribute("aria-pressed", "false");
 
-  await player.getByRole("link", { name: "Open in Queue" }).click();
+  // The title leads to the track's page in every state. A waiting track: Keep and Not for me, and no volume row on phones.
+  await expect(player.locator("[data-open-track]")).toHaveAttribute("href", /\/dashboard\/review\?.*t=\d+/);
+  await expect(player.getByRole("slider", { name: "Volume" })).toBeHidden();
+  const keep = player.getByRole("button", { name: "Keep", exact: true });
+  const pass = player.getByRole("button", { name: "Not for me", exact: true });
+  await expect(player.getByText("Waiting", { exact: true })).toBeVisible();
+  await pass.click();
+  await expect(page.getByText(/^Not for me: /)).toBeVisible();
+  await expect(player.getByText("Playing from Not for me")).toBeVisible();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(player.getByText("Waiting", { exact: true })).toBeVisible();
+
+  // Kept: Open track, and no Played out (the player can't tell whether this track may be marked).
+  await keep.click();
+  await expect(player.getByText("Playing from Kept")).toBeVisible();
+  await expect(heart).toHaveAttribute("aria-pressed", "true");
+  await expect(player.getByRole("button", { name: /Played/ })).toHaveCount(0);
+  await expect.poll(small).toEqual([]);
+
+  await player.getByRole("link", { name: "Open track" }).click();
   await expect(player).toBeHidden();
   await expect(page).toHaveURL(/\/dashboard\/review\?.*t=\d+/);
+
+  // Put the track back as it was, so the next spec finds it waiting.
+  await mini.locator("[data-open-player]").click();
+  await expect(player).toBeVisible();
+  await heart.click();
+  await expect(heart).toHaveAttribute("aria-pressed", "false");
+  await expect(player.getByText("Waiting", { exact: true })).toBeVisible();
 });

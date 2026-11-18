@@ -3,21 +3,67 @@
 import Link from "next/link";
 import { useEffect, useId, useSyncExternalStore } from "react";
 import { useModalDialog } from "@/components/Dialog";
-import { BufferRing, PlayIcon, PlayerClock, PlayerWaveform, usePlayer } from "@/components/Player";
+import { PlayerClock, PlayerWaveform, usePlayer, type PlayerTrack } from "@/components/Player";
 import { fmtTime } from "@/lib/format";
-import { CONTROL, KeepHeart, SkipIcon, VolumeControl, trackHref } from "./PlayerBars";
+import { CONTROL, CoverPlay, KeepHeart, SkipIcon, trackHref } from "./PlayerBars";
+import { PlayerActions } from "./PlayerExpandedActions";
 import { playerExpanded, setPlayerExpanded, subscribePlayerExpanded } from "./playerExpandedStore";
 
 const close = () => setPlayerExpanded(false);
 
+/** How far Back and Forward jump, in seconds. */
+const JUMP = 15;
+
+/** What the top label says: where the loaded track sits. */
+const sourceLabel = (t: PlayerTrack) =>
+  t.src ? "Playing from Projects" : t.decision === "kept" ? "Playing from Kept" : t.decision === "passed" ? "Playing from Not for me" : t.decision === null ? "Waiting" : "Now playing";
+
+/** Kept and waiting tracks are counted in Up next ("3 more waiting"); anything else has no count. */
+const bucket = (t: PlayerTrack) => (t.decision === "kept" ? "kept" : t.decision === null ? "waiting" : null);
+
+function JumpIcon({ back = false }: { back?: boolean }) {
+  return (
+    <span className="relative grid place-items-center">
+      <svg viewBox="0 0 24 24" className={`size-7 ${back ? "-scale-x-100" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M20 12a8 8 0 1 1-2.6-5.9" />
+        <path d="M20 4v4h-4" />
+      </svg>
+      <span aria-hidden className="absolute text-[8.5px] font-bold tnum">
+        {JUMP}
+      </span>
+    </span>
+  );
+}
+
+/** Laptops: the speaker (mute), the slider and the level, always on show (Design: never behind a hover). */
+function VolumeRow() {
+  const { volume, muted, setVolume } = usePlayer();
+  const level = muted ? 0 : volume;
+  const percent = `${Math.round(level * 100)}%`;
+  return (
+    <div className="hidden items-center justify-center gap-2 min-[1024px]:flex">
+      <button type="button" onClick={() => setVolume(volume, !muted)} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} className={CONTROL}>
+        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M4 9.5h3l4.5-3.7v12.4L7 14.5H4z" fill="currentColor" />
+          {level === 0 ? <path d="m16 9.5 5 5M21 9.5l-5 5" /> : <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11" />}
+        </svg>
+      </button>
+      <input type="range" min={0} max={1} step={0.05} value={level} onChange={(e) => setVolume(Number(e.target.value), false)} aria-label="Volume" aria-valuetext={percent} className="h-11 w-[200px] cursor-pointer accent-bone" />
+      <span aria-hidden className="w-10 text-[12px] text-mute tnum">
+        {percent}
+      </span>
+    </div>
+  );
+}
+
 /**
- * The expanded player (owner's pick, 16 Nov, option 30). Opened from the laptop bar's title or chevron, or the phone's
- * mini player title. From 1024px a centred card over the dimmed page; under that the whole window. The same modal
- * behaviour as every pop-up (components/Dialog): focus stays inside and goes back to what opened it, Escape and Close
- * shut it. It plays what the bar plays: nothing in here loads anything.
+ * The expanded player (Design options 27 to 30: phone full player from 27, the laptop card from 30). Opened from the laptop
+ * bar's title or chevron, or the phone's mini player title. From 1024px a centred card over the dimmed page; under that
+ * the whole window. The same modal behaviour as every pop-up (components/Dialog): focus stays inside and goes back to
+ * what opened it, Escape and the chevron shut it. It plays what the bar plays: nothing in here loads anything.
  */
 export function PlayerExpanded() {
-  const { current, playing, buffering, toggle, duration, seek, skip, hasNext, hasPrev, upNext, play } = usePlayer();
+  const { current, duration, seek, seekBy, skip, hasNext, hasPrev, upNext, play } = usePlayer();
   const wanted = useSyncExternalStore(subscribePlayerExpanded, playerExpanded, () => false);
   const open = wanted && !!current;
   const { modalProps } = useModalDialog(open, close);
@@ -27,86 +73,91 @@ export function PlayerExpanded() {
     if (wanted && !current) close();
   }, [wanted, current]);
   const d = duration || current?.duration || 0;
+  const kind = current ? bucket(current) : null;
+  const more = kind ? upNext.filter((t) => bucket(t) === kind).length : 0;
 
   return (
     <dialog aria-labelledby={titleId} data-player-expanded className="ft-player" {...modalProps}>
       {current && (
-        <div className="flex h-full max-h-[inherit] flex-col overflow-y-auto overscroll-contain min-[1024px]:flex-row min-[1024px]:overflow-hidden">
-          <div className="flex min-w-0 flex-1 flex-col gap-5 p-5 pt-[max(1.25rem,env(safe-area-inset-top))] min-[1024px]:p-7">
-            <div className="flex items-start gap-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icons/mini-art.svg" alt="" className="size-20 shrink-0 rounded-[16px] min-[1024px]:size-24" />
-              <div className="min-w-0 flex-1 pt-1">
-                <p className="text-[12px] text-mute">Now playing</p>
-                <h2 id={titleId} className="mt-0.5 text-[22px] font-semibold leading-7 tracking-[-0.02em] text-bone [overflow-wrap:anywhere]">
-                  {current.title}
-                </h2>
-                {current.artist && <p className="mt-0.5 truncate text-[15px] text-mute">{current.artist}</p>}
+        <div className="flex h-full max-h-[inherit] flex-col">
+          <div className="grid shrink-0 grid-cols-[2.75rem_1fr_2.75rem] items-center px-2 pt-[max(0.625rem,env(safe-area-inset-top))]">
+            <button type="button" onClick={close} aria-label="Close player" className={CONTROL}>
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            <p className="truncate text-center text-[12px] font-semibold text-mute">{sourceLabel(current)}</p>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-[18px] pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-1.5 min-[1024px]:grid min-[1024px]:grid-cols-[minmax(0,1fr)_240px] min-[1024px]:gap-[26px] min-[1024px]:overflow-hidden min-[1024px]:px-[26px] min-[1024px]:pb-[22px] min-[1024px]:pt-2.5">
+            <div className="flex min-w-0 flex-col gap-3 min-[1024px]:justify-center min-[1024px]:gap-3.5">
+              <p className="flex items-baseline justify-center gap-2.5 tnum">
+                <PlayerClock className="text-[28px] font-bold leading-none text-bone" />
+                <span className="text-[18px] leading-none text-mute">{fmtTime(d)}</span>
+              </p>
+              <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} />
+
+              <div className="flex items-center gap-2.5">
+                <CoverPlay focusFirst />
+                {/* The title opens the track's page, whatever its state (Design, 18 Nov). */}
+                <Link href={trackHref(current)} onClick={close} data-open-track className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-md">
+                  <h2 id={titleId} className="truncate text-[18px] font-bold leading-6 text-bone">
+                    {current.title}
+                  </h2>
+                  {current.artist && <span className="truncate text-[13px] text-mute">{current.artist}</span>}
+                </Link>
+                {current.decision !== undefined && <KeepHeart track={current} />}
               </div>
-              <button type="button" onClick={close} aria-label="Close player" className={`${CONTROL} -mr-2 -mt-1`}>
-                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
-            </div>
 
-            <p className="text-mute">
-              <PlayerClock className="tnum text-[38px] font-semibold leading-none tracking-[-0.03em] text-bone" />
-              <span className="tnum text-[15px]"> / {fmtTime(d)}</span>
-            </p>
-            <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} />
-
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="flex items-center gap-1">
+              <div role="group" aria-label="Playback" className="flex items-center justify-between px-2.5">
                 <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={CONTROL}>
                   <SkipIcon back />
                 </button>
-                <button
-                  type="button"
-                  data-autofocus
-                  onClick={toggle}
-                  aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
-                  aria-busy={buffering || undefined}
-                  data-buffering={buffering ? "" : undefined}
-                  className="relative grid size-14 shrink-0 place-items-center rounded-full bg-bone text-ink transition-transform duration-100 active:scale-95"
-                >
-                  <PlayIcon playing={playing} className="size-5" />
-                  <BufferRing className="-inset-1 text-bone" />
+                <button type="button" onClick={() => seekBy(-JUMP)} aria-label={`Back ${JUMP} seconds`} className={CONTROL}>
+                  <JumpIcon back />
+                </button>
+                <button type="button" onClick={() => seekBy(JUMP)} aria-label={`Forward ${JUMP} seconds`} className={CONTROL}>
+                  <JumpIcon />
                 </button>
                 <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={CONTROL}>
                   <SkipIcon />
                 </button>
-              </span>
-              <span className="flex items-center gap-1">
-                {current.decision !== undefined && <KeepHeart track={current} />}
-                <span className="hidden min-[1024px]:block">
-                  <VolumeControl />
-                </span>
-              </span>
+              </div>
+
+              <VolumeRow />
+              <PlayerActions key={current.id} track={current} onLeave={close} />
             </div>
 
-            <Link href={trackHref(current)} onClick={close} className="inline-flex min-h-11 items-center self-start text-[13px] font-semibold text-mute underline-offset-4 hover:text-bone hover:underline">
-              {current.src ? "Open in Projects" : "Open in Queue"}
-            </Link>
+            <section aria-label="Up next" className="flex shrink-0 flex-col min-[1024px]:min-h-0 min-[1024px]:overflow-y-auto min-[1024px]:border-l min-[1024px]:border-(--glass-line) min-[1024px]:pl-[18px]">
+              <div className="flex items-center justify-between py-2">
+                <h3 className="text-[12px] font-semibold text-mute">Up next</h3>
+                {more > 0 && (
+                  <span className="text-[11px] text-mute tnum">
+                    {more} more {kind}
+                  </span>
+                )}
+              </div>
+              {upNext.length === 0 ? (
+                <p className="pb-2 text-[13px] text-mute">Nothing after this one.</p>
+              ) : (
+                <ol className="flex flex-col">
+                  {upNext.map((t) => (
+                    <li key={t.id}>
+                      <button type="button" onClick={() => play(t)} aria-label={`Play ${t.title}`} className="-mx-1.5 flex min-h-14 w-[calc(100%+0.75rem)] items-center gap-2.5 rounded-[11px] px-1.5 py-1.5 text-left transition-colors hover:bg-(--glass-on)">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/icons/mini-art.svg" alt="" loading="lazy" className="size-10 shrink-0 rounded-[8px]" />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-[13px] font-medium text-bone">{t.title}</span>
+                          {t.artist && <span className="truncate text-[12px] text-mute">{t.artist}</span>}
+                        </span>
+                        {!!t.duration && <span className="shrink-0 text-[12px] text-mute tnum">{fmtTime(t.duration)}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
           </div>
-
-          <section aria-label="Up next" className="flex shrink-0 flex-col border-t border-(--glass-line) p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] min-[1024px]:w-[240px] min-[1024px]:overflow-y-auto min-[1024px]:border-l min-[1024px]:border-t-0">
-            <h3 className="px-2 py-2 text-[12px] font-semibold text-mute">Up next</h3>
-            {upNext.length === 0 ? (
-              <p className="px-2 pb-2 text-[13px] text-mute">Nothing after this one.</p>
-            ) : (
-              <ol className="flex flex-col gap-0.5">
-                {upNext.map((t) => (
-                  <li key={t.id}>
-                    <button type="button" onClick={() => play(t)} aria-label={`Play ${t.title}`} className="flex min-h-11 w-full flex-col justify-center rounded-[11px] px-2 py-1.5 text-left transition-colors hover:bg-(--glass-on)">
-                      <span className="w-full truncate text-[13px] font-medium text-bone">{t.title}</span>
-                      {t.artist && <span className="w-full truncate text-[12px] text-mute">{t.artist}</span>}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
         </div>
       )}
     </dialog>
