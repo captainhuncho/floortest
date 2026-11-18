@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Dialog, DIALOG_MAIN, DIALOG_QUIET } from "@/components/Dialog";
 import { useActionForm } from "@/components/useActionForm";
+import { DELETE_PHRASE, deletePhraseOk } from "@/lib/delete-phrase";
+import { UNDO_DAYS } from "@/lib/undo-days";
 import { logout } from "../../../(auth)/actions";
 import { signOutAllMyDevices } from "../../actions/security";
 import { deleteAccount } from "../../actions/settings";
@@ -29,10 +31,10 @@ function Device() {
 /**
  * Sign out, and Delete account on your own desk. As "menu" it is the ••• at the top right of Settings; as "buttons" it
  * is the same two actions as plain buttons at the bottom of the page, so nobody has to hunt for them. Each opens its
- * own sheet (a centred panel on laptops). Signing out everywhere and deleting keep their checks: the password, and the
- * two-step code when it's on, are checked on the server before anything changes.
+ * own sheet (a centred panel on laptops). Signing out everywhere asks for the password; deleting asks for DELETE FLOORTEST
+ * typed out. Both also ask for the two-step code when it's on, and the server checks them before anything changes.
  */
-export function SettingsMenu({ everywhere, canDelete, handle, twoFactor, variant = "menu" }: { everywhere: boolean; canDelete: boolean; handle: string; twoFactor: boolean; variant?: "menu" | "buttons" }) {
+export function SettingsMenu({ everywhere, canDelete, twoFactor, variant = "menu" }: { everywhere: boolean; canDelete: boolean; twoFactor: boolean; variant?: "menu" | "buttons" }) {
   const [layer, setLayer] = useState<Layer>(null);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -123,7 +125,7 @@ export function SettingsMenu({ everywhere, canDelete, handle, twoFactor, variant
             open={layer === "delete"}
             onClose={close}
             title="Delete account?"
-            description="Your desk, link and every track senders sent you are deleted for good. Senders get no more receipts. This can't be undone."
+            description={`Your account switches off now: your desk and link go offline and senders can't send to you. Changed your mind? Sign in within ${UNDO_DAYS} days to restore it. After that, everything on it is deleted for good and senders' receipts stop working.`}
           >
             <div className="flex flex-col gap-2">
               <button type="button" className={RED_BTN} onClick={() => setLayer("sure")}>
@@ -134,7 +136,7 @@ export function SettingsMenu({ everywhere, canDelete, handle, twoFactor, variant
               </button>
             </div>
           </Dialog>
-          <DeleteForGood open={layer === "sure"} handle={handle} twoFactor={twoFactor} onClose={close} />
+          <DeleteForGood open={layer === "sure"} twoFactor={twoFactor} onClose={close} />
         </>
       )}
     </div>
@@ -229,8 +231,8 @@ function SignOut({ open, confirming, everywhere, twoFactor, onEverywhere, onClos
   );
 }
 
-/** Delete account, step 2: the link name typed out, then the password (and two-step code), checked on the server. */
-function DeleteForGood({ open, handle, twoFactor, onClose }: { open: boolean; handle: string; twoFactor: boolean; onClose: () => void }) {
+/** Delete account, step 2: DELETE FLOORTEST typed exactly, and the two-step code when it's on, both checked on the server. No password (owner, 18 Nov). */
+function DeleteForGood({ open, twoFactor, onClose }: { open: boolean; twoFactor: boolean; onClose: () => void }) {
   const [state, onSubmit, pending] = useActionForm(deleteAccount, undefined);
   const [typed, setTyped] = useState("");
   const done = () => {
@@ -243,21 +245,12 @@ function DeleteForGood({ open, handle, twoFactor, onClose }: { open: boolean; ha
       onClose={done}
       busy={pending}
       title="Are you sure?"
-      description={
-        <>
-          Type your link name, <b className="font-semibold text-bone">{handle}</b>, to confirm.
-        </>
-      }
     >
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className={FIELD}>Link name</span>
-          <input className="input text-[16px]! sm:text-[14px]!" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} data-autofocus="" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={FIELD}>Password</span>
-          <input className="input text-[16px]! sm:text-[14px]!" type="password" name="password" required autoComplete="current-password" />
-          <span className={HELP}>Signed up with Google or an email code? Set a password with &ldquo;Forgot your password?&rdquo; on the log-in page first.</span>
+          <span className={FIELD}>Type {DELETE_PHRASE} to confirm</span>
+          {/* The phrase shows inside the box as a grey hint, never filled in for them (owner, 18 Nov). */}
+          <input className="input text-[16px]! sm:text-[14px]!" name="confirm" placeholder={DELETE_PHRASE} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="characters" spellCheck={false} data-autofocus="" />
         </label>
         {twoFactor && (
           <label className="flex flex-col gap-1.5">
@@ -271,8 +264,8 @@ function DeleteForGood({ open, handle, twoFactor, onClose }: { open: boolean; ha
           </Notice>
         )}
         <div className="flex flex-col gap-2">
-          <button className={RED_BTN} disabled={pending || typed.trim().toLowerCase() !== handle}>
-            {pending ? "Deleting…" : "Delete for good"}
+          <button className={RED_BTN} disabled={pending || !deletePhraseOk(typed)}>
+            {pending ? "Switching off…" : "Delete account"}
           </button>
           <button type="button" className={QUIET_LINK} disabled={pending} onClick={done}>
             Cancel

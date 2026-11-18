@@ -27,19 +27,22 @@ function mixdown(buf: AudioBuffer) {
   return out;
 }
 
-function peaks(x: Float32Array) {
+/**
+ * The wave overview: PEAK_COUNT slices from 0 to 1. Each slice is its average level (RMS), not its loudest sample,
+ * scaled to the file's loudest slice: one kick no longer fills a whole bar, so loud sections keep their shape.
+ */
+export function peaks(x: Float32Array) {
   const size = Math.max(1, Math.floor(x.length / PEAK_COUNT));
   const out: number[] = [];
   let max = 0;
   for (let p = 0; p < PEAK_COUNT; p++) {
-    let m = 0;
-    const end = Math.min(x.length, (p + 1) * size);
-    for (let i = p * size; i < end; i++) {
-      const v = Math.abs(x[i]);
-      if (v > m) m = v;
-    }
-    out.push(m);
-    if (m > max) max = m;
+    let sum = 0;
+    const start = p * size;
+    const end = Math.min(x.length, start + size);
+    for (let i = start; i < end; i++) sum += x[i] * x[i];
+    const level = end > start ? Math.sqrt(sum / (end - start)) : 0;
+    out.push(level);
+    if (level > max) max = level;
   }
   return out.map((v) => Math.round((max ? v / max : 0) * 100) / 100);
 }
