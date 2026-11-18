@@ -15,7 +15,7 @@ type Invitee = { name: string; created_at: number; referral_rewarded_at: number 
 
 export default async function Referrals() {
   const user = await requireRole("owner");
-  if (!(await switchOn("referrals", user))) redirect("/dashboard/account");
+  if (!(await switchOn("referrals", user))) redirect("/dashboard/settings");
   await trackUse(user.id, "referrals");
   const code = await referralCodeFor(user.id);
   const link = `${APP_URL}/signup?ref=${code}`;

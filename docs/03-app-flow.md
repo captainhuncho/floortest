@@ -95,15 +95,17 @@ Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days o
                           layout (17 Nov): status centred on top, then track and steps; the action (Show my details / Send another, Stop private sharing /
                           the read-only line) in a bar pinned at the bottom on phones, in the page from 640px; the code screen is short and centred
                           stems upload / Stop private sharing without proof ─► refused on the server, same answer as an unknown link
-Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
+Avatar ─► Settings (/dashboard/settings; /dashboard/account redirects) ─► rows: Contacts, Analytics, Played out, Pause your link, Theme, Receiving, Team, Notifications, Sign-in and security, Switch desk, Plan (sheet), Help
+   └─ ••• ─┬─ Sign out ─► "Sign out?" ─┬─ this phone/computer ─► /signed-out
+           │                          └─ Sign out everywhere (own desk) ─► password (+ code with two-step) ─► every session ended ─► /signed-out
+           └─ Delete account (own desk) ─► what goes ─► "Are you sure?" (type the link name, password, + code) ─► deleteAccount
 Feedback (every desk page, phones too: the speech-bubble icon in the top bar) ─► Idea / Bug / Confusing / Love it · text ─► Send ─► ops → Feedback (with the page it came from and the window width, e.g. 390 px) · toast "Thanks. It went straight to the FloorTest team."
-Account ─► About FloorTest ─► Send feedback ─► the same form opens under the row (not the public contact page) ─► Send ─► ops → Feedback
 5th Keep / Not for me by a person (any desk, counted from their own activity) ─► the decision saves as usual ─► a card at the top of the page (in the page, not over it), once: "How's FloorTest working for you?" (no focus taken; shortcuts and the player carry on)
    ├─ Send ─► ops → Feedback ─► not asked again
    ├─ Not now (first time) ─► closes ─► asked once more after 10 further decisions (users.feedback_snoozed_at)
    └─ Don't ask again · a second Not now ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
 ```
-Mobile menu: Floor · Collections · Queue · Prepare · More (a sheet: Send music, Contacts, Activity, How it works). Desktop sidebar lists them all, plus Analytics (owner and A&R / Admin); on phones Analytics sits under Account → Your desk.
+Mobile menu: Floor · Collections · Queue · Prepare · More (a sheet: Send music, Contacts, Activity, How it works; from #594; the owner kept it on 17 Nov rather than option 47's menu without More, for now). Desktop sidebar: Floor · Collections · Review Queue · Prepare · Send music; at the foot, How it works then Settings. Contacts and Analytics (owner and A&R / Admin) are rows on Settings; Emails to senders is no longer linked from users' screens (option 47).
 Any menu tap (desk, settings rail, ops): the tapped item lights up at once ─► the page's skeleton (loading.tsx) ─► the page. A thin lime line along the top only if nothing has arrived after 150ms.
 
 ## Plans

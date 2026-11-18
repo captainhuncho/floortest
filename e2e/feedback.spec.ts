@@ -1,8 +1,8 @@
 import { expect, logIn, test } from "./fixtures";
 
 /**
- * Feedback reaches the team from a phone (1 Nov: the top-bar button was desktop-only, and Account → Send feedback went
- * to the public contact form as "General"). SHOT_DIR=/some/folder saves a screenshot of each step.
+ * Feedback reaches the team from a phone (1 Nov: the top-bar button was desktop-only). Settings (option 47) has no
+ * Send feedback row; the top-bar button is the way in. SHOT_DIR=/some/folder saves a screenshot of each step.
  */
 const shot = async (page: import("@playwright/test").Page, name: string) => {
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${name}.png`, fullPage: false });
@@ -10,7 +10,7 @@ const shot = async (page: import("@playwright/test").Page, name: string) => {
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
-test("on a phone, the top-bar Feedback button opens the form and sends it, and Account sends in place", async ({ page }) => {
+test("on a phone, the top-bar Feedback button opens the form and sends it", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/floor");
 
@@ -33,14 +33,4 @@ test("on a phone, the top-bar Feedback button opens the form and sends it, and A
   await panel.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("Thanks. It went straight to the FloorTest team.")).toBeVisible();
   await expect(panel).toBeHidden();
-
-  // Account → Send feedback opens the same form under the row, not the public contact page.
-  await page.goto("/dashboard/account");
-  await page.getByRole("button", { name: /Send feedback/ }).click();
-  const inline = page.getByRole("form", { name: "Help shape FloorTest" });
-  await inline.getByRole("textbox", { name: "Feedback" }).fill("Love the receipts.");
-  await inline.getByRole("radio", { name: "Love it" }).click();
-  await inline.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Thanks. It went straight to the FloorTest team.")).toBeVisible();
-  await expect(page).toHaveURL(/\/dashboard\/account/);
 });
