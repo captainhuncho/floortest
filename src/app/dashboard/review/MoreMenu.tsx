@@ -37,7 +37,7 @@ const ITEM = "flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-l
 
 function Items({ items, role, onPick }: { items: Item[]; role?: "menuitem"; onPick: (item: Item) => void }) {
   return items.map((item) => (
-    <button key={item.label} type="button" role={role} onClick={() => onPick(item)} className={ITEM}>
+    <button key={item.label} type="button" role={role} tabIndex={role ? -1 : undefined} onClick={() => onPick(item)} className={ITEM}>
       <Icon name={item.icon} className="size-[18px] shrink-0 text-mute" />
       {item.label}
     </button>
@@ -48,7 +48,9 @@ function Items({ items, role, onPick }: { items: Item[]; role?: "menuitem"; onPi
  * More, beside the decision (Design option 42): a sheet on phones, a pop-over beside the button on laptops. Every item
  * goes to something the open track's card already shows (the private note, Played out, Move, Details, Report), and an
  * item whose control isn't on the card (a track that isn't kept has no Played out) is left out. Copy link copies this
- * track's own Queue address. Escape or a click outside closes it, and focus goes back to the button.
+ * track's own Queue address. Escape or a click outside closes it, and focus goes back to the button. The pop-over is a
+ * menu for the keyboard too: it opens on its first item, the arrow keys, Home and End move through the items, and Tab
+ * closes it.
  */
 export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
   // "sheet" on phones, "pop" from 768px; decided when it opens.
@@ -59,17 +61,28 @@ export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
   const button = useRef<HTMLButtonElement>(null);
   // What to do once the layer has closed and focus is back on the button.
   const after = useRef<(() => void) | null>(null);
+  // How it was last open, so closing knows whether a sheet is still on its way out.
+  const was = useRef<"sheet" | "pop" | null>(null);
   const toast = useToast();
 
   useEffect(() => {
-    if (open) return;
+    if (open) {
+      was.current = open;
+      return;
+    }
     const run = after.current;
     after.current = null;
-    run?.();
+    if (!run) return;
+    const el = wrap.current;
+    if (was.current !== "sheet" || !el) return run();
+    // The sheet's dialog hands focus back to the button when its close event fires, a moment after this. Go once that
+    // has happened, or the button takes focus from the control just picked. The event doesn't bubble: catch it going down.
+    el.addEventListener("close", () => setTimeout(run), { capture: true, once: true });
   }, [open]);
 
   useEffect(() => {
     if (open !== "pop") return;
+    wrap.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const close = (e: MouseEvent | KeyboardEvent) => {
       if (e instanceof KeyboardEvent) {
         if (e.key !== "Escape") return;
@@ -118,6 +131,20 @@ export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
     };
     setOpen(null);
   };
+  /** The pop-over's own keys: arrows, Home and End move between the items; Tab closes it and moves on from the button. */
+  const onMenuKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Tab") {
+      setOpen(null);
+      return button.current?.focus();
+    }
+    const list = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    const at = list.indexOf(document.activeElement as HTMLElement);
+    const last = list.length - 1;
+    const to = e.key === "ArrowDown" ? (at >= last ? 0 : at + 1) : e.key === "ArrowUp" ? (at <= 0 ? last : at - 1) : e.key === "Home" ? 0 : e.key === "End" ? last : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    list[to]?.focus();
+  };
   return (
     <div ref={wrap} className="relative">
       <button
@@ -136,7 +163,7 @@ export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
         More
       </button>
       {open === "pop" && (
-        <div role="menu" aria-label="More" className="absolute left-0 top-full z-30 mt-1.5 w-56 rounded-[13px] border border-line bg-card p-1 shadow-pop">
+        <div role="menu" aria-label="More" onKeyDown={onMenuKey} className="absolute left-0 top-full z-30 mt-1.5 w-56 rounded-[13px] border border-line bg-card p-1 shadow-pop">
           <Items items={items} role="menuitem" onPick={pick} />
         </div>
       )}

@@ -53,12 +53,33 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await expect(box).toHaveValue("kx");
   await box.fill("");
   await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  // With single-key shortcuts switched off in this browser (Settings → Account), R does nothing.
+  await page.evaluate(() => localStorage.setItem("ft:shortcuts", "off"));
+  await page.keyboard.press("r");
+  await expect(panel).toBeHidden();
+  await page.evaluate(() => localStorage.removeItem("ft:shortcuts"));
 
   // More is a menu beside the button. While it is open K belongs to it, not to the track; Escape closes it.
   const more = card.getByRole("button", { name: "More", exact: true });
   await more.click();
   const menu = page.getByRole("menu", { name: "More" });
-  await expect(menu.getByRole("menuitem")).toHaveText(["Add a note", "Move", "Copy link", "Details", "Report"]);
+  const items = menu.getByRole("menuitem");
+  await expect(items).toHaveText(["Add a note", "Move", "Copy link", "Details", "Report"]);
+  // It opens on its first item; the arrows wrap, Home and End jump to the ends.
+  await expect(items.first()).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(items.nth(1)).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(items.last()).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(items.first()).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(items.last()).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(items.first()).toBeFocused();
+  // The arrows moved inside the menu only: the open track is the same one.
+  await expect(card.locator('h2[id^="track-h-"]')).toHaveText(title);
   await page.keyboard.press("k");
   await expect(card.getByRole("button", { name: /Keep/ })).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Escape");
@@ -72,6 +93,17 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await more.click();
   await menu.getByRole("menuitem", { name: "Report" }).click();
   await expect(page.getByRole("group", { name: "Report this track" })).toBeVisible();
+  // Details and Move go to the card's own controls. Tab closes the menu.
+  await more.click();
+  await menu.getByRole("menuitem", { name: "Details" }).click();
+  await expect(card.locator("details[data-panel-details] summary")).toBeFocused();
+  await more.click();
+  await menu.getByRole("menuitem", { name: "Move" }).click();
+  await expect(card.locator('[id^="move-"]')).toBeFocused();
+  await more.click();
+  await expect(items.first()).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(menu).toBeHidden();
 
   // Copy link copies this track's own Queue address on this site, nothing else.
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -142,6 +174,11 @@ test("phone: story bars, cover taps step between tracks clear of the decision, a
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
   await expect(more).toBeFocused();
+  // An item picked from the sheet keeps focus where it sent it: the sheet closing doesn't pull it back to More.
+  await more.click();
+  await sheet.getByRole("button", { name: "Add a note" }).click();
+  await expect(sheet).toBeHidden();
+  await expect(page.getByLabel("Private note, never sent to the sender")).toBeFocused();
   await card.getByRole("button", { name: "Reply", exact: true }).click();
   const reply = page.getByRole("dialog", { name: /^Reply to / });
   await expect(reply.getByRole("textbox", { name: /^Your reply to / })).toBeFocused();
