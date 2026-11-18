@@ -44,3 +44,10 @@ test("wave: silence and an empty file give all zeros, never NaN", () => {
   assert.deepEqual(peaks(new Float32Array(SLICES * 10)), Array(SLICES).fill(0));
   assert.deepEqual(peaks(new Float32Array(0)), Array(SLICES).fill(0));
 });
+
+test("wave: a file shorter than 180 samples fills what it has and leaves the rest at zero", () => {
+  const out = peaks(new Float32Array(50).fill(0.5));
+  assert.equal(out.length, SLICES);
+  assert.deepEqual(out.slice(0, 50), Array(50).fill(1));
+  assert.deepEqual(out.slice(50), Array(SLICES - 50).fill(0));
+});
