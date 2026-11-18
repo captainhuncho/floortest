@@ -22,14 +22,14 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   const chevron = bar.getByRole("button", { name: "Open the player", exact: true });
   await chevron.click();
   await expect(player).toBeVisible();
-  // A card, not the window: (1280 − 64) × 0.84, capped at 874, centred, with our corners.
+  // A card, not the window: 80% of its width and height (1280 × 800), centred, with our corners.
   const box = () =>
     player.evaluate((el) => {
       const r = el.getBoundingClientRect();
-      return { width: Math.round(r.width), centred: Math.abs(r.left - (window.innerWidth - r.right)) <= 1, radius: getComputedStyle(el).borderRadius, inside: r.top >= 0 && r.bottom <= window.innerHeight };
+      return { width: Math.round(r.width), height: Math.round(r.height), centred: Math.abs(r.left - (window.innerWidth - r.right)) <= 1, radius: getComputedStyle(el).borderRadius, inside: r.top >= 0 && r.bottom <= window.innerHeight };
     });
   // Read once it has finished scaling in.
-  await expect.poll(box).toEqual({ width: 874, centred: true, radius: "22px", inside: true });
+  await expect.poll(box).toEqual({ width: 1024, height: 640, centred: true, radius: "22px", inside: true });
   const title = await player.getByRole("heading", { level: 2 }).innerText();
   await expect(player).toHaveAccessibleName(title);
   // The wave is 150px tall.
