@@ -26,13 +26,14 @@ The owner asked for one improvement round after all redesigned pages are done, n
 | Health `/api/health`, `/` | production | 200, 200 |
 
 ## Other releases since the last code report
+- #632, report for #627: merge `62c2638d`, deploy 7870294623.
 - #634, report for #633: merge `8d97b905`, deploy 7870338774.
 
 ## After the merge
 `main` merged into `mobile-next` as `919b1e69`, no conflicts.
 
 ## Live versus unfinished
-Live: the Floor redesign. Tried by the owner and ready for the owner's word: Prepare (#606). Waiting: Analytics (#599,
-full e2e running), Collections covers (#621, ships after Prepare and needs a fresh Safety check then). Settings (#609)
+Live: the Floor redesign. Tried by the owner and ready for the owner's word: Prepare (#606) and Analytics (#599, full
+e2e on `badcf64b` 126 passed, 0 failed, 1 skipped). Waiting: Collections covers (#621, ships after Prepare and needs a fresh Safety check then). Settings (#609)
 is lane:owner and needs the owner's yes in the Desk. e2e queue next: sign-in screens (#617), the e2e test fix (#635),
 Review Queue (#601), coming-soon page (#625). On hold: expanded player (#600).
