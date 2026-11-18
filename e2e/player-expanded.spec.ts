@@ -42,7 +42,7 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
   expect(await player.locator("[data-autofocus] img").count()).toBe(0);
   expect(await player.locator("[data-autofocus]").evaluate((el) => Math.round(el.getBoundingClientRect().width))).toBe(56);
   // The essentials close together: Previous, play or pause, Next (owner, 18 Nov); Back and Forward 15 in the row below.
-  const playback = player.getByRole("group", { name: "Playback" });
+  const playback = player.getByRole("group", { name: "Playback", exact: true });
   expect(await playback.getByRole("button").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")!.replace(/^(Play|Pause) .*/, "Play or pause")))).toEqual(["Previous track", "Play or pause", "Next track"]);
   expect(
     await playback.evaluate((el) => {
@@ -134,7 +134,7 @@ test("phone: the mini player's title opens the player full window; Keep and Not 
     }),
   ).toEqual({ space: 56, wave: 124, cover: 56 });
   // Phones keep one row: Previous, Back 15, play or pause in the middle, Forward 15, Next.
-  expect(await player.getByRole("group", { name: "Playback" }).getByRole("button").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")!.replace(/^(Play|Pause) .*/, "Play or pause")))).toEqual(["Previous track", "Back 15 seconds", "Play or pause", "Forward 15 seconds", "Next track"]);
+  expect(await player.getByRole("group", { name: "Playback", exact: true }).getByRole("button").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")!.replace(/^(Play|Pause) .*/, "Play or pause")))).toEqual(["Previous track", "Back 15 seconds", "Play or pause", "Forward 15 seconds", "Next track"]);
   await expect(player.getByRole("group", { name: "More playback" })).toBeHidden();
 
   const heart = player.locator("[data-heart]");
