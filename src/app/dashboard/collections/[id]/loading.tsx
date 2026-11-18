@@ -12,7 +12,7 @@ export default function Loading() {
         <SkBlock className="size-9 rounded-full" />
       </div>
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[180px_minmax(0,1fr)] lg:items-start lg:gap-8 min-[1180px]:grid-cols-[260px_minmax(0,1fr)]">
-        <SkBlock className="mx-auto size-40 rounded-[16px] lg:mx-0 lg:aspect-square lg:size-auto lg:w-full" />
+        <SkBlock className="mx-auto size-[200px] rounded-[14px] lg:mx-0 lg:aspect-square lg:size-auto lg:w-full" />
         <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
           <div className="flex flex-col gap-2">
             <SkBlock className="h-[26px] w-48 rounded-[8px]" />

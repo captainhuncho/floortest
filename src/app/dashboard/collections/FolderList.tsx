@@ -22,7 +22,7 @@ export function FolderList({ items, label, filter, empty }: { items: { key: stri
         {filter}
       </div>
       {shown.length > 0 && (
-        <ul aria-label={label} className="flex flex-col divide-y divide-line md:grid md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] md:gap-x-4 md:gap-y-6 md:divide-y-0">
+        <ul aria-label={label} className="flex flex-col divide-y divide-line md:grid md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] md:gap-x-4 md:gap-y-6 md:divide-y-0">
           {shown.map((i) => (
             <li key={i.key} className="py-2 md:py-0">
               {i.node}
