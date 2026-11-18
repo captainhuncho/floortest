@@ -122,7 +122,8 @@
   .af-page.theme-system .cs-line { font-weight: 450; }
   .af-page.theme-system .cs-lab { font-weight: 500; }
   .af-page.theme-system .cs-err { color: #a3201b; }
-  .af-page.theme-system .cs-sheet .af-btn.aw-alt { background: transparent; border-color: rgb(18 19 16 / 0.18); }
+  /* edge .55 so Join the waitlist reaches 3:1 on the day card (owner via DESIGN, 18 Nov; .18 measured 1.33:1) */
+  .af-page.theme-system .cs-sheet .af-btn.aw-alt { background: transparent; border-color: rgb(18 19 16 / 0.55); }
   .af-page.theme-system .cs-dot { box-shadow: 0 0 0 1px rgb(18 19 16 / 0.25); }
 }
 
