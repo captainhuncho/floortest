@@ -160,12 +160,12 @@ dialog[open]::backdrop {
 }
 @media (prefers-reduced-transparency: reduce) { .ft-dialog::backdrop { backdrop-filter: none; background: rgb(0 0 0 / 0.8); } }
 /* The expanded player (dashboard/PlayerExpanded.tsx; owner's pick 16 Nov, option 30). From 1024px a centred card over
-   the page, 80% of the window's width and height (owner, 18 Nov), dimmed 40% and blurred 6px; under 1024px the whole
+   the page, 80% of the window's width and height, at most 1600 by 1000px (owner, 18 Nov), dimmed 40% and blurred 6px; under 1024px the whole
    window, inside the safe areas. A short window (under 720px tall) gets up to 36rem instead, so Keep and Not for me
    stay on the card without scrolling. The solid glass fill. */
 .ft-player {
   margin: auto; padding: 0; border: 1px solid var(--glass-line); border-radius: 22px; overflow: hidden;
-  width: 80vw; max-width: none; height: max(80dvh, min(calc(100dvh - 2rem), 36rem)); max-height: none;
+  width: min(80vw, 1600px); max-width: none; height: max(min(80dvh, 1000px), min(calc(100dvh - 2rem), 36rem)); max-height: none;
   background: var(--glass-solid); color: var(--color-bone); box-shadow: var(--shadow-pop);
 }
 .ft-player::backdrop { background: rgb(0 0 0 / 0.4); backdrop-filter: blur(6px); }

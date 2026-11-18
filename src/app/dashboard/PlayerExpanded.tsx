@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useId, useSyncExternalStore } from "react";
 import { useModalDialog } from "@/components/Dialog";
-import { PlayerClock, PlayerWaveform, usePlayer, type PlayerTrack } from "@/components/Player";
+import { BufferRing, PlayerClock, type PlayerTrack, PlayerWaveform, PlayIcon, usePlayer } from "@/components/Player";
 import { useToastHost } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
-import { CONTROL, CoverPlay, KeepHeart, SkipIcon, trackHref } from "./PlayerBars";
+import { CONTROL, KeepHeart, SkipIcon, trackHref } from "./PlayerBars";
 import { PlayerActions } from "./PlayerExpandedActions";
 import { playerExpanded, setPlayerExpanded, subscribePlayerExpanded } from "./playerExpandedStore";
 
@@ -58,6 +58,29 @@ function VolumeRow() {
 }
 
 /**
+ * Play or pause, in the middle of the row between back and forward 15 seconds (owner, 18 Nov; the cover beside the
+ * title is art only in here). Focus starts on it when the player opens. The buffering ring shows while audio loads.
+ */
+function PlayPause() {
+  const { current, playing, buffering, toggle } = usePlayer();
+  if (!current) return null;
+  return (
+    <button
+      type="button"
+      data-autofocus
+      onClick={toggle}
+      aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
+      aria-busy={buffering || undefined}
+      data-buffering={buffering ? "" : undefined}
+      className="relative grid size-14 shrink-0 place-items-center rounded-full bg-bone text-ink transition-transform duration-100 active:scale-95 motion-reduce:active:scale-100"
+    >
+      <PlayIcon playing={playing} className="size-5" />
+      <BufferRing className="-inset-[3px] text-bone" />
+    </button>
+  );
+}
+
+/**
  * The expanded player (Design options 27 to 30: phone full player from 27, the laptop card from 30). Opened from the laptop
  * bar's title or chevron, or the phone's mini player title. From 1024px a centred card over the dimmed page; under that
  * the whole window. The same modal behaviour as every pop-up (components/Dialog): focus stays inside and goes back to
@@ -103,7 +126,8 @@ export function PlayerExpanded() {
               <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={150} label={`Seek ${current.title}`} className="[@media(max-height:500px)]:h-20!" />
 
               <div className="flex items-center gap-2.5">
-                <CoverPlay focusFirst />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0 rounded-[10px]" />
                 {/* The title opens the track's page, whatever its state (Design, 18 Nov). */}
                 <Link href={trackHref(current)} onClick={close} data-open-track className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-md">
                   <h2 id={titleId} className="truncate text-[18px] font-bold leading-6 text-bone">
@@ -121,6 +145,7 @@ export function PlayerExpanded() {
                 <button type="button" onClick={() => seekBy(-JUMP)} aria-label={`Back ${JUMP} seconds`} className={CONTROL}>
                   <JumpIcon back />
                 </button>
+                <PlayPause />
                 <button type="button" onClick={() => seekBy(JUMP)} aria-label={`Forward ${JUMP} seconds`} className={CONTROL}>
                   <JumpIcon />
                 </button>
