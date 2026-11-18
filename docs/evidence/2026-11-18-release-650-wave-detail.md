@@ -19,8 +19,8 @@ relayed by Safety).
 |---|---|---|
 | CI: checks (runs `audit:prod`), Analyze, CodeQL, dependency-review, Vercel, Vercel Preview Comments | `529d066b` | passed (6/6) |
 | Typecheck, lint (0 errors), unit (1041 passed, incl. new `tests/wave-peaks.test.ts`), check:perms, `audit:prod` (Build) | `529d066b` | all passed |
-| Full e2e | `529d066b` (`main` `678508df` merged in) | 126 passed, 1 skipped, 0 failed (16.5 min) |
-| Merge with `main` | `1ad730ce` | GitHub CLEAN; `main` had only report PRs since `678508df` |
+| Full e2e | `529d066b` (base with `main`: `ad759d19`) | 126 passed, 1 skipped, 0 failed (16.5 min) |
+| Merge with `main` | `1ad730ce` | GitHub CLEAN; since the base `ad759d19`, `main` gained #601, #641 (no shared files) and #646, so the e2e carries over |
 | Safety review | `529d066b` | cleared |
 | On `mobile-next` for the owner's try | `529d066b` | yes, before the ship |
 | Health `/api/health`, `/`, `/login`, `/signup` | production | 200, 200, 200, 200 |
