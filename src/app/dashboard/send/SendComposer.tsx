@@ -134,7 +134,7 @@ export function SendComposer({ host, account, initial, before, latest, total }: 
           <>
             <h1 className="sr-only">Send music to {sending.name}</h1>
             {/* Who it's going to, slim, with the way back to the field. */}
-            <div ref={slim} tabIndex={-1} className="flex min-w-0 items-center gap-3 border-b border-line pb-3 outline-none">
+            <div ref={slim} tabIndex={-1} className="flex min-w-0 items-center gap-3 outline-none">
               <Avatar f={sending} size={36} />
               <div className="min-w-0 flex-1">
                 <p className="flex min-w-0 items-center gap-1.5">

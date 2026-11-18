@@ -689,7 +689,9 @@ export function SubmitForm({
         </section>
         {errorBox}
         {!account && <Turnstile action="send" siteKey={botCheckKey} />}
-        <div className="flex flex-col gap-3">
+        {/* On phones this wrapper steps out of the layout (contents), so the pinned Send bar sticks against the whole form, not
+            just this box. */}
+        <div className="flex flex-col gap-3 max-sm:contents">
           {/* Senders without an account tick the Terms on a first send and after the Terms change (Research brief, owner 15 Nov). */}
           {!account && terms.needed && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={terms.updated} hash={termsHash ?? terms.hash ?? null} />}
           {/* On phones Send stays pinned at the bottom of the screen while the form scrolls; from tablet up it ends the column. */}
