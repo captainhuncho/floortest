@@ -84,11 +84,14 @@ export function DecisionRail({ track, selfHref, next, prev }: Props) {
         // Saved: the page that came back with the answer has the true list, so stop hiding the track ourselves.
         queue?.settle(track.id);
         if (token) {
+          // The player's own heart shows the same answer.
+          player.markDecision(track.id, d);
           toast.show({
             message: `${d === "kept" ? `“${track.title}” added to Prepare for set` : `Not for me: “${track.title}”`}`,
             action: {
               label: "Undo",
               run: async () => {
+                player.markDecision(track.id, token.prev.decision);
                 await undoDecision(token);
                 router.replace(selfHref, { scroll: false });
               },

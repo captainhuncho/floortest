@@ -20,5 +20,5 @@ export const storyChapters = (sendOn: boolean): readonly Chapter[] => (sendOn ? 
 
 export const STORY_END: Chapter = {
   title: "Your link, your desk.",
-  line: "That's FloorTest: one link for the music you're sent, an honest receipt for every sender, and what you keep ready for your next set.",
+  line: "One link. Every track lands on your desk.",
 };

@@ -1,29 +1,45 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fmtBytes } from "@/lib/format";
-import { CARD } from "@/components/Kit";
+import { Icon } from "@/components/Kit";
 
 export type TransferFile = { name: string; size: number; progress: number; state: "waiting" | "sending" | "sent" | "failed" };
 
-/** "About 12 seconds left", from the real upload speed so far. */
+/** One file as the send steps show it (picked, sending, sent): icon, title, one line about it, and whatever sits on the right. */
+export function FileRow({ title, meta, right, children }: { title: string; meta: React.ReactNode; right?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <div className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card p-3 text-left">
+      <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-xl bg-well text-mute">
+        <Icon name="wave" className="size-5" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="truncate text-[15px] font-semibold text-bone">{title}</p>
+        <p className="text-[13px] leading-[18px] text-mute tnum">{meta}</p>
+        {children}
+      </div>
+      {right}
+    </div>
+  );
+}
+
+/** "about 40 seconds left", from the real upload speed so far. */
 function timeLeft(sent: number, total: number, startedAt: number) {
   const secs = (Date.now() - startedAt) / 1000;
-  if (sent <= 0 || secs < 2) return "Starting…";
+  if (sent <= 0 || secs < 2) return "starting";
   const left = (total - sent) / (sent / secs);
-  if (left < 5) return "Almost done";
-  if (left < 60) return `About ${Math.round(left / 5) * 5} seconds left`;
+  if (left < 5) return "almost done";
+  if (left < 60) return `about ${Math.round(left / 5) * 5} seconds left`;
   const mins = Math.round(left / 60);
-  return `About ${mins} minute${mins === 1 ? "" : "s"} left`;
+  return `about ${mins} minute${mins === 1 ? "" : "s"} left`;
 }
 
 /**
- * Upload progress, in the place the form was: the receiver, the file in flight, one bar that fills as bytes land,
- * the time left, and the one thing the sender can do (cancel). Nothing else moves. The bar's fill (a scaleX, so it
- * stays on the compositor) is the only animation, and it exists to show the system working between progress events.
+ * Upload progress, in the place the form was: who it's going to, the file in flight with one bar that fills as bytes
+ * land, the time left, and the one thing the sender can do (cancel). Nothing else moves. The bar's fill (a scaleX, so
+ * it stays on the compositor) is the only animation, and it exists to show the system working between progress events.
  * Screen readers hear milestones from the form's one status line, not every byte counted here.
  */
-export function TransferScreen({ receiverName, callout, files, startedAt, onCancel, retry, checking }: {
+export function TransferScreen({ receiverName, files, startedAt, onCancel, retry, checking, className = "" }: {
   receiverName: string;
   /** Set while a dropped or stalled upload is being tried again by itself. */
   retry?: { attempt: number; of: number };
@@ -34,6 +50,7 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
   files: TransferFile[];
   startedAt: number;
   onCancel: () => void;
+  className?: string;
 }) {
   // Re-render every second so the time estimate moves even between progress events.
   const [, tick] = useState(0);
@@ -52,29 +69,24 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
   const doneCount = files.filter((f) => f.state === "sent").length;
 
   return (
-    <section aria-label="Upload progress" className={`${CARD} motion-safe:starting:translate-y-1 flex flex-col gap-4 p-3 transition-[opacity,translate] duration-200 ease-[var(--ease-out)] starting:opacity-0`}>
-      <div className="flex flex-col gap-1">
-        <p className="text-[11.5px] text-mute">Sending to {receiverName}{callout ? ` · ${callout}` : ""}</p>
-        <h2 className="mt-0.5 truncate text-[21px] font-semibold leading-[1.15] tracking-[-0.03em] text-bone">{current?.name}</h2>
-        <p className="text-[13px] text-mute">{many ? `Track ${Math.min(doneCount + 1, files.length)} of ${files.length} · ` : ""}{fmtBytes(sent)} of {fmtBytes(total)}</p>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div role="progressbar" aria-label="Upload progress" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="h-1.5 overflow-hidden rounded-full bg-line">
-          <div className="h-full w-full origin-left rounded-full bg-lime transition-transform duration-200 ease-linear" style={{ transform: `scaleX(${Math.max(0.02, frac)})` }} />
+    <section aria-label="Upload progress" className={`motion-safe:starting:translate-y-1 flex flex-col items-center gap-3 text-center transition-[opacity,translate] duration-200 ease-[var(--ease-out)] starting:opacity-0 ${className}`}>
+      <h2 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-bone">Sending to {receiverName}</h2>
+      <FileRow
+        title={current?.name ?? ""}
+        meta={`${many ? `Track ${Math.min(doneCount + 1, files.length)} of ${files.length} · ` : ""}Sending · ${timeLeft(sent, total, startedAt)}`}
+        right={<span className="shrink-0 text-[15px] font-bold text-bone tnum">{pct}%</span>}
+      >
+        <div role="progressbar" aria-label="Upload progress" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-well">
+          <div className="h-full w-full origin-left rounded-full bg-lime transition-transform duration-200 ease-linear motion-reduce:transition-none" style={{ transform: `scaleX(${Math.max(0.02, frac)})` }} />
         </div>
-        <div className="flex items-baseline justify-between gap-3 text-[12px] text-dim tnum">
-          <span>{timeLeft(sent, total, startedAt)}</span>
-          <span>{pct}%</span>
-        </div>
-      </div>
+      </FileRow>
 
       {many && (
-        <ol className="divide-y divide-line border-y border-line text-[13px]">
+        <ol className="w-full divide-y divide-line border-y border-line text-left text-[13px]">
           {files.map((f, i) => (
             <li key={`${i}-${f.name}`} className="flex items-center justify-between gap-3 py-2.5">
               <span className={`truncate ${f.state === "sent" ? "text-mute" : "text-bone"}`}>{f.name}</span>
-              <span className={`shrink-0 text-[12px] ${f.state === "sent" ? "text-lime" : f.state === "failed" ? "text-danger" : "text-dim"}`}>
+              <span className={`shrink-0 text-[12px] ${f.state === "sent" ? "text-bone" : f.state === "failed" ? "text-danger" : "text-dim"}`}>
                 {f.state === "sent" ? "Sent" : f.state === "sending" ? `${Math.floor(f.progress * 100)}%` : f.state === "failed" ? "Not sent" : "Waiting"}
               </span>
             </li>
@@ -82,18 +94,16 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
         </ol>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-mute">
-          {retry
-            ? `The signal dropped. Trying again by itself (${retry.attempt} of ${retry.of}), from the start of this file.`
-            : checking
-              ? "Uploaded. Checking your file for viruses: this can take up to a minute. Keep this page open."
-              : "Keep this page open until it says sent."}
-        </p>
-        <button type="button" onClick={onCancel} className="inline-flex min-h-11 items-center rounded-[11px] border border-line bg-well px-3.5 text-[12.5px] font-semibold text-bone hover:bg-ink-4">
-          Cancel
-        </button>
-      </div>
+      <p className="text-[13px] text-mute">
+        {retry
+          ? `The signal dropped. Trying again by itself (${retry.attempt} of ${retry.of}), from the start of this file.`
+          : checking
+            ? "Uploaded. Checking your file for viruses: this can take up to a minute. Keep this page open."
+            : "Keep this page open until it says sent."}
+      </p>
+      <button type="button" onClick={onCancel} className="btn-ghost min-h-11 rounded-xl px-4 text-[13px]">
+        Cancel
+      </button>
     </section>
   );
 }
