@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionForm } from "@/components/useActionForm";
+import { DELETE_PHRASE, deletePhraseOk } from "@/lib/delete-phrase";
 import { useRef, useState } from "react";
 import { deleteAccount } from "../actions/settings";
 import { BTN_DANGER, BTN_GHOST, FIELD, HELP, Notice, SettingLine } from "./ui";
 
-export function DeleteAccount({ handle, twoFactor, sub = "Want a copy first? Ask for your data from the Account page before you delete." }: { handle: string; twoFactor: boolean; sub?: string }) {
+export function DeleteAccount({ twoFactor, sub = "Want a copy first? Ask for your data from the Account page before you delete." }: { twoFactor: boolean; sub?: string }) {
   const [state, onSubmit, pending] = useActionForm(deleteAccount, undefined);
   const dialog = useRef<HTMLDialogElement>(null);
   const [typed, setTyped] = useState("");
@@ -37,8 +38,8 @@ export function DeleteAccount({ handle, twoFactor, sub = "Want a copy first? Ask
             </p>
           </div>
           <label className="flex flex-col gap-1.5">
-            <span className={FIELD}>Type your link name ({handle}) to confirm</span>
-            <input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+            <span className={FIELD}>Type {DELETE_PHRASE} to confirm</span>
+            <input className="input text-[16px]! sm:text-[14px]!" name="confirm" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="characters" spellCheck={false} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={FIELD}>Password</span>
@@ -60,7 +61,7 @@ export function DeleteAccount({ handle, twoFactor, sub = "Want a copy first? Ask
             <button type="button" autoFocus className={BTN_GHOST} onClick={close}>
               Cancel
             </button>
-            <button className="btn btn-sm min-h-11 rounded-[12px] bg-danger px-4! text-ink hover:bg-danger/90" disabled={pending || typed.trim().toLowerCase() !== handle}>
+            <button className="btn btn-sm min-h-11 rounded-[12px] bg-danger px-4! text-ink hover:bg-danger/90" disabled={pending || !deletePhraseOk(typed)}>
               {pending ? "Deleting…" : "Delete everything"}
             </button>
           </div>

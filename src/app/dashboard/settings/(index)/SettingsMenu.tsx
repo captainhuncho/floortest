@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Dialog, DIALOG_MAIN, DIALOG_QUIET } from "@/components/Dialog";
 import { useActionForm } from "@/components/useActionForm";
+import { DELETE_PHRASE, deletePhraseOk } from "@/lib/delete-phrase";
 import { logout } from "../../../(auth)/actions";
 import { signOutAllMyDevices } from "../../actions/security";
 import { deleteAccount } from "../../actions/settings";
@@ -32,7 +33,7 @@ function Device() {
  * own sheet (a centred panel on laptops). Signing out everywhere and deleting keep their checks: the password, and the
  * two-step code when it's on, are checked on the server before anything changes.
  */
-export function SettingsMenu({ everywhere, canDelete, handle, twoFactor, variant = "menu" }: { everywhere: boolean; canDelete: boolean; handle: string; twoFactor: boolean; variant?: "menu" | "buttons" }) {
+export function SettingsMenu({ everywhere, canDelete, twoFactor, variant = "menu" }: { everywhere: boolean; canDelete: boolean; twoFactor: boolean; variant?: "menu" | "buttons" }) {
   const [layer, setLayer] = useState<Layer>(null);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -134,7 +135,7 @@ export function SettingsMenu({ everywhere, canDelete, handle, twoFactor, variant
               </button>
             </div>
           </Dialog>
-          <DeleteForGood open={layer === "sure"} handle={handle} twoFactor={twoFactor} onClose={close} />
+          <DeleteForGood open={layer === "sure"} twoFactor={twoFactor} onClose={close} />
         </>
       )}
     </div>
@@ -229,8 +230,8 @@ function SignOut({ open, confirming, everywhere, twoFactor, onEverywhere, onClos
   );
 }
 
-/** Delete account, step 2: the link name typed out, then the password (and two-step code), checked on the server. */
-function DeleteForGood({ open, handle, twoFactor, onClose }: { open: boolean; handle: string; twoFactor: boolean; onClose: () => void }) {
+/** Delete account, step 2: DELETE FLOORTEST typed exactly, then the password (and two-step code), all checked on the server. */
+function DeleteForGood({ open, twoFactor, onClose }: { open: boolean; twoFactor: boolean; onClose: () => void }) {
   const [state, onSubmit, pending] = useActionForm(deleteAccount, undefined);
   const [typed, setTyped] = useState("");
   const done = () => {
@@ -245,14 +246,14 @@ function DeleteForGood({ open, handle, twoFactor, onClose }: { open: boolean; ha
       title="Are you sure?"
       description={
         <>
-          Type your link name, <b className="font-semibold text-bone">{handle}</b>, to confirm.
+          Type <b className="font-semibold text-bone">{DELETE_PHRASE}</b> to confirm.
         </>
       }
     >
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className={FIELD}>Link name</span>
-          <input className="input text-[16px]! sm:text-[14px]!" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} data-autofocus="" />
+          <span className={FIELD}>Type {DELETE_PHRASE}</span>
+          <input className="input text-[16px]! sm:text-[14px]!" name="confirm" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="characters" spellCheck={false} data-autofocus="" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className={FIELD}>Password</span>
@@ -271,7 +272,7 @@ function DeleteForGood({ open, handle, twoFactor, onClose }: { open: boolean; ha
           </Notice>
         )}
         <div className="flex flex-col gap-2">
-          <button className={RED_BTN} disabled={pending || typed.trim().toLowerCase() !== handle}>
+          <button className={RED_BTN} disabled={pending || !deletePhraseOk(typed)}>
             {pending ? "Deleting…" : "Delete for good"}
           </button>
           <button type="button" className={QUIET_LINK} disabled={pending} onClick={done}>

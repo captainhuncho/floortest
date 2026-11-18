@@ -25,7 +25,7 @@ export default async function AccountSettings() {
       </Section>
       {user.role === "owner" ? (
         <Section id="danger-h" title="Delete account" tone="danger" sub="Deletes your account, your link and every track on your desk. This can't be undone.">
-          <DeleteAccount handle={user.handle} twoFactor={!!user.totp_enabled_at} />
+          <DeleteAccount twoFactor={!!user.totp_enabled_at} />
         </Section>
       ) : (
         <Notice tone="info" next="Switch to your own desk from the desk menu, then come back here.">

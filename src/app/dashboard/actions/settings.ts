@@ -24,6 +24,7 @@ import { cleanProfileLink, IDENTITY_HOSTS, newIdentityCode } from "@/lib/identit
 import { done } from "./common";
 import { REQUEST_KINDS, VOLUMES, pendingRequest, type RequestKind } from "@/lib/plan-requests";
 import { normalEmail } from "@/lib/email-normal";
+import { DELETE_PHRASE, deletePhraseOk } from "@/lib/delete-phrase";
 
 export async function updateNotifications(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireRole("owner");
@@ -189,6 +190,8 @@ export async function submitIdentity(_: SettingsState, form: FormData): Promise<
 export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
   // Works before the Terms tick too (owner, 15 Nov), from the accept page.
   const u = await requireOwnAccount();
+  // The typed phrase first: checked here, not only by the button (owner, 18 Nov).
+  if (!deletePhraseOk(form.get("confirm"))) return { error: `Type ${DELETE_PHRASE} to confirm. Nothing has been deleted.` };
   const problem = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
   if (problem) return { error: problem };
   await requestDeletion(u.id);

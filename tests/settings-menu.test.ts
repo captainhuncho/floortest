@@ -90,5 +90,5 @@ test("delete account keeps the password and two-step check on the server", () =>
   const sheet = read("app/dashboard/settings/(index)/SettingsMenu.tsx");
   assert.match(sheet, /name="password"/);
   assert.match(sheet, /name="code"/);
-  assert.match(sheet, /typed\.trim\(\)\.toLowerCase\(\) !== handle/, "the button stays off until the link name matches");
+  assert.match(sheet, /!deletePhraseOk\(typed\)/, "the button stays off until DELETE FLOORTEST is typed (owner, 18 Nov)");
 });
