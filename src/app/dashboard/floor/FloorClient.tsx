@@ -1,10 +1,11 @@
 "use client";
 
 import { useToast } from "@/components/Toast";
+import { PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
 import { linkShared } from "../link-shared";
-import { GHOST_ON_WELL } from "../kitButtons";
 import { CalloutShare } from "../collections/CalloutShare";
 import type { ShareCardTarget } from "../collections/callout-card";
+import { QUIET } from "./Crates";
 
 const SHARE_ICON = (
   <svg viewBox="0 0 24 24" aria-hidden className="size-[15px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -12,11 +13,20 @@ const SHARE_ICON = (
   </svg>
 );
 
+// The icon alone on phones; the word beside it from 1024px, where the row sits by the greeting.
+const SHARE_CONTENT = (
+  <>
+    {SHARE_ICON}
+    <span className="hidden lg:inline">Share</span>
+  </>
+);
+
 /**
- * The receiving link as the mock draws it (owner, 30 Oct): the address in mono, Copy, and Share. With a callout to
- * offer (owner, 10 Nov), Share opens the card sheet, which can still share the plain link.
+ * The receiving link as one dashed row (Design's option 41, 16 Nov): whose link it is, the address, Copy and Share.
+ * With a callout to offer (owner, 10 Nov), Share opens the card sheet, which can still share the plain link.
+ * `owner` is the desk owner's first name when someone else is looking (a teammate sees "Max's link").
  */
-export function LinkRow({ link, card }: { link: string; card?: ShareCardTarget }) {
+export function LinkRow({ link, card, owner }: { link: string; card?: ShareCardTarget; owner?: string }) {
   const toast = useToast();
   const pretty = link.replace(/^https?:\/\//, "");
   async function copy() {
@@ -38,26 +48,30 @@ export function LinkRow({ link, card }: { link: string; card?: ShareCardTarget }
     }
   }
   return (
-    <div className="flex items-center gap-1.5 rounded-xl border border-line bg-well py-1 pl-3 pr-1">
-      <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-bone">{pretty}</span>
-      <button type="button" onClick={copy} aria-label={`Copy your link, ${pretty}`} className={GHOST_ON_WELL}>
-        <svg viewBox="0 0 24 24" aria-hidden className="size-[15px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 8.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 8.5 18v-8A1.5 1.5 0 0 1 10 8.5zM15.5 8.5V6A1.5 1.5 0 0 0 14 4.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />
-        </svg>
+    <div className="flex min-h-12 items-center gap-2.5 rounded-[14px] border border-dashed border-line-2 py-0.5 pl-3.5 pr-1 text-[13px]">
+      <span className="shrink-0 text-bone">{owner ? `${owner}’s link` : "Your link"}</span>
+      <span className="min-w-0 flex-1 truncate text-mute">{pretty}</span>
+      <button type="button" onClick={copy} aria-label={`Copy your link, ${pretty}`} className={QUIET}>
         Copy
       </button>
       {card ? (
-        <CalloutShare
-          collectionId={card.collectionId}
-          collectionName={card.collectionName}
-          link={link}
-          trigger={{ label: "Share your link or a card", className: GHOST_ON_WELL.replace("px-3", "w-10 px-0"), content: SHARE_ICON }}
-        />
+        <CalloutShare collectionId={card.collectionId} collectionName={card.collectionName} link={link} trigger={{ label: "Share your link or a card", className: QUIET, content: SHARE_CONTENT }} />
       ) : (
-        <button type="button" onClick={share} aria-label="Share your link" className={GHOST_ON_WELL.replace("px-3", "w-10 px-0")}>
-          {SHARE_ICON}
+        <button type="button" onClick={share} aria-label="Share your link" className={QUIET}>
+          {SHARE_CONTENT}
         </button>
       )}
     </div>
+  );
+}
+
+/** Play all, on the Kept crate: this week's kept tracks go to the player, newest first. The words show from 1024px. */
+export function PlayAllKept({ tracks }: { tracks: PlayerTrack[] }) {
+  const { play } = usePlayer();
+  return (
+    <button type="button" onClick={() => play(tracks[0], tracks)} aria-label="Play all kept tracks" className={QUIET}>
+      <PlayIcon playing={false} className="size-3.5" />
+      <span className="hidden lg:inline">Play all</span>
+    </button>
   );
 }
