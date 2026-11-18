@@ -29,6 +29,8 @@ export type Row = {
   cueCount?: number;
   /** The folder this track came in, if any; its tracks are listed together under a header. */
   release?: { id: string; title: string; count: number } | null;
+  /** The cover the players show for it (lib/covers.ts playerCover); the lists that pass it are the web desk's own. */
+  cover?: string | null;
 };
 
 

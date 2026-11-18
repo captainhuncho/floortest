@@ -8,6 +8,7 @@ import { asPerson, q, likeContains, type Sender, type Track } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { ReviewPanel } from "../ReviewPanel";
 import { LIST_COLUMNS, type ListTrack } from "../rows";
+import { COVER_COLUMNS, playerCover, type CoverSource } from "@/lib/covers";
 import { toPlayer } from "@/lib/player-track";
 import { SubmissionsList } from "../list/SubmissionsList";
 import type { Row } from "../TrackList";
@@ -54,7 +55,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     base.push("(t.title ILIKE ? OR t.artist ILIKE ? OR s.name ILIKE ? OR s.email ILIKE ? OR t.genre ILIKE ?)");
     args.push(...Array(5).fill(likeContains(search)));
   }
-  const from = "FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id LEFT JOIN releases r ON r.id = t.release_id AND r.user_id = t.user_id";
+  const from = "FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id AND c.user_id = t.user_id LEFT JOIN releases r ON r.id = t.release_id AND r.user_id = t.user_id";
   const cond = STATUSES.find(([k]) => k === status)![2];
   // Needs review plays oldest-first like a queue; decided views show the latest decisions first.
   const order = status === "review" ? "t.created_at ASC" : status === "all" ? "t.created_at DESC" : "t.decided_at DESC";
@@ -80,8 +81,8 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
       ),
     ).then((r) => r!),
     asMe(() =>
-      q.all<ListTrack & { sender_name: string; collection_name: string | null; release_title: string | null }>(
-        `SELECT ${LIST_COLUMNS}, s.name AS sender_name, c.name AS collection_name, r.title AS release_title ${from}
+      q.all<ListTrack & Omit<CoverSource, "id"> & { sender_name: string; collection_name: string | null; release_title: string | null }>(
+        `SELECT ${LIST_COLUMNS}, ${COVER_COLUMNS}, s.name AS sender_name, c.name AS collection_name, r.title AS release_title ${from}
          WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`,
         ...args,
       ),
@@ -110,6 +111,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     downloaded: !!t.downloaded_at,
     decision: t.decision,
     hasMessage: !!t.message,
+    cover: playerCover(t),
     createdAt: t.created_at,
     release: t.release_id ? { id: t.release_id, title: t.release_title ?? "Folder", count: tracks.filter((x) => x.release_id === t.release_id).length } : null,
   }));
