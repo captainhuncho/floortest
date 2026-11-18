@@ -27,11 +27,12 @@ function Device() {
 }
 
 /**
- * The ••• at the top right of Settings: Sign out, and Delete account on your own desk. Each opens its own sheet (a
- * centred panel on laptops). Signing out everywhere and deleting keep their checks: the password, and the two-step
- * code when it's on, are checked on the server before anything changes.
+ * Sign out, and Delete account on your own desk. As "menu" it is the ••• at the top right of Settings; as "buttons" it
+ * is the same two actions as plain buttons at the bottom of the page, so nobody has to hunt for them. Each opens its
+ * own sheet (a centred panel on laptops). Signing out everywhere and deleting keep their checks: the password, and the
+ * two-step code when it's on, are checked on the server before anything changes.
  */
-export function SettingsMenu({ everywhere, canDelete, handle, twoFactor }: { everywhere: boolean; canDelete: boolean; handle: string; twoFactor: boolean }) {
+export function SettingsMenu({ everywhere, canDelete, handle, twoFactor, variant = "menu" }: { everywhere: boolean; canDelete: boolean; handle: string; twoFactor: boolean; variant?: "menu" | "buttons" }) {
   const [layer, setLayer] = useState<Layer>(null);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -66,9 +67,24 @@ export function SettingsMenu({ everywhere, canDelete, handle, twoFactor }: { eve
 
   const item = "flex min-h-12 w-full items-center gap-2.5 rounded-[10px] px-3 text-left text-[15px] hover:bg-well focus-visible:bg-well focus-visible:outline-none";
 
+  const bottom = "flex min-h-12 w-full items-center justify-center gap-2.5 rounded-2xl border border-line bg-card px-4 text-[15px] font-medium hover:bg-well";
+
   return (
-    <div ref={root} className="relative">
-      <button
+    <div ref={root} className={variant === "buttons" ? "flex flex-col gap-2" : "relative"}>
+      {variant === "buttons" ? (
+        <>
+          <button type="button" className={`${bottom} text-bone`} onClick={() => setLayer("signout")}>
+            <Glyph name="out" className="size-5" />
+            Sign out
+          </button>
+          {canDelete && (
+            <button type="button" className={`${bottom} text-danger`} onClick={() => setLayer("delete")}>
+              Delete account
+            </button>
+          )}
+        </>
+      ) : (
+        <button
         ref={trigger}
         type="button"
         aria-label="More options"
@@ -82,7 +98,8 @@ export function SettingsMenu({ everywhere, canDelete, handle, twoFactor }: { eve
           <circle cx="12" cy="12" r="1.8" />
           <circle cx="19" cy="12" r="1.8" />
         </svg>
-      </button>
+        </button>
+      )}
       {menuOpen && (
         <div role="menu" aria-label="More options" onKeyDown={onMenuKey} className="absolute right-0 top-[50px] z-30 flex w-60 flex-col rounded-2xl border border-line bg-card p-1.5 shadow-pop">
           <button type="button" role="menuitem" className={`${item} text-bone`} onClick={() => setLayer("signout")}>
@@ -192,7 +209,10 @@ function SignOut({ open, confirming, everywhere, twoFactor, onEverywhere, onClos
         <div className="flex flex-col gap-2">
           <form action={logout}>
             <button className={`${DIALOG_MAIN} ${WIDE}`}>
-              Sign out on this <Device />
+              {/* One span, so the flex button keeps the space before "phone" / "computer". */}
+              <span>
+                Sign out on this <Device />
+              </span>
             </button>
           </form>
           {everywhere && (
