@@ -7,6 +7,7 @@ import { readLinks } from "@/lib/socials";
 import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
+import { playerCover } from "@/lib/covers";
 import { asPerson, q, type Collection, type EventRow, type Sender, type Track, now } from "@/lib/db";
 import { ago, fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
@@ -97,6 +98,8 @@ export async function ReviewPanel({
     played: !!t.played_at,
     // So the floating player's heart shows for a track started from this card.
     decision: t.decision,
+    // The track's own artwork or its release's (as this card shows), else the cover of the callout it came in on.
+    cover: playerCover({ id: t.id, art_key: t.art_key, collection_id: t.collection_id, callout_art_key: collections.find((c) => c.id === t.collection_id)?.art_key ?? null }, artFrom),
   };
   const removal = deletesAt(t);
   // A track the desk added itself (sent from its own account) can move to Projects; a sender's never can (owner, 13 Nov).

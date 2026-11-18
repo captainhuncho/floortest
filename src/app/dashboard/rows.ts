@@ -2,6 +2,7 @@ import "server-only";
 import { asPerson, q, type Track } from "@/lib/db";
 import type { Row } from "./TrackList";
 import { parseCues } from "@/lib/cues";
+import { COVER_COLUMNS, playerCover, type CoverSource } from "@/lib/covers";
 
 /**
  * The track columns the desk lists read (List, Review queue, a collection, Prepare for set): never the whole row, so the
@@ -18,7 +19,8 @@ export const LIST_COLUMNS = LIST_FIELDS.map((f) => `t.${f}`).join(", ");
  * Track rows for list views: every live track, optionally just one collection and/or just kept ones. The read runs as
  * `actor` (the signed-in person) under the per-person rules (B8) as well as the desk filter.
  */
-export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean; inSet?: boolean; actor: number }): Promise<Row[]> {
+/** `covers`: also give each row the cover the web players show. Off for the app's API, which has no use for the link. */
+export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean; inSet?: boolean; covers?: boolean; actor: number }): Promise<Row[]> {
   const where = ["t.user_id = ?", "t.deleted_at IS NULL"];
   const args: number[] = [userId];
   if (opts.collectionId) {
@@ -28,9 +30,9 @@ export async function loadRows(userId: number, opts: { collectionId?: number; ke
   if (opts.keptOnly) where.push("t.decision = 'kept'");
   if (opts.inSet) where.push("t.decision = 'kept' AND t.set_cleared_at IS NULL");
   const read = () =>
-    q.all<ListTrack & { sender_name: string; collection_name: string | null }>(
-      `SELECT ${LIST_COLUMNS}, s.name AS sender_name, c.name AS collection_name FROM tracks t
-       JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
+    q.all<ListTrack & Omit<CoverSource, "id"> & { sender_name: string; collection_name: string | null }>(
+      `SELECT ${LIST_COLUMNS}, ${COVER_COLUMNS}, s.name AS sender_name, c.name AS collection_name FROM tracks t
+       JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id AND c.user_id = t.user_id
        WHERE ${where.join(" AND ")} ORDER BY ${opts.keptOnly || opts.inSet ? "t.decided_at DESC" : "t.created_at DESC"} LIMIT 500`,
       ...args,
     );
@@ -52,5 +54,6 @@ export async function loadRows(userId: number, opts: { collectionId?: number; ke
     createdAt: t.created_at,
     energy: t.energy,
     cueCount: parseCues(t.cues, t.duration).length,
+    ...(opts.covers ? { cover: playerCover(t) } : {}),
   }));
 }
