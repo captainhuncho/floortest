@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Dialog, DIALOG_MAIN, DIALOG_QUIET } from "@/components/Dialog";
 import { useActionForm } from "@/components/useActionForm";
 import { DELETE_PHRASE, deletePhraseOk } from "@/lib/delete-phrase";
+import { UNDO_DAYS } from "@/lib/undo-days";
 import { logout } from "../../../(auth)/actions";
 import { signOutAllMyDevices } from "../../actions/security";
 import { deleteAccount } from "../../actions/settings";
@@ -124,7 +125,7 @@ export function SettingsMenu({ everywhere, canDelete, twoFactor, variant = "menu
             open={layer === "delete"}
             onClose={close}
             title="Delete account?"
-            description="Your desk, link and every track senders sent you are deleted for good. Senders get no more receipts. This can't be undone."
+            description={`Your account switches off now: your desk and link go offline and senders can't send to you. Changed your mind? Sign in within ${UNDO_DAYS} days to restore it. After that, everything on it is deleted for good and senders' receipts stop working.`}
           >
             <div className="flex flex-col gap-2">
               <button type="button" className={RED_BTN} onClick={() => setLayer("sure")}>
@@ -264,7 +265,7 @@ function DeleteForGood({ open, twoFactor, onClose }: { open: boolean; twoFactor:
         )}
         <div className="flex flex-col gap-2">
           <button className={RED_BTN} disabled={pending || !deletePhraseOk(typed)}>
-            {pending ? "Deleting…" : "Delete for good"}
+            {pending ? "Switching off…" : "Delete account"}
           </button>
           <button type="button" className={QUIET_LINK} disabled={pending} onClick={done}>
             Cancel

@@ -2,6 +2,7 @@
 
 import { useActionForm } from "@/components/useActionForm";
 import { DELETE_PHRASE, deletePhraseOk } from "@/lib/delete-phrase";
+import { UNDO_DAYS } from "@/lib/undo-days";
 import { useRef, useState } from "react";
 import { deleteAccount } from "../actions/settings";
 import { BTN_DANGER, BTN_GHOST, FIELD, Notice, SettingLine } from "./ui";
@@ -33,8 +34,9 @@ export function DeleteAccount({ twoFactor, sub = "Want a copy first? Ask for you
               Delete your account?
             </h2>
             <p className="mt-1.5 text-[13px] leading-snug text-mute">
-              This permanently deletes your link, every track and file you&apos;ve received, your contacts and all history. Senders&apos; receipts
-              stop working. It can&apos;t be undone.
+              Your account switches off now: your link goes offline and senders can&apos;t send to you. Changed your mind? Sign in within{" "}
+              {UNDO_DAYS} days to restore it. After that, your link, every track and file you&apos;ve received, your contacts and all history are
+              deleted for good, and senders&apos; receipts stop working.
             </p>
           </div>
           <label className="flex flex-col gap-1.5">
@@ -57,7 +59,7 @@ export function DeleteAccount({ twoFactor, sub = "Want a copy first? Ask for you
               Cancel
             </button>
             <button className="btn btn-sm min-h-11 rounded-[12px] bg-danger px-4! text-ink hover:bg-danger/90" disabled={pending || !deletePhraseOk(typed)}>
-              {pending ? "Deleting…" : "Delete everything"}
+              {pending ? "Switching off…" : "Delete account"}
             </button>
           </div>
         </form>

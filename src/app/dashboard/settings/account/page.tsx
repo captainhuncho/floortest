@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { UNDO_DAYS } from "@/lib/undo-days";
 import { logout } from "../../../(auth)/actions";
 import { DeleteAccount } from "../DeleteAccount";
 import { ShortcutsSwitch } from "../ShortcutsSwitch";
@@ -24,7 +25,7 @@ export default async function AccountSettings() {
         </SettingLine>
       </Section>
       {user.role === "owner" ? (
-        <Section id="danger-h" title="Delete account" tone="danger" sub="Deletes your account, your link and every track on your desk. This can't be undone.">
+        <Section id="danger-h" title="Delete account" tone="danger" sub={`Switches your account off now. Sign in within ${UNDO_DAYS} days to restore it; after that, your account, link and every track on your desk are deleted for good.`}>
           <DeleteAccount twoFactor={!!user.totp_enabled_at} />
         </Section>
       ) : (

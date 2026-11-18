@@ -46,3 +46,14 @@ test("codeStepUp asks only for the two-step code, under its own hourly limit", (
   assert.match(fn, /checkSecondFactor\(userId, code\.trim\(\)\)/, "the code when two-step is on");
   assert.doesNotMatch(fn, /verifyPassword/, "no password");
 });
+
+test("the delete wording matches the 14-day undo and takes the number from UNDO_DAYS (owner, 18 Nov)", () => {
+  for (const file of ["app/dashboard/settings/(index)/SettingsMenu.tsx", "app/dashboard/settings/DeleteAccount.tsx", "app/dashboard/settings/account/page.tsx"]) {
+    const src = read(file);
+    assert.match(src, /import \{ UNDO_DAYS \} from "@\/lib\/undo-days"/, `${file}: uses UNDO_DAYS`);
+    assert.match(src, /\{UNDO_DAYS\}|\$\{UNDO_DAYS\}/, `${file}: shows the number from UNDO_DAYS`);
+    assert.doesNotMatch(src, /\b14 days\b/, `${file}: no hard-coded 14`);
+    assert.doesNotMatch(src, /can't be undone|can&apos;t be undone|Delete for good|Delete everything/, `${file}: no wording that says it's instant`);
+  }
+  assert.match(read("lib/account-deletion.ts"), /export \{ UNDO_DAYS \}/, "the purge uses the same number");
+});
