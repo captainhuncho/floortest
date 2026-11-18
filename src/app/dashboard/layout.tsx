@@ -116,7 +116,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 teams={teams.map((t) => ({ id: t.id, name: t.name, role: t.role }))}
               />
             )}
-            {/* Asked once, after the person's 5th decision: a card in the page, never over the player (lib/feedback-ask). */}
+            {/* Asked once, after the person's 5th decision, on the next page they open: a card in the page, never over the player (lib/feedback-ask). */}
             <FeedbackAsk due={askFeedback} />
             {/* The confirm-your-email banner lives on the Floor and Send pages only (they render VerifyBanner). */}
             <PageFrame>{children}</PageFrame>
