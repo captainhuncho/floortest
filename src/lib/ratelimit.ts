@@ -30,6 +30,34 @@ export async function claim(bucket: string, key: string, limit: number, windowMs
   return null;
 }
 
+export type Check = { bucket: string; key: string; limit: number; windowMs: number };
+
+/**
+ * `allow` for several limits at once, in two queries instead of two per limit: one insert takes a slot in every bucket,
+ * then one count reads them all. Race-safe the same way (slots recorded before counting). Same outcome as calling
+ * `allow` for each in order and stopping at the first refusal: the slots before it are kept, its own and the later ones
+ * handed back.
+ */
+export async function allowAll(checks: Check[]) {
+  if (!checks.length) return true;
+  const t = now();
+  const mine = await q.all<{ id: number; bucket: string; key: string }>(
+    `INSERT INTO rate_events (bucket, key, created_at) VALUES ${checks.map(() => "(?,?,?)").join(",")} RETURNING id, bucket, key`,
+    ...checks.flatMap((c) => [c.bucket, c.key, t]),
+  );
+  const counts = await q.get<Record<string, number>>(
+    `SELECT ${checks.map((_, i) => `COUNT(*) FILTER (WHERE bucket = ? AND key = ? AND created_at > ?) AS n${i}`).join(", ")}
+     FROM rate_events WHERE ${checks.map(() => "(bucket = ? AND key = ? AND created_at > ?)").join(" OR ")}`,
+    ...checks.flatMap((c) => [c.bucket, c.key, t - c.windowMs]),
+    ...checks.flatMap((c) => [c.bucket, c.key, t - c.windowMs]),
+  );
+  const over = checks.findIndex((c, i) => Number(counts?.[`n${i}`] ?? 0) > c.limit);
+  if (over === -1) return true;
+  const back = checks.slice(over).map((c) => mine.find((m) => m.bucket === c.bucket && m.key === c.key)?.id);
+  await handBack(...back);
+  return false;
+}
+
 /** Hands back slots taken with `claim`. */
 export async function handBack(...ids: (number | null | undefined)[]) {
   const live = ids.filter((id): id is number => !!id);

@@ -27,7 +27,7 @@ const ROLES: Record<string, Record<string, Need>> = {
   "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin", moveAllToProjects: "admin", moveManyToProjects: "admin" },
   "links.ts": { createShareLink: "admin", resetShareLink: "admin", revokeShareLink: "admin", addLinkRecipients: "admin", removeLinkRecipient: "admin", answerLinkRequest: "admin", setLinkRequests: "admin" },
   "review.ts": {
-    decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member", playedOutBatch: "admin", skipPlayedOutPrompt: "admin",
+    decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member", playerTrackState: "member", playedOutBatch: "admin", skipPlayedOutPrompt: "admin",
     getReplyTemplates: "member", saveReplyTemplate: "member", deleteReplyTemplate: "member", addNote: "member", replyToSender: "member", askForStems: "member",
     savePrep: "member", blockSender: "admin", decideRelease: "member",
   },
@@ -98,6 +98,7 @@ const ROUTES: Record<string, Record<string, "admin" | "callouts" | "member" | "p
   "collections/[id]/upload/complete": { POST: "admin" },
   "cover": { POST: "admin", DELETE: "admin" }, // part of the public page (updatePublicPage)
   "export": { GET: "member" },
+  "folder-art/[kind]/[id]": { GET: "member", POST: "admin", DELETE: "admin" }, // like renaming or deleting the project or folder
   "music/[id]/audio": { GET: "member" },
   "music/upload": { POST: "admin" },
   "music/upload/complete": { POST: "admin" },
