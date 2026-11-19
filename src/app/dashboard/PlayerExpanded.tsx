@@ -6,7 +6,7 @@ import { useModalDialog } from "@/components/Dialog";
 import { BufferRing, PlayerClock, type PlayerTrack, PlayerWaveform, PlayIcon, usePlayer } from "@/components/Player";
 import { useToastHost } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
-import { CONTROL, Cover, KeepHeart, SkipIcon, trackHref } from "./PlayerBars";
+import { CONTROL, Cover, KeepHeart, SkipIcon, TRANSPORT, trackHref } from "./PlayerBars";
 import { PlayerActions } from "./PlayerExpandedActions";
 import { playerExpanded, setPlayerExpanded, subscribePlayerExpanded } from "./playerExpandedStore";
 
@@ -25,11 +25,11 @@ const bucket = (t: PlayerTrack) => (t.decision === "kept" ? "kept" : t.decision 
 function JumpIcon({ back = false }: { back?: boolean }) {
   return (
     <span className="relative grid place-items-center">
-      <svg viewBox="0 0 24 24" className={`size-7 ${back ? "-scale-x-100" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <svg viewBox="0 0 24 24" className={`size-[30px] ${back ? "-scale-x-100" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M20 12a8 8 0 1 1-2.6-5.9" />
         <path d="M20 4v4h-4" />
       </svg>
-      <span aria-hidden className="absolute text-[8.5px] font-bold tnum">
+      <span aria-hidden className="absolute text-[10.5px] font-bold leading-none tnum">
         {JUMP}
       </span>
     </span>
@@ -40,29 +40,38 @@ function JumpIcon({ back = false }: { back?: boolean }) {
 function JumpButton({ back = false, className = "" }: { back?: boolean; className?: string }) {
   const { seekBy } = usePlayer();
   return (
-    <button type="button" onClick={() => seekBy(back ? -JUMP : JUMP)} aria-label={`${back ? "Back" : "Forward"} ${JUMP} seconds`} className={`${CONTROL} ${className}`}>
+    <button type="button" onClick={() => seekBy(back ? -JUMP : JUMP)} aria-label={`${back ? "Back" : "Forward"} ${JUMP} seconds`} className={`${TRANSPORT} ${className}`}>
       <JumpIcon back={back} />
     </button>
   );
 }
 
-/** Laptops: the speaker (mute), the slider and the level, always on show (Design: never behind a hover). The slider
- * takes the rest of the bottom row (owner, 18 Nov: "the volume should be below, it should continue"). */
+/**
+ * Laptops: the speaker (mute) in the bottom row. The slider and its level slide out when the pointer is on the speaker
+ * or the keyboard reaches it, as in the floating bar (owner, 18 Nov: "the volume, should take the rule of putting the
+ * mouse or trackpad before it pops out"). Screens with no hover always show it, so nothing depends on hovering.
+ */
 function Volume() {
   const { volume, muted, setVolume } = usePlayer();
   const level = muted ? 0 : volume;
   const percent = `${Math.round(level * 100)}%`;
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
+    <div className="group/vol flex min-w-0 items-center">
       <button type="button" onClick={() => setVolume(volume, !muted)} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} className={CONTROL}>
         <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M4 9.5h3l4.5-3.7v12.4L7 14.5H4z" fill="currentColor" />
           {level === 0 ? <path d="m16 9.5 5 5M21 9.5l-5 5" /> : <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11" />}
         </svg>
       </button>
-      <input type="range" min={0} max={1} step={0.05} value={level} onChange={(e) => setVolume(Number(e.target.value), false)} aria-label="Volume" aria-valuetext={percent} className="h-11 min-w-0 flex-1 cursor-pointer accent-bone" />
-      <span aria-hidden className="w-10 text-[12px] text-mute tnum">
-        {percent}
+      {/* Shut until the pointer is on the speaker or the keyboard reaches it; always open where there is no hover. */}
+      <span
+        data-volume-slide
+        className="flex w-0 items-center gap-2 overflow-hidden opacity-0 transition-[width,opacity] duration-150 ease-out group-hover/vol:w-[208px] group-hover/vol:opacity-100 group-focus-within/vol:w-[208px] group-focus-within/vol:opacity-100 motion-reduce:transition-none [@media(hover:none)]:w-[208px] [@media(hover:none)]:opacity-100"
+      >
+        <input type="range" min={0} max={1} step={0.05} value={level} onChange={(e) => setVolume(Number(e.target.value), false)} aria-label="Volume" aria-valuetext={percent} className="h-11 w-40 shrink-0 cursor-pointer accent-bone" />
+        <span aria-hidden className="w-10 shrink-0 text-[12px] text-mute tnum">
+          {percent}
+        </span>
       </span>
     </div>
   );
@@ -119,8 +128,12 @@ export function PlayerExpanded() {
         <div className="flex h-full max-h-[inherit] flex-col">
           <div className="grid shrink-0 grid-cols-[2.75rem_1fr_2.75rem] items-center px-2 pt-[max(0.625rem,env(safe-area-inset-top))]">
             <button type="button" onClick={close} aria-label="Close player" className={CONTROL}>
-              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {/* Phones: the sheet slides down, so a down arrow. Laptops: a card in the middle of the screen, so a cross. */}
+              <svg viewBox="0 0 24 24" className="size-5 min-[1024px]:hidden" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m6 9 6 6 6-6" />
+              </svg>
+              <svg viewBox="0 0 24 24" className="hidden size-5 min-[1024px]:block" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M6 6l12 12M18 6 6 18" />
               </svg>
             </button>
             <p className="truncate text-center text-[12px] font-semibold text-mute">{sourceLabel(current)}</p>
@@ -154,13 +167,13 @@ export function PlayerExpanded() {
               {/* Phones: Previous, Back 15, play or pause, Forward 15, Next (Design's pick 22). Laptops: the essentials close
                   together, Previous, play or pause, Next (owner, 18 Nov: "controls are too wide apart"). */}
               <div role="group" aria-label="Playback" className="flex items-center justify-center gap-3 min-[390px]:gap-5 min-[1024px]:gap-6">
-                <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={CONTROL}>
+                <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={TRANSPORT}>
                   <SkipIcon back />
                 </button>
                 <JumpButton back className="min-[1024px]:hidden" />
                 <PlayPause />
                 <JumpButton className="min-[1024px]:hidden" />
-                <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={CONTROL}>
+                <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={TRANSPORT}>
                   <SkipIcon />
                 </button>
               </div>
