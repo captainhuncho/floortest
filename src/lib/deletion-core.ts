@@ -61,7 +61,7 @@ export async function trackKeys(db: Queryable, trackIds: number[]) {
   return rows.map((r) => r.k);
 }
 
-/** Everything an account owns in storage: desk audio, Projects, stems, unfinished uploads, the cover photo, collection artwork and the proof staff kept when verifying it. */
+/** Everything an account owns in storage: desk audio, Projects, stems, unfinished uploads, the cover photo, collection artwork, project and folder covers, and the proof staff kept when verifying it. */
 export async function accountKeys(db: Queryable, userId: number) {
   const rows = await db.all<{ k: string | null }>(
     `SELECT t.file_key AS k FROM tracks t WHERE t.user_id = ?
@@ -71,8 +71,10 @@ export async function accountKeys(db: Queryable, userId: number) {
      UNION ALL SELECT u.file_key FROM uploads u WHERE u.receiver_id = ?
      UNION ALL SELECT cover_key FROM users WHERE id = ?
      UNION ALL SELECT art_key FROM collections WHERE user_id = ? AND art_key IS NOT NULL
+     UNION ALL SELECT art_key FROM library_folders WHERE user_id = ? AND art_key IS NOT NULL
+     UNION ALL SELECT art_key FROM desk_folders WHERE user_id = ? AND art_key IS NOT NULL
      UNION ALL SELECT f.file_key FROM verification_proofs f JOIN verification_proposals p ON p.id = f.proposal_id WHERE p.user_id = ?`,
-    userId, userId, userId, userId, userId, userId, userId, userId,
+    userId, userId, userId, userId, userId, userId, userId, userId, userId, userId,
   );
   return rows.map((r) => r.k);
 }

@@ -12,8 +12,9 @@ import { createProject, deleteProject, renameProject } from "../actions/music";
 import { GHOST_TALL, LIME } from "../kitButtons";
 import { MoveToFolder } from "../collections/Folders";
 import { FolderRow, MoreDots, ROUND, trackCount } from "../collections/FolderRow";
+import { useCoverChoice } from "../collections/CoverChoice";
 
-export type ProjectView = { id: number; name: string; count: number; duration: number };
+export type ProjectView = { id: number; name: string; count: number; duration: number; /** Its own cover, when the owner chose one. */ art?: string | null };
 
 /** The ··· on a card or page head (as on Collections). */
 export function MoreIcon() {
@@ -120,7 +121,7 @@ export function NewProject() {
 }
 
 /** Rename and delete for one project, from its ··· button. */
-function ProjectOptions({ p, onClose, onRename, onMove, showOpen }: { p: ProjectView; onClose: () => void; onRename: () => void; /** Move to folder, on a card in the list. */ onMove?: () => void; showOpen: boolean }) {
+function ProjectOptions({ p, onClose, onRename, onMove, onCover, onRemoveCover, showOpen }: { p: ProjectView; onClose: () => void; onRename: () => void; /** Move to folder, on a card in the list. */ onMove?: () => void; /** Opens the image picker (it lives outside this menu). */ onCover: () => void; onRemoveCover: () => void; showOpen: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [ask, confirmDialog] = useConfirm();
@@ -149,6 +150,14 @@ function ProjectOptions({ p, onClose, onRename, onMove, showOpen }: { p: Project
         <button role="menuitem" onClick={() => (onClose(), onRename())}>
           Rename project
         </button>
+        <button role="menuitem" onClick={() => (onCover(), onClose())}>
+          Change cover
+        </button>
+        {p.art && (
+          <button role="menuitem" onClick={() => (onClose(), onRemoveCover())}>
+            Remove cover
+          </button>
+        )}
         {onMove && (
           <button role="menuitem" onClick={() => (onClose(), onMove())}>
             Move to folder
@@ -172,12 +181,14 @@ function ProjectMenu({ p, showOpen, onMove }: { p: ProjectView; showOpen: boolea
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const cover = useCoverChoice("project", p.id, p.name);
   return (
     <>
-      <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`More for ${p.name}`} className={ROUND}>
+      <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`More for ${p.name}`} className={ROUND} disabled={cover.busy}>
         <MoreDots />
       </button>
-      {menu && <ProjectOptions p={p} showOpen={showOpen} onClose={() => setMenu(false)} onRename={() => setRenaming(true)} onMove={onMove} />}
+      {cover.picker}
+      {menu && <ProjectOptions p={p} showOpen={showOpen} onClose={() => setMenu(false)} onRename={() => setRenaming(true)} onMove={onMove} onCover={cover.choose} onRemoveCover={cover.remove} />}
       {renaming && (
         <Sheet title={`Rename ${p.name}`} onClose={() => setRenaming(false)} role="dialog">
           <div className="hover:bg-transparent!">
@@ -201,7 +212,7 @@ function ProjectMenu({ p, showOpen, onMove }: { p: ProjectView; showOpen: boolea
   );
 }
 
-/** One project as a folder in the list: the plain music tile (project tracks carry no artwork yet), its name and its tracks. The whole row opens it. */
+/** One project as a folder in the list: its own cover, else the plain music tile (project tracks carry no artwork yet), its name and its tracks. The whole row opens it. */
 export function ProjectTile({ p, canEdit, folders, folderId = null }: { p: ProjectView; canEdit: boolean; /** The desk's project folders, for Move to folder. */ folders?: { id: number; name: string }[]; folderId?: number | null }) {
   const [moving, setMoving] = useState(false);
   return (
@@ -209,8 +220,8 @@ export function ProjectTile({ p, canEdit, folders, folderId = null }: { p: Proje
       href={`/dashboard/projects/${p.id}`}
       name={p.name}
       spoken={`Open ${p.name}, project, ${trackCount(p.count)}`}
-      covers={[]}
-      empty={p.count === 0}
+      covers={p.art ? [p.art] : []}
+      empty={p.count === 0 && !p.art}
       line={`Project · ${trackCount(p.count)}`}
       menu={canEdit && <ProjectMenu p={p} showOpen onMove={folders ? () => setMoving(true) : undefined} />}
     >
