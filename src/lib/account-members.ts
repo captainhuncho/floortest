@@ -239,15 +239,19 @@ export async function setMemberCallouts(desk: Pick<User, "id" | "role" | "actor_
   needTwoStep(desk);
   // A membership id is a whole positive number; anything else gets the same answer as a missing row.
   if (!Number.isSafeInteger(memberId) || memberId <= 0) throw new TeamError("Not found");
-  const m = await q.get<{ user_id: number; name: string; callouts: boolean }>(
-    "SELECT m.user_id, u.name, m.callouts FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.id = ? AND m.account_id = ? AND m.role = 'member' AND m.user_id <> ?",
+  // One statement, so a role change in between can't make it log a tick that wasn't written.
+  const m = await q.get<{ user_id: number; name: string }>(
+    "UPDATE account_members m SET callouts = ? FROM users u WHERE u.id = m.user_id AND m.id = ? AND m.account_id = ? AND m.role = 'member' AND m.user_id <> ? AND m.callouts IS DISTINCT FROM ? RETURNING m.user_id, u.name",
+    !!on, memberId, desk.id, desk.actor_id, !!on,
+  );
+  if (m) return { user_id: m.user_id, name: m.name, changed: true };
+  // Nothing written: already set that way (`changed` false, so the caller doesn't log it twice), or not this desk's Member.
+  const same = await q.get<{ user_id: number; name: string }>(
+    "SELECT m.user_id, u.name FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.id = ? AND m.account_id = ? AND m.role = 'member' AND m.user_id <> ?",
     memberId, desk.id, desk.actor_id,
   );
-  if (!m) throw new TeamError("Not found");
-  // Already set that way: nothing to write, and `changed` tells the caller not to log it twice.
-  if (Boolean(m.callouts) === !!on) return { user_id: m.user_id, name: m.name, changed: false };
-  await q.run("UPDATE account_members SET callouts = ? WHERE id = ? AND account_id = ? AND role = 'member'", !!on, memberId, desk.id);
-  return { user_id: m.user_id, name: m.name, changed: true };
+  if (!same) throw new TeamError("Not found");
+  return { user_id: same.user_id, name: same.name, changed: false };
 }
 
 /** Ops: add-on seats for an account (bought separately while card payments aren't live). */
