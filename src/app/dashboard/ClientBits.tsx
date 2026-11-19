@@ -17,6 +17,7 @@ export function ConfirmButton({
   children,
   confirmLabel,
   danger,
+  more,
 }: {
   action: () => Promise<void>;
   message: string;
@@ -25,13 +26,15 @@ export function ConfirmButton({
   confirmLabel?: string;
   /** Destructive: solid red final yes. Guessed from the words when not given. */
   danger?: boolean;
+  /** Lets the review card's More menu open it (`data-more`). */
+  more?: string;
 }) {
   const [open, setOpen] = useState(false);
   const { title, body } = splitQuestion(message);
   const destructive = danger ?? /\b(delete|remove|block|revoke|erase|can't be undone)/i.test(message);
   return (
     <>
-      <button type="button" className={className} onClick={() => setOpen(true)} aria-haspopup="dialog">
+      <button type="button" data-more={more} className={className} onClick={() => setOpen(true)} aria-haspopup="dialog">
         {children}
       </button>
       <ConfirmDialog

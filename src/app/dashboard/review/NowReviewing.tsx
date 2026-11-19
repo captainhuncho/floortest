@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isTyping, PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
-import { Icon } from "@/components/Kit";
 import { overlayOpen, shortcutsOn } from "@/components/useShortcuts";
 import type { ReplyResult } from "../actions/review";
 import { MoreMenu } from "./MoreMenu";
@@ -112,16 +111,13 @@ export function CardControls({ track, prev, next }: { track: PlayerTrack; prev: 
   );
 }
 
-const CALL = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[13px] border border-line bg-well px-3.5 text-[13px] font-semibold text-bone transition-colors hover:border-line-2";
-
 /**
- * Reply, Download and More, beside Keep and Not for me. Reply (and R, from anywhere outside a field) opens the reply
- * panel; Download is the same link as in Details; More opens the menu (note, Played out, move, copy link, details,
- * report).
+ * The More button beside Keep and Not for me (compact card, owner 19 Nov): Reply and Download live in its menu now. R
+ * (from anywhere outside a field) still opens the reply panel, from the More button so focus comes back there.
  */
 export function PanelCalls({ trackId, href, senderName, onReply }: { trackId: number; href: string; senderName: string; onReply: (fd: FormData) => Promise<ReplyResult> }) {
   const [replying, setReplying] = useState(false);
-  const replyButton = useRef<HTMLButtonElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || e.key.toLowerCase() !== "r") return;
@@ -130,25 +126,16 @@ export function PanelCalls({ trackId, href, senderName, onReply }: { trackId: nu
       // Another layer is open (More, a confirm): R belongs to it.
       if (overlayOpen()) return;
       e.preventDefault();
-      // From the Reply button, so closing the panel puts focus back there and not at the top of the page.
-      replyButton.current?.focus({ preventScroll: true });
+      // From the More button, so closing the panel puts focus back there and not at the top of the page.
+      wrap.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
       setReplying(true);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   return (
-    <div className="grid grid-cols-3 gap-2 md:flex md:items-center">
-      <button ref={replyButton} type="button" onClick={() => setReplying(true)} aria-haspopup="dialog" aria-keyshortcuts="R" className={CALL}>
-        <Icon name="reply" className="size-4" />
-        Reply
-      </button>
-      <span aria-hidden className="hidden h-6 w-px bg-line md:block" />
-      <a href={`/api/tracks/${trackId}/download`} className={CALL}>
-        <Icon name="dl" className="size-4" />
-        Download
-      </a>
-      <MoreMenu trackId={trackId} href={href} />
+    <div ref={wrap} className="shrink-0">
+      <MoreMenu trackId={trackId} href={href} onReply={() => setReplying(true)} download={`/api/tracks/${trackId}/download`} />
       <ReplyPanel open={replying} onClose={() => setReplying(false)} senderName={senderName} onReply={onReply} />
     </div>
   );

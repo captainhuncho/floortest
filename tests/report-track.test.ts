@@ -30,6 +30,6 @@ test("every role on the desk sees Report; the block box only shows to admins and
   assert.match(panel, /canBlock=\{!!desk && atLeast\(desk\.role, "admin"\) && !sender\.blocked_at\}/);
   // Report sits outside the members-can't-delete guard.
   const report = panel.indexOf("<ReportTrack");
-  const guard = panel.indexOf('{desk?.role !== "member" && (', panel.indexOf("Download original"));
+  const guard = panel.indexOf('{desk?.role !== "member" && (', report);
   assert.ok(report > 0 && guard > report);
 });

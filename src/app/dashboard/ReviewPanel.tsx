@@ -31,7 +31,7 @@ import type { Step } from "./review/QueueState";
 import { CardControls, CoverSteps, PanelCalls, StoryBars } from "./review/NowReviewing";
 import { MoveToProjects } from "./projects/MoveToProjects";
 import { listFolders } from "@/lib/library";
-import { CARD, Chip, Icon, IconBox, initials } from "@/components/Kit";
+import { CARD, Chip, Icon, initials } from "@/components/Kit";
 
 export async function ReviewPanel({
   track: t,
@@ -208,20 +208,19 @@ export async function ReviewPanel({
 
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
-  const senderLink = (
-    <Link href={`/dashboard/contacts/${sender.id}`} className="text-bone underline-offset-4 hover:underline">
-      {sender.name}
-    </Link>
-  );
   const card = `${CARD} p-3.5 sm:p-4`;
+  const commentCount = comments.length;
+  const fileLine = [`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`, removal ? `kept until ${fmtDay(removal)}` : null, commentCount ? `${commentCount} comment${commentCount === 1 ? "" : "s"}` : null]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    // Redesign (owner, 30 Oct): the open track is a stack of cards. The player card holds what the decision needs
-    // (rendered with the page, so the buttons are there before any JavaScript runs); under it the sender's note and
-    // the reply on one side and the folded Details on the other, side by side when there's room.
-    <div className="flex flex-col gap-4">
+    // Compact card (owner, 19 Nov: "make all this one and compact"): one card holds what the decision needs, the
+    // sender's note included; only Keep and Not for me sit on it, every other call is in More. Everything else (file
+    // facts, the sender's record, the team's comments, move, report, delete) is in one folded Details under it.
+    <div className="flex flex-col gap-3">
       <section aria-labelledby={`track-h-${t.id}`} className={`${card} flex flex-col gap-3.5 md:flex-row md:items-start md:gap-5`}>
-        <div className="mx-auto w-full max-w-[200px] shrink-0 md:mx-0 md:max-[1179px]:w-28 min-[1180px]:w-[168px]">
+        <div className="mx-auto w-full max-w-[200px] shrink-0 md:mx-0 md:w-28">
           {at && total > 1 && <StoryBars at={at} total={total} />}
           <div className="relative">
             {art ? (
@@ -236,25 +235,40 @@ export async function ReviewPanel({
           </div>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div className="hidden items-center justify-between gap-3 md:flex">
-            <p className="text-[11.5px] font-semibold text-mute tnum">Now reviewing{position ? ` · ${position}` : ""}</p>
-            <TrackStepper fromId={t.id} prev={prev} next={next} position={null} />
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 max-md:flex-1 max-md:text-center">
+              <h2 id={`track-h-${t.id}`} className="line-clamp-2 text-[20px] font-semibold leading-tight tracking-[-0.02em] text-bone">
+                {t.title}
+              </h2>
+              <p className="mt-0.5 truncate text-[13px] text-mute">{t.artist}</p>
+            </div>
+            <div className="hidden shrink-0 items-center gap-2 md:flex">
+              {position && <p className="text-[11.5px] text-mute tnum">{position}</p>}
+              <TrackStepper fromId={t.id} prev={prev} next={next} position={null} />
+            </div>
           </div>
-          <div className="min-w-0 max-md:text-center">
-            <h2 id={`track-h-${t.id}`} className="line-clamp-2 text-[20px] font-semibold leading-tight tracking-[-0.02em] text-bone">
-              {t.title}
-            </h2>
-            <p className="mt-0.5 truncate text-[13px] text-mute">{t.artist}</p>
-            <p className="mt-1.5 text-[11.5px] text-mute tnum">{info}</p>
+          <p className="-mt-1.5 text-[11.5px] text-mute tnum max-md:text-center">{info}</p>
+          {/* One line of facts: the chips, whether the email is checked, and what this desk did with the sender before. */}
+          <div className="flex flex-wrap items-center gap-1.5 max-md:justify-center">
+            {tags}
+            {sender.verified_at ? (
+              <Chip tone="up">
+                <Icon name="check" className="size-3" /> Verified email
+              </Chip>
+            ) : (
+              <Chip tone="warn">Unverified email</Chip>
+            )}
+            {facts.length > 0 && (
+              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-8 items-center px-1 text-[12px] text-mute underline decoration-line-2 underline-offset-4 hover:text-bone">
+                {facts.join(" · ")}
+              </Link>
+            )}
           </div>
-          {facts.length > 0 && (
-            <ul className="flex flex-col gap-0.5 text-[12px] text-mute max-md:items-center">
-              {facts.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
+          {t.message && (
+            <blockquote aria-label={`${sender.name}'s note`} className="border-l-2 border-line-2 py-px pl-3 text-[13px] leading-relaxed whitespace-pre-wrap text-bone">
+              {t.message}
+            </blockquote>
           )}
-          {tags}
           {releaseBlock}
           <CardControls track={player} prev={prev} next={next} />
           <DecisionRail track={{ ...player, decision: t.decision }} senderName={sender.name} selfHref={selfHref} next={next} prev={prev}>
@@ -263,58 +277,50 @@ export async function ReviewPanel({
         </div>
       </section>
 
-      <div className="grid min-w-0 gap-4 md:grid-cols-2 md:items-start">
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* The sender's note, a quote with a hairline edge, under a head that says who sent it and whether their email is checked. */}
-          <section aria-labelledby={`from-h-${t.id}`} className={`${card} flex flex-col gap-2.5`}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <IconBox name="mail" small />
-                <h3 id={`from-h-${t.id}`} className="truncate text-[15px] font-semibold tracking-[-0.015em] text-bone">
-                  From {senderLink}
-                </h3>
-              </div>
-              {sender.verified_at ? (
-                <Chip tone="up">
-                  <Icon name="check" className="size-3" /> Verified email
-                </Chip>
-              ) : (
-                <Chip tone="warn">Unverified email</Chip>
-              )}
+      {t.decision === "kept" && (
+        <>
+          {desk && canMarkPlayedOut(desk) && (
+            <div className={card}>
+              <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
             </div>
-            {t.message ? (
-              <blockquote className="border-l-2 border-line-2 py-px pl-3 text-[13px] leading-relaxed whitespace-pre-wrap text-bone">{t.message}</blockquote>
-            ) : (
-              <p className="text-[12px] text-mute">No message with this track.</p>
-            )}
-          </section>
-
-          {t.decision === "kept" && (
-            <>
-              {desk && canMarkPlayedOut(desk) && (
-                <div className={card}>
-                  <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
-                </div>
-              )}
-              <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
-            </>
           )}
+          <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
+        </>
+      )}
 
-          {team > 0 && <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
+      {stemsOn && <StemsBox track={t} senderName={sender.name} />}
 
-          {stemsOn && <StemsBox track={t} senderName={sender.name} />}
+      <PanelDetails
+        summary={
+          <span className="flex min-w-0 items-center justify-between gap-3">
+            <span className="text-[14px] font-semibold tracking-[-0.015em] text-bone">Details</span>
+            <span className="truncate text-[12px] text-mute tnum">{fileLine}</span>
+          </span>
+        }
+      >
+        <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
+          {/* Compact facts (owner, 18 Nov): one plain line each. */}
+          <dl className="divide-y divide-line border-t border-line text-[12px]">
+            <Fact label="Format">{`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`}</Fact>
+            <Fact label="Received">{fmtDate(t.created_at)}</Fact>
+            <Fact label="Listened">{t.played_at ? fmtDate(t.played_at) : "Not yet"}</Fact>
+            <Fact label="Downloaded">{t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"}</Fact>
+            <Fact label="Kept until" hint={removal ? "Then deleted unless you keep it" : undefined}>
+              {removal ? fmtDay(removal) : "You delete it"}
+            </Fact>
+            {t.isrc && <Fact label="ISRC">{t.isrc}</Fact>}
+          </dl>
 
-          <section className={card} aria-labelledby="sender-h">
+          <section aria-labelledby={`sender-h-${t.id}`} className="border-t border-line pt-2 text-[12px]">
             <div className="flex items-center justify-between gap-2">
-              <h3 id="sender-h" className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em] text-bone">
-                <IconBox name="user" small />
-                Sender
+              <h3 id={`sender-h-${t.id}`} className="truncate text-[13px] font-semibold text-bone">
+                {sender.name}
               </h3>
-              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline">
+              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 shrink-0 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline">
                 Full history →
               </Link>
             </div>
-            <p className="mt-1 text-[12px] break-all text-mute">{sender.email}</p>
+            <p className="break-all text-mute">{sender.email}</p>
             {readLinks(sender.links).length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <ProfileLinks links={readLinks(sender.links)} size={18} />
@@ -324,7 +330,7 @@ export async function ReviewPanel({
               </div>
             )}
             {senderAccount && (
-              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+              <p className="mt-2 flex flex-wrap items-center gap-1.5">
                 <Chip tone="acc">FloorTest user</Chip>
                 <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
                   /{senderAccount.handle}
@@ -339,74 +345,52 @@ export async function ReviewPanel({
           </section>
         </div>
 
-        <PanelDetails
-          summary={
-            <span className="flex items-center gap-2">
-              <IconBox name="music" small />
-              <span className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Details</span>
-            </span>
-          }
-        >
-          {/* Compact facts (owner, 18 Nov): one plain line each. The collection shows in the Move picker below. */}
-          <dl className="divide-y divide-line text-[12px]">
-            <Fact label="Format">{`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`}</Fact>
-            <Fact label="Received">{fmtDate(t.created_at)}</Fact>
-            <Fact label="Listened">{t.played_at ? fmtDate(t.played_at) : "Not yet"}</Fact>
-            <Fact label="Downloaded">{t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"}</Fact>
-            <Fact label="Kept until" hint={removal ? "Then deleted unless you keep it" : undefined}>
-              {removal ? fmtDay(removal) : "You delete it"}
-            </Fact>
-            {t.isrc && <Fact label="ISRC">{t.isrc}</Fact>}
-          </dl>
+        {team > 0 && (
+          <div className="mt-4">
+            <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />
+          </div>
+        )}
 
-          <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
-            <a
-              href={`/api/tracks/${t.id}/download`}
-              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2"
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          <form action={moveTrack.bind(null, t.id)} className="flex min-h-11 min-w-0 flex-1 sm:max-w-sm">
+            <label className="sr-only" htmlFor={`move-${t.id}`}>
+              Collection
+            </label>
+            <select
+              id={`move-${t.id}`}
+              name="collection"
+              defaultValue={t.collection_id ?? ""}
+              className="min-w-0 flex-1 rounded-l-xl border border-line bg-well px-2.5 text-[13px] text-bone max-sm:text-base"
             >
-              <Icon name="dl" className="size-4" />
-              Download original
-            </a>
-            <form action={moveTrack.bind(null, t.id)} className="flex min-h-11 min-w-0">
-              <label className="sr-only" htmlFor={`move-${t.id}`}>
-                Collection
-              </label>
-              <select
-                id={`move-${t.id}`}
-                name="collection"
-                defaultValue={t.collection_id ?? ""}
-                className="min-w-0 flex-1 rounded-l-xl border border-line bg-well px-2.5 text-[13px] text-bone max-sm:text-base"
-              >
-                {t.collection_id == null && <option value="">Unsorted</option>}
-                {collections.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <button className="inline-flex items-center gap-1.5 rounded-r-xl border border-l-0 border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2">
-                <Icon name="folder" className="size-4" />
-                Move
-              </button>
-            </form>
-            {ownUpload && <MoveToProjects trackId={t.id} title={t.title} folders={projects.map((f) => ({ id: f.id, name: f.name }))} after={next?.href ?? "/dashboard/projects"} />}
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-start justify-between gap-x-2">
-            <ReportTrack action={reportTrack.bind(null, t.id)} senderName={sender.name} canBlock={!!desk && atLeast(desk.role, "admin") && !sender.blocked_at} />
-            {desk?.role !== "member" && (
-              <ConfirmButton
-                action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
-                message="Delete this file now? It's removed for good and its slot comes back. The sender's history stays on this desk."
-                confirmLabel="Delete file"
-                className="btn btn-sm text-danger hover:bg-danger/10"
-              >
-                Delete
-              </ConfirmButton>
-            )}
-          </div>
-
-        </PanelDetails>
-      </div>
+              {t.collection_id == null && <option value="">Unsorted</option>}
+              {collections.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <button className="inline-flex items-center gap-1.5 rounded-r-xl border border-l-0 border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2">
+              <Icon name="folder" className="size-4" />
+              Move
+            </button>
+          </form>
+          {ownUpload && <MoveToProjects trackId={t.id} title={t.title} folders={projects.map((f) => ({ id: f.id, name: f.name }))} after={next?.href ?? "/dashboard/projects"} />}
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-start justify-between gap-x-2">
+          <ReportTrack action={reportTrack.bind(null, t.id)} senderName={sender.name} canBlock={!!desk && atLeast(desk.role, "admin") && !sender.blocked_at} />
+          {desk?.role !== "member" && (
+            <ConfirmButton
+              action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
+              message="Delete this file now? It's removed for good and its slot comes back. The sender's history stays on this desk."
+              confirmLabel="Delete file"
+              more="delete"
+              className="btn btn-sm text-danger hover:bg-danger/10"
+            >
+              Delete
+            </ConfirmButton>
+          )}
+        </div>
+      </PanelDetails>
     </div>
   );
 }
