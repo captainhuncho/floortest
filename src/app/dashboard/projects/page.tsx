@@ -66,7 +66,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
           )}
           {/* One file picker for every Upload audio on the page; it stays in this place in both layouts, so an upload
               in progress isn't lost when the first track turns the empty page into the list. */}
-          {canEdit && <OwnerUpload api="/api/music/upload" heading="Upload audio" fromMenu />}
+          {canEdit && <OwnerUpload api="/api/music/upload" heading="Upload audio" fromMenu pageDrop="project" />}
           {!nothing && (
             <>
               {folder && <FolderCrumb kind="project" name={folder.name} />}
