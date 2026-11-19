@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CARD } from "@/components/Kit";
 import { useConfirm } from "@/components/Dialog";
 import { FormError } from "@/components/Feedback";
-import { PlayIcon, PlayerWaveform, usePlayer } from "@/components/Player";
+import { PlayerWaveform, usePlayer } from "@/components/Player";
 import { musicToPlayer as toPlayer } from "@/lib/player-track";
 import { useToast } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
@@ -75,20 +75,18 @@ export function MusicList({ tracks, canEdit, folders, here, empty, numbered = fa
                       {i + 1}
                     </span>
                   )}
+                  {/* No play button (owner, 19 Nov): tapping the track plays it; pausing is the player's. */}
                   <button
                     type="button"
-                    onClick={() => (on ? toggle() : play(toPlayer(t), queue))}
-                    className={`grid size-11 shrink-0 place-items-center rounded-full ${numbered ? "border border-line bg-well text-bone" : "bg-lime text-ink"}`}
-                    aria-label={on && playing ? `Pause ${t.title}` : `Play ${t.title}`}
+                    onClick={() => (!on ? play(toPlayer(t), queue) : !playing && toggle())}
+                    aria-label={`Play ${t.title}`}
+                    className="flex min-h-11 min-w-0 flex-1 flex-col justify-center text-left"
                   >
-                    <PlayIcon playing={on && playing} />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-bone">{t.title}</p>
-                    <p className="truncate text-[12px] text-mute">
+                    <span className="truncate text-[13px] font-semibold text-bone">{t.title}</span>
+                    <span className="truncate text-[12px] text-mute">
                       {t.artist || "No artist"} · {fmtTime(t.duration)} · added {t.added}
-                    </p>
-                  </div>
+                    </span>
+                  </button>
                   {canEdit && (
                     <button
                       type="button"
