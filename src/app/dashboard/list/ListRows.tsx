@@ -271,6 +271,8 @@ export function ListRows({
               <PlayIcon playing={playing} className="size-3.5" />
             </button>
           );
+          // The button's label replaces what it holds for screen readers, so it carries the status too (Safety P3, 19 Nov).
+          const playLabel = `Play ${r.title}${waiting ? ", needs review" : ""}${r.duplicateOf ? ", possible duplicate" : ""}`;
           const name = (
             <>
               <span className={`truncate text-[13px] ${waiting ?"font-semibold text-bone" : "font-medium text-mute"}`}>
@@ -310,7 +312,7 @@ export function ListRows({
                   </>
                 )}
                 {numbered ? (
-                  <button type="button" onClick={tapPlay} aria-label={`Play ${r.title}`} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5 text-left">
+                  <button type="button" onClick={tapPlay} aria-label={playLabel} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5 text-left">
                     {name}
                   </button>
                 ) : (
@@ -336,7 +338,7 @@ export function ListRows({
                 {no}
                 {play}
                 {numbered ? (
-                  <button type="button" onClick={tapPlay} aria-label={`Play ${r.title}`} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5 text-left">
+                  <button type="button" onClick={tapPlay} aria-label={playLabel} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5 text-left">
                     {name}
                   </button>
                 ) : (
