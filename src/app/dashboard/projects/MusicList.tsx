@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CARD } from "@/components/Kit";
+import { Icon } from "@/components/Kit";
 import { useConfirm } from "@/components/Dialog";
 import { FormError } from "@/components/Feedback";
-import { PlayerWaveform, usePlayer } from "@/components/Player";
+import { PlayIcon, usePlayer } from "@/components/Player";
 import { musicToPlayer as toPlayer } from "@/lib/player-track";
 import { useToast } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
 import { deleteMusic, moveMusic, renameMusic } from "../actions/music";
 import { GHOST, LIME } from "../kitButtons";
+import { ROUND } from "../collections/FolderRow";
 import { MoreIcon, Sheet } from "./ProjectsUI";
 
 export type MusicItem = { id: number; title: string; artist: string; duration: number | null; peaks: number[] | null; added: string };
@@ -21,7 +22,7 @@ export type MusicItem = { id: number; title: string; artist: string; duration: n
  * track's place (a project's page).
  */
 export function MusicList({ tracks, canEdit, folders, here, empty, numbered = false }: { tracks: MusicItem[]; canEdit: boolean; folders: { id: number; name: string }[]; here: number | null; empty: string; numbered?: boolean }) {
-  const { current, playing, play, toggle, seek } = usePlayer();
+  const { current, playing, play, toggle } = usePlayer();
   const [hidden, setHidden] = useState<number[]>([]);
   const [editing, setEditing] = useState<number | null>(null);
   const [menu, setMenu] = useState<MusicItem | null>(null);
@@ -55,52 +56,56 @@ export function MusicList({ tracks, canEdit, folders, here, empty, numbered = fa
     void leave(t, () => moveMusic(t.id, folder), `Moved ${t.title} to ${name}`);
   }
 
-  if (!shown.length) return <p className={numbered ? "text-[12.5px] text-mute" : `${CARD} p-5 text-[13px] text-mute`}>{empty}</p>;
+  if (!shown.length) return <p className="text-[13px] text-mute">{empty}</p>;
 
   const targets: { id: number | null; name: string }[] = [...folders.filter((f) => f.id !== here), ...(here === null ? [] : [{ id: null, name: "No project" }])];
 
   return (
     <>
-      <ul className={`${CARD} flex flex-col`} aria-label="Tracks">
+      {/* Rows (owner, 19 Nov: option 63 A): the whole row plays (pauses when it's the one playing), then length and ···. */}
+      <ul className="flex flex-col" aria-label="Tracks">
         {shown.map((t, i) => {
           const on = current?.id === -t.id;
           return (
-            <li key={t.id} className="flex flex-col gap-2 border-t border-line p-3 first:border-t-0">
+            <li key={t.id} className="border-t border-line first:border-t-0">
               {editing === t.id ? (
-                <RenameForm t={t} onDone={() => setEditing(null)} />
+                <div className="py-3">
+                  <RenameForm t={t} onDone={() => setEditing(null)} />
+                </div>
               ) : (
-                <div className="flex items-center gap-3">
-                  {numbered && (
-                    <span aria-hidden className="w-5 shrink-0 text-center text-[12px] text-mute tnum">
-                      {i + 1}
-                    </span>
-                  )}
-                  {/* No play button (owner, 19 Nov): tapping the track plays it; pausing is the player's. */}
+                <div className="flex min-h-[60px] items-center gap-2 py-1.5">
+                  {/* No play button (owner, 19 Nov, #680): tapping the track plays it; pausing is the player's. */}
                   <button
                     type="button"
                     onClick={() => (!on ? play(toPlayer(t), queue) : !playing && toggle())}
+                    className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-[12px] text-left"
                     aria-label={`Play ${t.title}`}
-                    className="flex min-h-11 min-w-0 flex-1 flex-col justify-center text-left"
                   >
-                    <span className="truncate text-[13px] font-semibold text-bone">{t.title}</span>
-                    <span className="truncate text-[12px] text-mute">
-                      {t.artist || "No artist"} · {fmtTime(t.duration)} · added {t.added}
+                    {numbered ? (
+                      <span aria-hidden className="grid w-6 shrink-0 place-items-center text-[13px] text-mute tnum">
+                        {on ? <PlayIcon playing={playing} /> : i + 1}
+                      </span>
+                    ) : (
+                      <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-line bg-well text-mute">
+                        {on ? <PlayIcon playing={playing} /> : <Icon name="music" className="size-4" />}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] font-semibold text-bone">{t.title}</span>
+                      <span className="block truncate text-[12px] text-mute">
+                        {t.artist || "No artist"}
+                        {numbered ? "" : ` · ${t.added}`}
+                      </span>
                     </span>
                   </button>
+                  <span className="shrink-0 text-[12.5px] text-mute tnum">{fmtTime(t.duration)}</span>
                   {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => setMenu(t)}
-                      aria-haspopup="menu"
-                      aria-label={`More for ${t.title}`}
-                      className="grid size-11 shrink-0 place-items-center rounded-[12px] border border-line bg-well text-mute hover:text-bone"
-                    >
+                    <button type="button" onClick={() => setMenu(t)} aria-haspopup="menu" aria-label={`More for ${t.title}`} className={ROUND}>
                       <MoreIcon />
                     </button>
                   )}
                 </div>
               )}
-              {t.peaks && <PlayerWaveform on={on} length={t.duration ?? 0} peaks={t.peaks} onSeek={on ? seek : undefined} height={28} label={`Seek ${t.title}`} />}
             </li>
           );
         })}

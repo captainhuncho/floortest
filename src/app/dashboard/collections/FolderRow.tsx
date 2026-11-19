@@ -71,16 +71,16 @@ export const trackCount = (n: number) => `${n} ${n === 1 ? "track" : "tracks"}`;
 /** Rows and tiles draw art at 56 to about 96 px, so they ask the art routes for the small copy (?size=thumb, 192 px). */
 const thumb = (url: string) => `${url}${url.includes("?") ? "&" : "?"}size=thumb`;
 
-export function FolderRow({ href, name, spoken, covers, empty, line, menu, children }: { href: string; name: string; spoken: string; /** Up to four art URLs (FolderCover). */ covers: string[]; /** Nothing inside: the dashed cover. */ empty?: boolean; line: React.ReactNode; menu?: React.ReactNode; /** The row's own sheets and dialogs. */ children?: React.ReactNode }) {
+export function FolderRow({ href, name, spoken, covers, empty, line, menu, tile = false, children }: { href: string; name: string; spoken: string; /** Up to four art URLs (FolderCover). */ covers: string[]; /** Nothing inside: the dashed cover. */ empty?: boolean; line: React.ReactNode; menu?: React.ReactNode; /** A tile at every size, never a row on phones (Projects, owner 19 Nov: option 63 A). */ tile?: boolean; /** The row's own sheets and dialogs. */ children?: React.ReactNode }) {
   return (
-    <div data-card className="relative flex items-center gap-3 md:flex-col md:items-stretch md:gap-2">
-      <FolderCover covers={covers.map(thumb)} empty={empty} className="h-14 w-14 rounded-[10px] md:aspect-square md:h-auto md:w-full md:rounded-[14px]" />
+    <div data-card className={`relative flex ${tile ? "flex-col items-stretch gap-2" : "items-center gap-3 md:flex-col md:items-stretch md:gap-2"}`}>
+      <FolderCover covers={covers.map(thumb)} empty={empty} className={tile ? "aspect-square w-full rounded-[14px]" : "h-14 w-14 rounded-[10px] md:aspect-square md:h-auto md:w-full md:rounded-[14px]"} />
       <div className="flex min-w-0 flex-1 items-center gap-1">
         <div className="min-w-0 flex-1">
           <Link href={href} aria-label={spoken} className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-bone after:absolute after:inset-0 after:rounded-[14px]">
             {name}
           </Link>
-          <p className="mt-0.5 truncate text-[11.5px] text-mute tnum md:line-clamp-2 md:whitespace-normal">{line}</p>
+          <p className={`mt-0.5 truncate text-[11.5px] text-mute tnum ${tile ? "line-clamp-2 whitespace-normal" : "md:line-clamp-2 md:whitespace-normal"}`}>{line}</p>
         </div>
         {menu}
       </div>
