@@ -28,9 +28,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   return (
     <FolderPage
       back={{ href: "/dashboard/projects", label: "Projects" }}
-      tools={canEdit && <ProjectTools p={{ id: project.id, name: project.name, count: project.count, duration: project.duration }} />}
-      covers={[]}
-      empty={!project.count}
+      tools={canEdit && <ProjectTools p={{ id: project.id, name: project.name, count: project.count, duration: project.duration, art: project.art }} />}
+      covers={project.art ? [project.art] : []}
+      empty={!project.count && !project.art}
       name={project.name}
       lines={[project.count ? `Project · ${trackCount(project.count)}${project.duration ? ` · ${fmtLength(project.duration)}` : ""}` : "Project · no tracks yet"]}
       play={<PlayAll queue={items.map(musicToPlayer)} name={project.name} />}

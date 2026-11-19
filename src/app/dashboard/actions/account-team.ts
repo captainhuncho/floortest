@@ -90,8 +90,9 @@ export async function setTeammateCallouts(memberId: number, on: boolean): Promis
   const u = await requireUser();
   try {
     const who = await setMemberCallouts(u, Number(memberId), on === true);
-    // Named by person, not by the membership row, so the line stays readable after a removal or a new invite.
-    await audit(u.id, on === true ? "team_callouts_on" : "team_callouts_off", `${who.name} (user ${who.user_id})`);
+    // Named by person, not by the membership row, so the line stays readable after a removal or a new invite. Logged only
+    // when the tick actually changed, so a double click leaves one line.
+    if (who.changed) await audit(u.id, on === true ? "team_callouts_on" : "team_callouts_off", `${who.name} (user ${who.user_id})`);
     done();
     return { ok: "Saved." };
   } catch (e) {

@@ -13,7 +13,7 @@ import { queueDeletion } from "./deletion-core";
  * was never sent is removed a week on.
  * Sender audio and track artwork have their own record, `uploads` (src/lib/intake.ts, src/lib/track-art.ts).
  */
-export type FileKind = "cover" | "collection_art" | "site_image" | "verification_proof";
+export type FileKind = "cover" | "collection_art" | "site_image" | "verification_proof" | "folder_art";
 
 export const RESERVATION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -32,6 +32,7 @@ export const settleFile = (key: string) =>
 async function inUse(db: Queryable, key: string, kind: FileKind) {
   if (kind === "cover") return !!(await db.get("SELECT 1 FROM users WHERE cover_key = ?", key));
   if (kind === "collection_art") return !!(await db.get("SELECT 1 FROM collections WHERE art_key = ?", key));
+  if (kind === "folder_art") return !!((await db.get("SELECT 1 FROM library_folders WHERE art_key = ?", key)) || (await db.get("SELECT 1 FROM desk_folders WHERE art_key = ?", key)));
   if (kind === "verification_proof") return !!(await db.get("SELECT 1 FROM verification_proofs WHERE file_key = ?", key));
   const name = key.slice(key.lastIndexOf("/") + 1);
   return !!(

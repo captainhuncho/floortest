@@ -86,7 +86,7 @@ export default async function Collections({ searchParams }: { searchParams: Prom
         name: p.name,
         rank: 1,
         at: p.created_at,
-        node: <ProjectTile p={{ id: p.id, name: p.name, count: p.count, duration: p.duration }} canEdit={canManage} folders={canManage ? projectFolderList : undefined} folderId={p.desk_folder_id} />,
+        node: <ProjectTile p={{ id: p.id, name: p.name, count: p.count, duration: p.duration, art: p.art }} canEdit={canManage} folders={canManage ? projectFolderList : undefined} folderId={p.desk_folder_id} />,
       })),
   ].sort((a, b) => a.rank - b.rank || b.at - a.at);
   const items = [
