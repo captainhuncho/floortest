@@ -18,18 +18,18 @@ on `mobile-next`.
 |---|---|---|
 | CI: checks (runs `audit:prod`), Analyze, CodeQL, dependency-review, Vercel, Vercel Preview Comments | `1829664f` | passed (6/6) |
 | Unit (Build) | `1829664f` | 1068 passed, 0 failed |
-| e2e: `folders.spec.ts`, `collection-panel.spec.ts`, `batch.spec.ts` (upload and deletion paths) | `1829664f` | 6 passed, 0 failed |
+| e2e: `folders.spec.ts`, `collection-panel.spec.ts`, `batch.spec.ts` (folders and move; cover upload, replace, delete and erase are covered by `tests/folder-art.test.ts`, 7 cases, plus the owner's try) | `1829664f` | 6 passed, 0 failed |
 | Merge with `main` | `f8b24141` | merged into the branch as `1829664f`; GitHub CLEAN |
 | Safety review | `1829664f` | cleared |
 | On `mobile-next` for the owner's try | | yes, before the ship |
 | Health `/api/health`, `/`, `/login`, `/signup` | production | 200, 200, 200, 200 |
 
 ## Other releases since the last code report
-None.
+- #682, report for #676: merge `364a59ad`, deploy 7912086954.
 
 ## After the merge
 `main` merged into `mobile-next` as `d6cd0fba`, no conflicts. GitHub reported one open high Dependabot alert on
-`main` at push time; passed to Safety.
+`main` at push time: picomatch, a withdrawn advisory with no patched version (Safety: nothing exposed; dismissing it is the owner's call).
 
 ## Live versus unfinished
 Live: Change cover. Ready for the owner's word: receipt limit (#683). Try-it candidates, Safety cleared: volume reveal
