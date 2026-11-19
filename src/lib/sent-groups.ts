@@ -24,6 +24,20 @@ export function isWaiting(r: Signals, unheardAfterWindow: boolean) {
   return !unheardAfterWindow && !r.played_at && !r.downloaded_at && !r.replied_at && !r.played_out_at;
 }
 
+/**
+ * The strongest thing that has happened to a send, whether its dot is lit, and when it happened. Lit (lime) from delivery
+ * on, like the receipt; only a track unheard for the whole window (`unheardDays`) stays dim. The Sent history and the Send
+ * page both print it.
+ */
+export function sendStep(r: Signals & { created_at: number }, unheardAfterWindow: boolean, unheardDays: number): { label: string; lit: boolean; at: number } {
+  if (r.played_out_at) return { label: "Played out", lit: true, at: r.played_out_at };
+  if (r.replied_at) return { label: "Replied", lit: true, at: r.replied_at };
+  if (r.downloaded_at) return { label: "Downloaded", lit: true, at: r.downloaded_at };
+  if (r.played_at) return { label: "Listened", lit: true, at: r.played_at };
+  if (unheardAfterWindow) return { label: `Not listened to in ${unheardDays} days`, lit: false, at: r.created_at };
+  return { label: "Delivered", lit: true, at: r.created_at };
+}
+
 /** The counts line under the title. Always the totals: it takes every row and knows nothing of the chips. */
 export function countsLine(rows: { listened: boolean }[]) {
   if (!rows.length) return "0 tracks sent";

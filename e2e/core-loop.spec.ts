@@ -56,7 +56,8 @@ test("the sender sends a WAV to the receiver's link", async ({ page }) => {
   await page.getByRole("button", { name: /^Send to / }).click();
   // Generous: on a cold dev build the first upload compiles the whole send path.
   await expect(page.getByText(/Your receipt is on its way to/)).toBeVisible({ timeout: 180_000 });
-  await expect(page.getByRole("heading", { name: /^Sent \(\d+\)$/ })).toBeVisible();
+  // The Send page's lists (option 58 A) sit beside the form at this width.
+  await expect(page.getByRole("heading", { name: "Your latest sends" })).toBeVisible();
 });
 
 test("the receiver keeps it and downloads it from Prepare for set", async ({ page }) => {
