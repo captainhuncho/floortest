@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { now, q } from "@/lib/db";
-import { allow, ipFrom } from "@/lib/ratelimit";
+import { allowAll, ipFrom } from "@/lib/ratelimit";
 import { pageOf } from "@/lib/page-of";
 
 export const runtime = "nodejs";
@@ -18,9 +18,13 @@ export const BEACONS_PER_IP_A_DAY = 200;
 
 export async function POST(req: Request) {
   const ip = ipFrom(req.headers);
-  if (!(await allow("tap_speed", ip, 10, 60_000))) return new NextResponse(null, { status: 204 });
-  if (!(await allow("tap_speed_ip_day", ip, BEACONS_PER_IP_A_DAY, 86_400_000))) return new NextResponse(null, { status: 204 });
-  if (!(await allow("tap_speed_all", "all", BEACONS_A_DAY, 86_400_000))) return new NextResponse(null, { status: 204 });
+  // All three limits in two queries (one insert, one count), not two each.
+  const ok = await allowAll([
+    { bucket: "tap_speed", key: ip, limit: 10, windowMs: 60_000 },
+    { bucket: "tap_speed_ip_day", key: ip, limit: BEACONS_PER_IP_A_DAY, windowMs: 86_400_000 },
+    { bucket: "tap_speed_all", key: "all", limit: BEACONS_A_DAY, windowMs: 86_400_000 },
+  ]);
+  if (!ok) return new NextResponse(null, { status: 204 });
   const body = (await req.json().catch(() => null)) as { device?: unknown; browser?: unknown; items?: unknown } | null;
   const items = Array.isArray(body?.items) ? body.items.slice(0, 30) : [];
   const device = ["phone", "tablet", "desktop"].includes(String(body?.device)) ? String(body?.device) : "";
