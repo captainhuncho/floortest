@@ -59,7 +59,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/folder-art/[kin
   // Deleted in between: the new file stays reserved and the nightly check removes it.
   if (old === undefined) return NextResponse.json({ error: GONE }, { status: 404 });
   await settleFile(key);
-  // The replaced cover was queued in the same transaction (trigger, migration 0156): delete it now.
+  // The replaced cover was queued in the same transaction (trigger, migration 0157): delete it now.
   if (old) await drainNow();
   return NextResponse.json({ ok: true });
 }

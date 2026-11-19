@@ -2507,15 +2507,23 @@ create index if not exists senders_name_trgm on senders using gin (lower(name) g
     // A cover the owner chooses for a project or a folder (owner, 19 Nov: "Change cover"). Additive: one nullable column
     // on each table and one more kind of reserved upload. The cover route writes it as the app (like collections.art_key),
     // so ft_person gets no new update grant; its existing select grant lets the desk read it under row-level security.
-    // A trigger queues the old cover for deletion in the same transaction that replaces, removes or deletes it (Safety,
-    // 19 Nov), so a crash before the file is deleted can't leave it orphaned; the caller then drains the queue.
     id: "0156_folder_art",
     sql: `alter table library_folders add column if not exists art_key text;
 alter table desk_folders add column if not exists art_key text;
 alter table file_reservations drop constraint if exists file_reservations_kind_check;
-alter table file_reservations add constraint file_reservations_kind_check check (kind in ('cover', 'collection_art', 'site_image', 'verification_proof', 'folder_art'));
-create or replace function ft_queue_folder_art() returns trigger language plpgsql security definer set search_path = public as $$ begin if old.art_key is not null and (tg_op = 'DELETE' or new.art_key is distinct from old.art_key) then insert into storage_deletions (file_key, reason, created_at) values (old.art_key, tg_table_name || ' cover ' || lower(tg_op), (extract(epoch from clock_timestamp()) * 1000)::bigint) on conflict (file_key) do nothing; end if; return null; end $$;
+alter table file_reservations add constraint file_reservations_kind_check check (kind in ('cover', 'collection_art', 'site_image', 'verification_proof', 'folder_art'));`,
+  },
+  {
+    // Queues a project's or folder's old cover for deletion in the same transaction that replaces, removes or deletes
+    // it (Safety, 19 Nov), so a crash before the route deletes the file can't orphan it; the caller then drains the
+    // queue. Only keys under folder-art/ are queued: the function runs as its owner, and must not let a person-role
+    // session queue any other file. Idempotent, and 0156 stays as applied.
+    id: "0157_folder_art_queue",
+    sql: `create or replace function ft_queue_folder_art() returns trigger language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$ begin if old.art_key like 'folder-art/%' and (tg_op = 'DELETE' or new.art_key is distinct from old.art_key) then insert into public.storage_deletions (file_key, reason, created_at) values (old.art_key, tg_table_name || ' cover ' || lower(tg_op), (extract(epoch from clock_timestamp()) * 1000)::bigint) on conflict (file_key) do nothing; end if; return null; end $$;
+revoke execute on function ft_queue_folder_art() from public;
+drop trigger if exists library_folders_art_gone on library_folders;
 create trigger library_folders_art_gone after update of art_key or delete on library_folders for each row execute function ft_queue_folder_art();
+drop trigger if exists desk_folders_art_gone on desk_folders;
 create trigger desk_folders_art_gone after update of art_key or delete on desk_folders for each row execute function ft_queue_folder_art();`,
   },
 ];

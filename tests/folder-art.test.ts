@@ -226,3 +226,14 @@ test("the old cover is queued in the same transaction, so a crash before it's de
   await drainNow();
   assert.ok(await gone(first), "the queue deletes it");
 });
+
+test("the trigger queues only cover keys: a row pointing at any other file can't get that file deleted", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const d = await desk();
+  const audio = `audio/${d.owner}-not-a-cover.wav`;
+  const id = Number((await q.get<{ id: number }>("INSERT INTO library_folders (user_id, name, created_at, art_key) VALUES (?, 'Trap', ?, ?) RETURNING id", d.owner, now(), audio))!.id);
+  await q.run("UPDATE library_folders SET art_key = NULL WHERE id = ?", id);
+  await q.run("UPDATE library_folders SET art_key = ? WHERE id = ?", audio, id);
+  await q.run("DELETE FROM library_folders WHERE id = ?", id);
+  assert.equal(await queued(audio), false, "never queued");
+});
