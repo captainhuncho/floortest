@@ -179,7 +179,7 @@ export async function ReviewPanel({
   // Small chips (redesign, 30 Oct): flat for facts, green for good news, amber for what needs attention before deciding,
   // red for a likely mistake.
   const tags = (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="contents">
       {caller && (
         <Chip>
           {t.decision === "kept" ? "Kept" : "Not for me"} by {caller}
@@ -220,7 +220,7 @@ export async function ReviewPanel({
     // facts, the sender's record, the team's comments, move, report, delete) is in one folded Details under it.
     <div className="flex flex-col gap-3">
       <section aria-labelledby={`track-h-${t.id}`} className={`${card} flex flex-col gap-3.5 md:flex-row md:items-start md:gap-5`}>
-        <div className="mx-auto w-full max-w-[200px] shrink-0 md:mx-0 md:w-28">
+        <div className="mx-auto w-full max-w-[148px] shrink-0 md:mx-0 md:w-28">
           {at && total > 1 && <StoryBars at={at} total={total} />}
           <div className="relative">
             {art ? (

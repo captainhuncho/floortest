@@ -229,7 +229,7 @@ export function DecisionRail({ track, selfHref, next, prev, children }: Props) {
 
   // Queue, final (option 42): Keep is the page's one lime button and comes first; the shortcut sits beside each word
   // where there's a keyboard. Phones: two big buttons, the other calls in a row under them. Laptops: one row.
-  const btn = "inline-flex min-h-13 items-center justify-center gap-2 rounded-[15px] px-3 text-[14.5px] font-semibold transition-colors disabled:opacity-40 md:min-h-11 md:rounded-[13px] md:px-5 md:text-[13px]";
+  const btn = "inline-flex min-h-13 items-center justify-center gap-2 whitespace-nowrap rounded-[15px] px-2.5 text-[14.5px] font-semibold transition-colors disabled:opacity-40 md:min-h-11 md:rounded-[13px] md:px-5 md:text-[13px]";
   const key = "rounded-[5px] border border-current px-1.5 font-mono text-[10px] font-semibold opacity-55 [@media(pointer:coarse)]:hidden";
   return (
     <div data-player-keys className="flex flex-col gap-2.5">
@@ -243,7 +243,7 @@ export function DecisionRail({ track, selfHref, next, prev, children }: Props) {
             aria-keyshortcuts="K"
             className={`${btn} border border-transparent bg-lime text-ink hover:bg-[#e2ff7a]`}
           >
-            <Icon name="heart" className="size-4" />
+            <Icon name="heart" className="size-4 max-[400px]:hidden" />
             {track.decision === "kept" ? "Kept ✓" : "Keep"} <kbd className={key}>K</kbd>
           </button>
           <button
@@ -253,7 +253,7 @@ export function DecisionRail({ track, selfHref, next, prev, children }: Props) {
             aria-keyshortcuts="X"
             className={`${btn} border text-bone ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line-2 bg-well hover:border-mute"}`}
           >
-            <Icon name="x" className="size-4" />
+            <Icon name="x" className="size-4 max-[400px]:hidden" />
             Not for me <kbd className={key}>X</kbd>
           </button>
         </div>
