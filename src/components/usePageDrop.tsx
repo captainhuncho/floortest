@@ -15,7 +15,7 @@ export function usePageDrop(enabled: boolean, onDrop: (d: Dropped) => void) {
     handler.current = onDrop;
   });
   useEffect(() => {
-    if (!enabled) return setDragging(false);
+    if (!enabled) return;
     const over = (e: DragEvent) => {
       if (!dragHasFiles(e)) return;
       e.preventDefault();
@@ -41,7 +41,8 @@ export function usePageDrop(enabled: boolean, onDrop: (d: Dropped) => void) {
       window.removeEventListener("dragend", end);
     };
   }, [enabled]);
-  return dragging;
+  // Turned off mid-drag (an upload started): no outline, without a state change inside the effect.
+  return enabled && dragging;
 }
 
 /** The outline shown over the page while files are dragged over it. Purely visual: it never takes the pointer. */

@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { QUIET } from "./ReceiptParts";
+import { DropOutline, usePageDrop } from "@/components/usePageDrop";
+import { skippedNote } from "@/lib/dropped-files";
 
 // "checking": the file has landed and is being checked. held: received while the virus scanner sleeps; it's attached
 // to the track after the next check, within about 20 minutes (src/lib/held-uploads.ts).
@@ -13,6 +15,12 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const done = existing.length + items.filter((i) => i.status === "done").length;
+  const [skipped, setSkipped] = useState("");
+  // A stems folder dropped on the page (laptop and desktop): its WAV and MP3 files, music-software projects left out.
+  const dragging = usePageDrop(!busy && done < max, (d) => {
+    setSkipped(skippedNote(d));
+    pick(d.audio);
+  });
 
   const patch = (i: number, p: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...p } : it)));
 
@@ -40,7 +48,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
     patch(i, done.ok ? { status: "done", progress: 1, held: !!done.held } : { status: "error", error: done.error || "The stem didn't save, so nothing was sent. Try again." });
   }
 
-  async function pick(files: FileList | null) {
+  async function pick(files: FileList | File[] | null) {
     if (!files?.length) return;
     const list = [...files].slice(0, Math.max(0, max - done));
     const offset = items.length;
@@ -76,6 +84,8 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
           ))}
         </ul>
       )}
+      {skipped && <p className="text-[12px] text-mute">{skipped}</p>}
+      <DropOutline show={dragging} label="Drop stems or a folder of them" />
       <input ref={input} type="file" multiple accept=".wav,.mp3,audio/wav,audio/mpeg" className="sr-only" aria-label="Choose stem files" onChange={(e) => (pick(e.target.files), (e.target.value = ""))} />
       <button
         type="button"

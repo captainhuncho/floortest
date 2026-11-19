@@ -62,7 +62,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
               <h2 id="loose-tracks" className="text-[15px] font-semibold tracking-[-0.015em] text-bone">
                 Not in a project
               </h2>
-              {canEdit && <OwnerUpload api="/api/music/upload" heading="Upload audio" fromMenu />}
+              {canEdit && <OwnerUpload api="/api/music/upload" heading="Upload audio" fromMenu pageDrop="project" />}
               <MusicList
                 canEdit={canEdit}
                 folders={projects.map((f) => ({ id: f.id, name: f.name }))}
