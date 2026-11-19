@@ -16,15 +16,16 @@ const rateRows = async () => (await import("../src/lib/db")).q.count("SELECT COU
 
 // Board #17 (19 Nov, owner's yes): the receipt page asks every 8 s, so one link polled faster is refused, and neither an
 // allowed nor a refused check writes to the database.
-test("one receipt link gets a burst of 3, then 429 with Retry-After, and no check writes a rate row", async () => {
+test("one receipt link gets a burst of 5 per connection, then 429 with Retry-After, and no check writes a rate row", async () => {
   const ask = await load();
   const before = await rateRows();
-  for (let i = 0; i < 3; i++) assert.equal((await ask("8.8.8.8", "tok-a")).status, 200, `check ${i + 1} of the burst`);
+  for (let i = 0; i < 5; i++) assert.equal((await ask("8.8.8.8", "tok-a")).status, 200, `check ${i + 1} of the burst`);
   const over = await ask("8.8.8.8", "tok-a");
   assert.equal(over.status, 429);
   assert.equal(over.headers.get("cache-control"), "no-store");
-  assert.ok(Number(over.headers.get("retry-after")) >= 1 && Number(over.headers.get("retry-after")) <= 8, "retry within one 8 s step");
+  assert.ok(Number(over.headers.get("retry-after")) >= 1 && Number(over.headers.get("retry-after")) <= 4, "retry within one 4 s step");
   assert.equal((await ask("8.8.8.8", "tok-b")).status, 200, "another link on the same connection is unaffected");
+  assert.equal((await ask("8.8.4.4", "tok-a")).status, 200, "the same link from another connection (the sender's phone and laptop) is unaffected");
   assert.equal(await rateRows(), before, "nothing written for allowed or refused checks");
 });
 
