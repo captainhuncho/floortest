@@ -202,7 +202,7 @@ function ProjectMenu({ p, showOpen, onMove }: { p: ProjectView; showOpen: boolea
 }
 
 /** One project as a folder in the list: the plain music tile (project tracks carry no artwork yet), its name and its tracks. The whole row opens it. */
-export function ProjectTile({ p, canEdit, folders, folderId = null }: { p: ProjectView; canEdit: boolean; /** The desk's project folders, for Move to folder. */ folders?: { id: number; name: string }[]; folderId?: number | null }) {
+export function ProjectTile({ p, canEdit, folders, folderId = null, tile = false }: { p: ProjectView; canEdit: boolean; /** The desk's project folders, for Move to folder. */ folders?: { id: number; name: string }[]; folderId?: number | null; /** A tile on phones too (Projects, option 63 A). */ tile?: boolean }) {
   const [moving, setMoving] = useState(false);
   return (
     <FolderRow
@@ -212,6 +212,7 @@ export function ProjectTile({ p, canEdit, folders, folderId = null }: { p: Proje
       covers={[]}
       empty={p.count === 0}
       line={`Project · ${trackCount(p.count)}`}
+      tile={tile}
       menu={canEdit && <ProjectMenu p={p} showOpen onMove={folders ? () => setMoving(true) : undefined} />}
     >
       {moving && folders && <MoveToFolder kind="project" itemId={p.id} itemName={p.name} current={folderId} folders={folders} onClose={() => setMoving(false)} />}
