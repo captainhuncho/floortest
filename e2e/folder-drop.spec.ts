@@ -1,4 +1,4 @@
-import { expect, logIn, test, wav } from "./fixtures";
+import { expect, hydrated, logIn, test, wav } from "./fixtures";
 
 /**
  * Dropping files on Projects (laptop and desktop; phones keep Upload audio): the upload opens with the WAV ready to add,
@@ -8,7 +8,8 @@ import { expect, logIn, test, wav } from "./fixtures";
 test("files dropped on Projects open the upload, and a music-software project file is skipped and named", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/projects");
-  await expect(page.getByRole("button", { name: "Upload audio" }).first()).toBeVisible();
+  // The drop listener starts once the page is interactive; a drop before that goes to the browser.
+  await hydrated(page.getByRole("button", { name: "Upload audio" }).first());
 
   const audio = wav(2).toString("base64");
   const dt = await page.evaluateHandle((b64) => {
