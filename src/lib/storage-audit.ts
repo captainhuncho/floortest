@@ -22,7 +22,9 @@ export async function expectedFiles(): Promise<ExpectedFile[]> {
      UNION ALL SELECT art_key, 'track artwork', NULL FROM tracks WHERE art_key IS NOT NULL
      UNION ALL SELECT file_key, 'stem', size FROM stems
      UNION ALL SELECT cover_key, 'profile cover', NULL FROM users WHERE cover_key IS NOT NULL
-     UNION ALL SELECT art_key, 'collection artwork', NULL FROM collections WHERE art_key IS NOT NULL`,
+     UNION ALL SELECT art_key, 'collection artwork', NULL FROM collections WHERE art_key IS NOT NULL
+     UNION ALL SELECT art_key, 'project cover', NULL FROM library_folders WHERE art_key IS NOT NULL
+     UNION ALL SELECT art_key, 'folder cover', NULL FROM desk_folders WHERE art_key IS NOT NULL`,
   );
   // Site images are referenced inside the site's content (drafts, published pages and saved versions).
   const content = await q.all<{ t: string }>("SELECT draft || published AS t FROM site_content UNION ALL SELECT body FROM site_content_versions");
