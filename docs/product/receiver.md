@@ -134,6 +134,8 @@ Where: `/dashboard/plans`, `/pricing`, `/request`, `/checkout`, `/dashboard/refe
 
 **Off in the beta** (switch `referrals`): the page and its links are hidden; invite links already shared still work. Bonus track slots for both sides once the friend's first track arrives
 
+Layout (option 64 A, owner 19 Nov): owners only. Phones start with "‹ Settings", then the title and one sentence on the deal. The invite card comes first: "Your invite link", the link in a 16px mono field (selects on focus, cut short with an ellipsis) with the lime Share invite beside it (share sheet, else copy with the "Invite link copied" toast), and "Code …" under it. The counts are one line, not tiles: "3 signed up · 1 active · +10 tracks earned" (numbers bold; tracks earned is the account's bonus). Then "People you invited": rows of at least 60px with initials, name and "Joined …", and on the right a lime dot with "+10 tracks each" once their first track arrived, or quiet "Waiting for their first track" (two lines on phones if needed). No chips. Nobody yet: "No one yet." and one sentence on who to invite, with the bonus from `REFERRAL_BONUS`. The footnote "Bonus tracks stay if you change plans." closes it. From tablet width up the page is about 760px wide and the list sits in one card. Lime only on Share invite and the dot.
+
 Where: `/dashboard/referrals`
 
 ## Notes

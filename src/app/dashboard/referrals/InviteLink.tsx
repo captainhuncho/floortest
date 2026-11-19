@@ -5,12 +5,18 @@ import { useToast } from "@/components/Toast";
 export function InviteLink({ link, code }: { link: string; code: string }) {
   const toast = useToast();
   return (
-    <div>
-      <p className="text-[11.5px] font-semibold text-mute">Your invite link</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <input readOnly value={link} aria-label="Invite link" className="input min-w-0 flex-1 font-mono" onFocus={(e) => e.currentTarget.select()} />
+    <div className="flex flex-col gap-2">
+      <p className="text-[13px] font-semibold text-mute">Your invite link</p>
+      <div className="flex items-center gap-2">
+        <input
+          readOnly
+          value={link}
+          aria-label="Invite link"
+          className="input min-h-11 min-w-0 flex-1 truncate rounded-xl font-mono text-[16px]!"
+          onFocus={(e) => e.currentTarget.select()}
+        />
         <button
-          className="btn-lime min-h-11 rounded-[13px] px-4"
+          className="btn-lime min-h-11 shrink-0 rounded-[13px] px-4"
           onClick={async () => {
             if (navigator.share) {
               try {
@@ -25,8 +31,8 @@ export function InviteLink({ link, code }: { link: string; code: string }) {
           Share invite
         </button>
       </div>
-      <p className="mt-2 text-[11.5px] text-mute">
-        Code <span className="font-mono text-bone">{code}</span>
+      <p className="text-[12px] text-mute">
+        Code <span className="font-mono font-semibold text-bone">{code}</span>
       </p>
     </div>
   );
