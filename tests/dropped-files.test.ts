@@ -49,3 +49,13 @@ test("without the entry API the plain files are filtered the same way", async ()
   assert.equal(skippedNote({ skipped: [], dawProject: false }), "");
   assert.equal(skippedNote({ skipped: ["a", "b", "c", "d", "e"], dawProject: false }), "Skipped 5 items that aren't WAV or MP3: a, b, c and 2 more.");
 });
+
+test("a huge drop takes the first 200 tracks and says how many were left out", async () => {
+  const d = await readEntries([dir("Sample pack", Array.from({ length: 205 }, (_, i) => file(`${i + 1} hit.wav`)))]);
+  assert.equal(d.audio.length, 200);
+  assert.equal(d.over, 5);
+  assert.equal(skippedNote(d), "Took the first 200 tracks; 5 more left out, so drop those next.");
+  const loose = await readDrop(Array.from({ length: 201 }, (_, i) => new File(["x"], `${i}.mp3`)));
+  assert.equal(loose.audio.length, 200);
+  assert.equal(loose.over, 1);
+});

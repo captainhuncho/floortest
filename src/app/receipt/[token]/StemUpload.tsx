@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { QUIET } from "./ReceiptParts";
 import { DropOutline, usePageDrop } from "@/components/usePageDrop";
-import { skippedNote } from "@/lib/dropped-files";
+import { DROP_FAILED, skippedNote } from "@/lib/dropped-files";
 
 // "checking": the file has landed and is being checked. held: received while the virus scanner sleeps; it's attached
 // to the track after the next check, within about 20 minutes (src/lib/held-uploads.ts).
@@ -17,10 +17,14 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
   const done = existing.length + items.filter((i) => i.status === "done").length;
   const [skipped, setSkipped] = useState("");
   // A stems folder dropped on the page (laptop and desktop): its WAV and MP3 files, music-software projects left out.
-  const dragging = usePageDrop(!busy && done < max, (d) => {
-    setSkipped(skippedNote(d));
-    pick(d.audio);
-  });
+  const dragging = usePageDrop(
+    !busy && done < max,
+    (d) => {
+      setSkipped(skippedNote(d));
+      pick(d.audio);
+    },
+    () => setSkipped(DROP_FAILED),
+  );
 
   const patch = (i: number, p: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...p } : it)));
 
@@ -54,7 +58,14 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
     const offset = items.length;
     setItems((prev) => [...prev, ...list.map((f) => ({ name: f.name, status: "waiting" as const, progress: 0 }))]);
     setBusy(true);
-    for (let k = 0; k < list.length; k++) await uploadOne(list[k], offset + k); // one at a time keeps phones responsive
+    // One at a time keeps phones responsive; a failed request marks that stem and the rest carry on (never stuck busy).
+    for (let k = 0; k < list.length; k++) {
+      try {
+        await uploadOne(list[k], offset + k);
+      } catch {
+        patch(offset + k, { status: "error", error: "The upload was interrupted. Check your signal and try again." });
+      }
+    }
     setBusy(false);
   }
 

@@ -8,11 +8,11 @@ import { dragHasFiles, entriesOf, readDrop, type Dropped } from "@/lib/dropped-f
  * page can show where they'll land. Links or text dragged around the page are left alone. A drop is a laptop or desktop
  * extra: every page that uses this keeps its own button and file picker (phones can't drag files).
  */
-export function usePageDrop(enabled: boolean, onDrop: (d: Dropped) => void) {
+export function usePageDrop(enabled: boolean, onDrop: (d: Dropped) => void, onFail: () => void) {
   const [dragging, setDragging] = useState(false);
-  const handler = useRef(onDrop);
+  const handler = useRef({ onDrop, onFail });
   useEffect(() => {
-    handler.current = onDrop;
+    handler.current = { onDrop, onFail };
   });
   useEffect(() => {
     if (!enabled) return;
@@ -27,7 +27,12 @@ export function usePageDrop(enabled: boolean, onDrop: (d: Dropped) => void) {
       if (!dragHasFiles(e)) return;
       e.preventDefault();
       setDragging(false);
-      handler.current(await readDrop(entriesOf(e.dataTransfer!)));
+      // A folder the browser can't read (permissions, a file moved mid-read) says so instead of failing silently.
+      try {
+        handler.current.onDrop(await readDrop(entriesOf(e.dataTransfer!)));
+      } catch {
+        handler.current.onFail();
+      }
     };
     const end = () => setDragging(false);
     window.addEventListener("dragover", over);

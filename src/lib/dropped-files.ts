@@ -24,7 +24,12 @@ export type Dropped = {
   dawProject: boolean;
   /** The folder's name when exactly one folder (and nothing else) was dropped. */
   folder: string | null;
+  /** WAV and MP3 files past the first MAX_DROP, left out so a huge drop can't freeze the tab. */
+  over: number;
 };
+
+/** The most audio files one drop takes (each is read for its tags as it lands). */
+export const MAX_DROP = 200;
 
 const AUDIO = /\.(wav|mp3)$/i;
 /** Project bundles that are really folders (macOS packages): skipped whole. */
@@ -49,7 +54,7 @@ async function children(dir: DropEntry): Promise<DropEntry[]> {
 
 /** Walks the dropped entries. Call `entriesOf` inside the drop handler first: the browser empties them after it. */
 export async function readEntries(entries: DropEntry[]): Promise<Dropped> {
-  const out: Dropped = { audio: [], skipped: [], dawProject: false, folder: null };
+  const out: Dropped = { audio: [], skipped: [], dawProject: false, folder: null, over: 0 };
   const walk = async (e: DropEntry): Promise<void> => {
     if (hidden(e.name)) return;
     if (e.isDirectory) {
@@ -66,7 +71,10 @@ export async function readEntries(entries: DropEntry[]): Promise<Dropped> {
       }
       return;
     }
-    if (AUDIO.test(e.name)) out.audio.push(await new Promise<File>((ok, fail) => e.file!(ok, fail)));
+    if (AUDIO.test(e.name)) {
+      if (out.audio.length >= MAX_DROP) out.over++;
+      else out.audio.push(await new Promise<File>((ok, fail) => e.file!(ok, fail)));
+    }
     else {
       out.skipped.push(e.name);
       if (DAW_FILE.test(e.name)) out.dawProject = true;
@@ -88,18 +96,23 @@ export function entriesOf(dt: DataTransfer): DropEntry[] | File[] {
 export async function readDrop(taken: DropEntry[] | File[]): Promise<Dropped> {
   if (taken.length && taken[0] instanceof File) {
     const files = taken as File[];
-    return { audio: files.filter((f) => AUDIO.test(f.name)), skipped: files.filter((f) => !AUDIO.test(f.name)).map((f) => f.name), dawProject: files.some((f) => DAW_FILE.test(f.name)), folder: null };
+    const audio = files.filter((f) => AUDIO.test(f.name));
+    return { audio: audio.slice(0, MAX_DROP), over: Math.max(0, audio.length - MAX_DROP), skipped: files.filter((f) => !AUDIO.test(f.name)).map((f) => f.name), dawProject: files.some((f) => DAW_FILE.test(f.name)), folder: null };
   }
   return readEntries(taken as DropEntry[]);
 }
 
 /** One sentence on what was left out, or "" when nothing was. */
-export function skippedNote(d: Pick<Dropped, "skipped" | "dawProject">): string {
-  if (!d.skipped.length) return "";
+export function skippedNote(d: Pick<Dropped, "skipped" | "dawProject"> & { over?: number }): string {
+  const over = d.over ? `Took the first ${MAX_DROP} tracks; ${d.over} more left out, so drop those next.` : "";
+  if (!d.skipped.length) return over;
   const names = d.skipped.slice(0, 3).join(", ") + (d.skipped.length > 3 ? ` and ${d.skipped.length - 3} more` : "");
   const what = d.skipped.length === 1 ? "1 item that isn't WAV or MP3" : `${d.skipped.length} items that aren't WAV or MP3`;
-  return `Skipped ${what}: ${names}.${d.dawProject ? " Music-software projects can't be played here, so export the tracks as WAV or MP3 first." : ""}`;
+  return `Skipped ${what}: ${names}.${d.dawProject ? " Music-software projects can't be played here, so export the tracks as WAV or MP3 first." : ""}${over ? ` ${over}` : ""}`;
 }
+
+/** Said when a drop couldn't be read. */
+export const DROP_FAILED = "Couldn't read what was dropped. Try again, or choose the files.";
 
 /** True when a drag carries files (not a link or selected text being dragged). */
 export const dragHasFiles = (e: { dataTransfer: DataTransfer | null }) => !!e.dataTransfer?.types.includes("Files");

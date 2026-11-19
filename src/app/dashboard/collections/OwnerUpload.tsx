@@ -8,7 +8,7 @@ import { analyzeAudio } from "@/lib/analyze";
 import { fillFromFile, readTags } from "@/lib/tags";
 import { Icon } from "@/components/Kit";
 import { DropOutline, usePageDrop } from "@/components/usePageDrop";
-import { skippedNote, type Dropped } from "@/lib/dropped-files";
+import { DROP_FAILED, skippedNote, type Dropped } from "@/lib/dropped-files";
 import { createProject } from "../actions/music";
 import { GHOST, LIME } from "../kitButtons";
 
@@ -58,13 +58,25 @@ export function OwnerUpload({
   // A dropped folder's name: the project made for these tracks when they're added (pageDrop "project").
   const [newProject, setNewProject] = useState<string | null>(null);
   const madeProject = useRef<number | null>(null);
-  const dragging = usePageDrop(!!pageDrop && !busy, (d: Dropped) => {
-    setOpen(true);
-    setSkipped(skippedNote(d));
-    if (pageDrop === "project" && d.folder && !items.length) setNewProject(d.folder.slice(0, 80));
-    if (d.audio.length) pick(d.audio);
-    else setError("Nothing to add: drop WAV or MP3 files, or a folder of them.");
-  });
+  const dragging = usePageDrop(
+    !!pageDrop && !busy,
+    (d: Dropped) => {
+      setOpen(true);
+      setSkipped(skippedNote(d));
+      if (!d.audio.length) return setError("Nothing to add: drop WAV or MP3 files, or a folder of them.");
+      // Once a dropped folder's project is filled, the next drop starts fresh instead of joining it unasked.
+      const finished = madeProject.current !== null && items.length > 0 && items.every((it) => it.status === "done");
+      if (finished) {
+        madeProject.current = null;
+        setNewProject(null);
+      }
+      const fresh = finished || !items.length;
+      // 60: the longest name the server keeps for a folder, so the heading matches what's saved.
+      if (pageDrop === "project" && d.folder && fresh) setNewProject(d.folder.slice(0, 60));
+      pick(d.audio, finished);
+    },
+    () => (setOpen(true), setError(DROP_FAILED)),
+  );
   const input = useRef<HTMLInputElement>(null);
   // "Upload audio" in the "+" menu goes straight to the file picker. The input is always on the page in this mode, so
   // the click happens inside the tap (iOS Safari opens a picker only from a tap); choosing files opens the rest.
@@ -76,13 +88,13 @@ export function OwnerUpload({
   }, [fromMenu]);
   const patch = (i: number, p: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...p } : it)));
 
-  async function pick(files: FileList | File[] | null) {
+  async function pick(files: FileList | File[] | null, replace = false) {
     setError("");
     const chosen = Array.from(files ?? []).filter((f) => /\.(wav|mp3)$/i.test(f.name));
     if (!chosen.length) return setError("Choose WAV or MP3 files.");
     const fresh: Item[] = chosen.map((file) => ({ file, title: file.name.replace(/\.(wav|mp3)$/i, ""), artist: "", status: "ready", progress: 0 }));
-    const start = items.length;
-    setItems((list) => [...list, ...fresh]);
+    const start = replace ? 0 : items.length;
+    setItems((list) => [...(replace ? [] : list), ...fresh]);
     // Fills only what the owner hasn't changed while the file was being read (src/lib/tags.ts fillFromFile).
     fresh.forEach((it, k) =>
       readTags(it.file).then((read) =>
