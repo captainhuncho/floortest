@@ -2503,4 +2503,14 @@ create index if not exists tracks_artist_trgm on tracks using gin (lower(artist)
 create index if not exists tracks_genre_trgm on tracks using gin (lower(coalesce(genre, '')) gin_trgm_ops);
 create index if not exists senders_name_trgm on senders using gin (lower(name) gin_trgm_ops);`,
   },
+  {
+    // A cover the owner chooses for a project or a folder (owner, 19 Nov: "Change cover"). Additive: one nullable column
+    // on each table and one more kind of reserved upload. The cover route writes it as the app (like collections.art_key),
+    // so ft_person gets no new update grant; its existing select grant lets the desk read it under row-level security.
+    id: "0156_folder_art",
+    sql: `alter table library_folders add column if not exists art_key text;
+alter table desk_folders add column if not exists art_key text;
+alter table file_reservations drop constraint if exists file_reservations_kind_check;
+alter table file_reservations add constraint file_reservations_kind_check check (kind in ('cover', 'collection_art', 'site_image', 'verification_proof', 'folder_art'));`,
+  },
 ];

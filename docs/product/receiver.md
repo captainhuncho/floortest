@@ -60,6 +60,8 @@ Where: collection page (`CalloutShare.tsx`), `GET`/`POST /api/callout-card/[id]`
 
 **Folders (owner, 16 Nov, in the Desk: "A"; server built on `backend/folder-kinds`, screens with Build):** callouts and projects each get their own folders to organise them: a callout folder holds only callouts, a project folder only projects (EPs by genre or name, say), never mixed. One level, private to the desk; owner and A&R / Admins create, rename, delete and file; deleting a folder keeps what was in it. **Move to project** takes several picked tracks at once, into a project, a new one named on the spot, or none (own uploads only; a sender's track is skipped; stops when Projects are full). Code: `src/lib/desk-folders.ts`, `dashboard/actions/folders.ts`, `moveManyToProjects` in `dashboard/actions/music.ts`.
 
+**Covers (owner, 19 Nov: "add Change cover for projects and folders"):** a project's or folder's ··· menu has **Change cover** (pick a JPG, PNG or WebP up to 8 MB; checked by its bytes and stored as a 1000px WebP) and, once there is one, **Remove cover**. The cover shows on its tile and on the project's own page; without one, a project keeps the plain music tile and a folder the covers of what's inside. Owner and A&R / Admins change it; everyone working the desk sees it; nobody else can load it (the image comes through `/api/folder-art/[kind]/[id]`, checked on every request). Replacing or removing a cover, deleting its project or folder, or deleting the account deletes the image. Code: `src/lib/folder-art.ts`, `dashboard/collections/CoverChoice.tsx`.
+
 Where: `/dashboard/projects`, `/dashboard/projects/[id]`, `src/lib/library.ts`, `/api/music/*`
 
 ## Queue
