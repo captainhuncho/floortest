@@ -1,11 +1,10 @@
-import { EmptyState } from "@/components/Feedback";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { q, type EventRow } from "@/lib/db";
 import { AUDIT_LABELS, recentAudit, type AuditAction } from "@/lib/audit";
 import { prefsForView } from "@/lib/notify";
-import { CARD, Icon, PageHead, SEG, segTab, type IconName } from "@/components/Kit";
+import { Icon, PageHead, type IconName } from "@/components/Kit";
 import { SetLog, type LogEntry } from "./SetLog";
 
 export const metadata = { title: "Activity — FloorTest" };
@@ -39,7 +38,7 @@ const EVENT: Record<EventRow["type"], string> = {
   shared: "Shared with a colleague",
 };
 
-/** Each desk event's icon; a keep is good news (green), a reply our own words (lime). */
+/** Each desk event's icon; a keep's heart is the one tinted (lime), everything else in the text colour. */
 const EVENT_ICON: Record<EventRow["type"], { icon: IconName; tone?: LogEntry["tone"] }> = {
   submitted: { icon: "inbox" },
   played: { icon: "head" },
@@ -47,7 +46,7 @@ const EVENT_ICON: Record<EventRow["type"], { icon: IconName; tone?: LogEntry["to
   kept: { icon: "heart", tone: "up" },
   passed: { icon: "x" },
   note: { icon: "tag" },
-  reply: { icon: "reply", tone: "acc" },
+  reply: { icon: "reply" },
   deleted: { icon: "x" },
   expired: { icon: "clock" },
   moved: { icon: "folder" },
@@ -60,7 +59,6 @@ const EVENT_ICON: Record<EventRow["type"], { icon: IconName; tone?: LogEntry["to
 /** Your own actions' icons, by what kind of thing they touched; anything not listed gets the plain activity line. */
 function auditIcon(action: AuditAction): { icon: IconName; tone?: LogEntry["tone"] } {
   if (action === "kept") return { icon: "heart", tone: "up" };
-  if (action === "replied" || action === "reply_approved") return { icon: "reply", tone: "acc" };
   const byPrefix: [string, IconName][] = [
     ["signin_alerts", "shield"],
     ["sign", "lock"],
@@ -159,7 +157,7 @@ export default async function Activity({ searchParams }: { searchParams: Promise
 
   return (
     <div className="page-gutter py-4 sm:py-7">
-      <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-[760px] min-w-0 flex-col gap-4">
         <Link href="/dashboard/settings" className="tap-text -ml-0.5 inline-flex w-fit items-center gap-1.5 text-[12px] text-mute hover:text-bone md:hidden">
           <Icon name="chev" className="size-3.5 rotate-180" />
           <span>
@@ -176,15 +174,18 @@ export default async function Activity({ searchParams }: { searchParams: Promise
               : "What happened on your desk, including what senders did."
           }
         />
-        {/* Five filters outgrow a phone: the track scrolls sideways inside the gutter, never the page. */}
+        {/* Five filters outgrow a phone: the row scrolls sideways inside the gutter, never the page. The current one sits on a
+            quiet card with a hairline (not lime, not a segmented box). */}
         <nav aria-label="Filter" className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
-          <div className={SEG}>
+          <div className="flex w-max gap-1.5">
             {FILTERS.map(([k, label]) => (
               <Link
                 key={k}
                 href={k === "you" ? "/dashboard/activity" : `/dashboard/activity?f=${k}`}
                 aria-current={k === key ? "page" : undefined}
-                className={`${segTab(k === key)} pointer-coarse:min-h-11`}
+                className={`inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-[10px] border px-3 text-[13px] font-semibold pointer-coarse:min-h-11 ${
+                  k === key ? "border-line bg-card text-bone" : "border-transparent text-mute hover:text-bone"
+                }`}
               >
                 {label}
               </Link>
@@ -194,10 +195,15 @@ export default async function Activity({ searchParams }: { searchParams: Promise
         {entries.length ? (
           <SetLog entries={entries} tz={prefs.tz} />
         ) : (
-          <div className={`${CARD} px-3`}>
-            <EmptyState icon="activity" action={{ href: empty.href, label: empty.action }}>
-              {empty.text}
-            </EmptyState>
+          // Empty: today's sentence and the one main action, no card around it.
+          <div className="flex flex-col items-center gap-3 px-2 py-11 text-center">
+            <span aria-hidden className="grid size-10 place-items-center rounded-xl bg-card text-mute">
+              <Icon name="activity" className="size-5" />
+            </span>
+            <p className="max-w-prose text-[14px] leading-[1.5] text-mute">{empty.text}</p>
+            <Link href={empty.href} className="btn-lime min-h-11 w-full max-w-xs text-[14px]">
+              {empty.action}
+            </Link>
           </div>
         )}
       </div>
