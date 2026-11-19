@@ -74,7 +74,11 @@ export function MoreMenu({ trackId, href, onReply, download }: { trackId: number
     after.current = null;
     if (!run) return;
     const el = wrap.current;
-    if (was.current !== "sheet" || !el) return run();
+    // The pop-over's item has gone with it: put focus back on More first, so a layer opened next (Reply) hands it back there.
+    if (was.current !== "sheet" || !el) {
+      button.current?.focus({ preventScroll: true });
+      return run();
+    }
     // The sheet's dialog hands focus back to the button when its close event fires, a moment after this. Go once that
     // has happened, or the button takes focus from the control just picked. The event doesn't bubble: catch it going down.
     el.addEventListener("close", () => setTimeout(run), { capture: true, once: true });
