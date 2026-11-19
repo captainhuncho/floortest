@@ -252,7 +252,14 @@ export function ListRows({
               {i + 1}
             </span>
           );
-          const play = (
+          // A folder's page (numbered): no play button, tapping the track plays it; pausing is the player's (owner, 19 Nov).
+          const tapPlay = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            setSelected(r.id);
+            if (!isCurrent) player.play(toPlayer(r), queue);
+            else if (!player.playing) player.toggle();
+          };
+          const play = !numbered && (
             <button
               type="button"
               onClick={(e) => {
@@ -268,7 +275,7 @@ export function ListRows({
           );
           const name = (
             <>
-              <span className={`truncate text-[13px] ${waiting ? "font-semibold text-bone" : "font-medium text-mute"}`}>
+              <span className={`truncate text-[13px] ${waiting ?"font-semibold text-bone" : "font-medium text-mute"}`}>
                 {waiting && <span className="sr-only">Needs review: </span>}
                 {r.title}
                 {r.duplicateOf && <span className="ml-2 text-[11.5px] font-normal text-danger">· Possible duplicate</span>}
@@ -304,9 +311,15 @@ export function ListRows({
                     {play}
                   </>
                 )}
-                <Link href={queueHref(r.id)} className="flex min-w-0 flex-1 flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
-                  {name}
-                </Link>
+                {numbered ? (
+                  <button type="button" onClick={tapPlay} aria-label={`Play ${r.title}`} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5 text-left">
+                    {name}
+                  </button>
+                ) : (
+                  <Link href={queueHref(r.id)} className="flex min-w-0 flex-1 flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    {name}
+                  </Link>
+                )}
                 <span className="shrink-0">{tag(r, decision)}</span>
               </div>
 
@@ -324,18 +337,24 @@ export function ListRows({
                 )}
                 {no}
                 {play}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelected(r.id);
-                    setExpanded((x) => (x === r.id ? null : r.id));
-                  }}
-                  aria-expanded={open}
-                  className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
-                >
-                  {name}
-                </button>
+                {numbered ? (
+                  <button type="button" onClick={tapPlay} aria-label={`Play ${r.title}`} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5 text-left">
+                    {name}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected(r.id);
+                      setExpanded((x) => (x === r.id ? null : r.id));
+                    }}
+                    aria-expanded={open}
+                    className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+                  >
+                    {name}
+                  </button>
+                )}
                 <div className="hidden w-[min(28%,240px)] min-w-0 @4xl:block" onClick={(e) => e.stopPropagation()}>
                   <PlayerWaveform
                     on={isCurrent}
