@@ -232,6 +232,13 @@ html:has([data-batch-bar]) [data-toast-region] { bottom: calc(env(safe-area-inse
 /* The pair steps aside while the on-screen keyboard is up, and the mini player rises in when a track starts. */
 [data-bottom-pair] { transition: opacity 180ms var(--ease-out), transform 220ms var(--ease-out), visibility 0s; }
 [data-bottom-pair][data-typing] { opacity: 0; transform: translateY(16px); visibility: hidden; pointer-events: none; transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms; }
+/* Send buttons pinned on phones (Send music, option 58 A) sit above the menu, and above the mini player when it shows,
+   so the pair never covers them; while typing the pair hides and they drop to the bottom edge. */
+@media (width < 48rem) {
+  html:has([data-bottom-pair]) [data-send-bar] { --pair: 62px; z-index: 35; bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + var(--pair) + 0.5rem); }
+  html:has([data-bottom-pair]):has([data-mini-player]) [data-send-bar] { --pair: 134px; }
+  html:has([data-bottom-pair][data-typing]) [data-send-bar] { bottom: 0; }
+}
 [data-mini-player], [data-player-bar] {
   transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
   @starting-style { opacity: 0; transform: translateY(14px); }

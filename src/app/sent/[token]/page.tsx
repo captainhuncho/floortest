@@ -8,7 +8,7 @@ import { readSenderLink, revokeSenderLink } from "@/lib/senderLink";
 import { RETAIN_UNREVIEWED_DAYS, unheardAfterWindow } from "@/lib/plans";
 import { maskEmail } from "@/lib/mask-email";
 import { receiptPath } from "@/lib/receipt-token";
-import { countsLine, isListened, isWaiting } from "@/lib/sent-groups";
+import { countsLine, isListened, isWaiting, sendStep } from "@/lib/sent-groups";
 import { Disc, QUIET, SENT_MAIN } from "../parts";
 import { SentList, type SentRow } from "./SentList";
 
@@ -48,15 +48,12 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
      WHERE lower(s.email) = ? AND u.suspended_at IS NULL ORDER BY t.created_at DESC LIMIT 300`,
     email,
   );
-  // The strongest thing that has happened, and when. Lit (lime) from delivery on, like the receipt; only a track unheard for
-  // 90 days stays dim.
-  const status = (r: (typeof rows)[number]): [string, boolean, number] =>
-    r.played_out_at ? ["Played out", true, r.played_out_at] : r.replied_at ? ["Replied", true, r.replied_at] : r.downloaded_at ? ["Downloaded", true, r.downloaded_at] : r.played_at ? ["Listened", true, r.played_at] : unheardAfterWindow(r) ? [`Not listened to in ${RETAIN_UNREVIEWED_DAYS} days`, false, r.created_at] : ["Delivered", true, r.created_at];
   // What the list in the browser gets: the words each row prints and the three values its grouping and chips read.
   // No track id, sealed token or raw timestamps of what the receiver did.
   const now = Date.now();
   const sends: SentRow[] = rows.map((r) => {
-    const [label, lit, at] = status(r);
+    // The strongest thing that has happened, and when (lib/sent-groups).
+    const { label, lit, at } = sendStep(r, unheardAfterWindow(r), RETAIN_UNREVIEWED_DAYS);
     return {
       href: receiptPath(r),
       title: r.title,

@@ -7,137 +7,97 @@ import { redirect } from "next/navigation";
 import { VerifyBanner } from "../VerifyBanner";
 import { sentBy } from "@/lib/sent";
 import { APP_URL } from "@/lib/mail";
-import { unheardAfterWindow } from "@/lib/plans";
-import { SendComposer } from "./SendComposer";
-import { CARD, Chip, Icon, PageHead, SectionHead } from "@/components/Kit";
+import { RETAIN_UNREVIEWED_DAYS, unheardAfterWindow } from "@/lib/plans";
+import { ago } from "@/lib/format";
+import { countsLine, isListened, isWaiting, sendStep } from "@/lib/sent-groups";
 import { receiptPath } from "@/lib/receipt-token";
+import { Icon } from "@/components/Kit";
+import { SentList, type SentRow } from "../../sent/[token]/SentList";
+import { SendComposer } from "./SendComposer";
+import type { SentBefore } from "./SendLists";
 
 export const metadata = { title: "Send — FloorTest" };
 
-/** Send your own music to another user's link, and see what happened to everything you've sent. */
-export default async function Send({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
+/** How many people Sent to before shows, and how many sends Your latest sends shows (option 58 A). */
+const BEFORE_MAX = 3;
+const LATEST_MAX = 3;
+
+/**
+ * Send your own music to another user's link (option 58 A): who it's for first, then the link page's own form. Beside it
+ * (or under it on phones) the people you've sent to before and your latest sends; ?all=1 shows every send.
+ */
+export default async function Send({ searchParams }: { searchParams: Promise<{ to?: string; all?: string }> }) {
   const user = await requireRole("admin");
   if (!(await switchOn("send_music", user))) redirect("/dashboard/floor");
   await trackUse(user.id, "send");
-  const to = ((await searchParams).to || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "").split("/").pop()!.replace(/^@/, "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
+  const params = await searchParams;
+  const to = (params.to || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "").split("/").pop()!.replace(/^@/, "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
+  // Only this account's own sends (lib/sent: scoped on the server, named columns).
   const [sent, view] = await Promise.all([sentBy(user), viewingAs()]);
-  type Sent = (typeof sent)[number];
   const t = now();
-  const ago = (ms: number) => {
-    const m = Math.max(1, Math.floor((t - ms) / 60_000));
-    return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.floor(m / 60)}h ago` : `${Math.floor(m / 1440)}d ago`;
-  };
-  // The most recent thing that happened, in words.
-  const latest = (r: Sent) => {
-    const ev = ([["Played out", r.played_out_at], ["Replied", r.replied_at], ["Downloaded", r.downloaded_at], ["Listened", r.played_at]] as const).filter(([, at]) => at).sort((x, y) => Number(y[1]) - Number(x[1]))[0];
-    if (ev) return `${ev[0]} ${ago(Number(ev[1]))}`;
-    return unheardAfterWindow(r, t) ? "Not listened to in 90 days" : `Delivered ${ago(r.created_at)} · not played yet`;
-  };
 
-  // Lime from delivery on, like the receipt; a track unheard for 90 days stays dim.
-  const lit = (r: Sent) => !!r.played_at || !unheardAfterWindow(r, t);
+  // What the browser gets for each send: the words a row prints, never the track id, token or the receiver's timestamps.
+  const sends: SentRow[] = sent.map((r) => {
+    const unheard = unheardAfterWindow(r, t);
+    const { label, lit, at } = sendStep(r, unheard, RETAIN_UNREVIEWED_DAYS);
+    return {
+      href: receiptPath(r),
+      title: r.title,
+      receiver: r.receiver,
+      label,
+      lit,
+      when: lit ? ago(at, t) : null,
+      sentAt: r.created_at,
+      listened: isListened(r),
+      waiting: isWaiting(r, unheard),
+    };
+  });
 
-  // The last 10 days stay open; anything older folds under "Older than 10 days".
-  const cutoff = now() - 10 * 86_400_000;
-  const recent = sent.filter((r) => Number(r.created_at) >= cutoff);
-  const older = sent.filter((r) => Number(r.created_at) < cutoff);
-  // This week's sends, for the count beside the list's title.
-  const week = sent.filter((r) => Number(r.created_at) >= t - 7 * 86_400_000).length;
-  const row = (r: Sent) => (
-    <li key={r.id} className="border-t border-line first:border-t-0">
-      <Link
-        href={receiptPath(r)}
-        className="group/row -mx-1.5 flex min-h-11 items-center gap-2 rounded-[11px] px-1.5 py-2.5 hover:bg-well focus-visible:bg-well focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-lime active:bg-well"
-      >
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-semibold text-bone">
-            {r.artist} - {r.title}
-          </span>
-          <span className="block truncate text-[11.5px] text-mute">
-            to {r.receiver} <span className="font-mono text-[11px]">/{r.handle}</span> · {new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-          </span>
-          <span className={`mt-1 flex items-center gap-1.5 text-[11px] ${lit(r) ? "font-semibold text-bone" : "text-faint"}`}>
-            <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${lit(r) ? "bg-lime" : "border border-line-2"}`} />
-            {latest(r)}
-          </span>
-        </span>
-        <span className="sr-only">Track</span>
-        <span aria-hidden className="text-mute transition-transform group-hover/row:translate-x-0.5 group-hover/row:text-bone motion-reduce:transition-none">
-          <Icon name="chev" className="size-4" />
-        </span>
-      </Link>
-    </li>
-  );
+  // Sent to before: the people from your own sends, newest first, once each, with the latest step of your last send to them.
+  const before: SentBefore[] = [];
+  sent.forEach((r, i) => {
+    if (before.length >= BEFORE_MAX || before.some((b) => b.handle === r.handle)) return;
+    const s = sends[i];
+    before.push({ handle: r.handle, name: r.receiver, label: s.label, lit: s.lit, when: s.when });
+  });
+  // Your latest sends: only what a row prints.
+  const latest = sends.slice(0, LATEST_MAX).map(({ href, title, receiver, label, lit, when }) => ({ href, title, receiver, label, lit, when }));
+
+  const banner = !view && !user.email_verified_at && <VerifyBanner email={user.email} />;
+
+  if (params.all === "1") {
+    // The full list, as the Sent history shows it (option 50): grouped by when it was sent, each row opens its receipt.
+    return (
+      <>
+        {banner}
+        <div className="page-gutter py-4 sm:py-7">
+          <div className="mx-auto flex w-full max-w-2xl min-w-0 flex-col">
+            <Link href="/dashboard/send" className="-ml-1 inline-flex min-h-11 w-fit items-center gap-1 rounded-[11px] px-1 text-[13px] text-mute hover:text-bone">
+              <Icon name="chev" className="size-4 rotate-180" />
+              Send music
+            </Link>
+            <h1 className="mt-1 text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">Everything you&apos;ve sent</h1>
+            <p className="tnum mt-1 text-[13px] text-mute">{countsLine(sends)}</p>
+            {sends.length ? <SentList rows={sends} now={t} /> : <p className="py-8 text-center text-[13px] text-mute">Nothing sent yet. Each track gets a private receipt.</p>}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-    {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
-    {/*
-      One column on phones and tablets: who it's for, the send form, then what you've sent. From 1280px the sending
-      sits on the left and the Sent list on the right, like the mock.
-    */}
-    <div className="page-gutter py-4 sm:py-7">
-      <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 sm:gap-5 xl:max-w-6xl">
-        <PageHead label="Send a track to anyone with a FloorTest link." title="Send" />
-        <div className="grid min-w-0 items-start gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-          <div className="min-w-0">
-            <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />
-          </div>
-
-          <section aria-labelledby="sent-h" className={`${CARD} flex min-w-0 flex-col gap-1.5 p-3`}>
-            <SectionHead id="sent-h" icon="send" title={`Sent (${sent.length})`} aside={week > 0 ? <span className="tnum">{week} this week</span> : undefined} />
-            {sent.length ? (
-              <>
-                <p className="text-[11.5px] text-mute">Each send gets a private receipt. Tap one to see what&apos;s happened.</p>
-                <ul className="mt-1">
-                  {recent.map(row)}
-                  {!recent.length && <li className="py-3 text-[12px] text-mute">Nothing sent in the last 10 days.</li>}
-                </ul>
-              </>
-            ) : (
-              <>
-                <p className="text-[11.5px] text-mute">Nothing sent yet. Each track gets a private receipt.</p>
-                {/* A sample row, faint and labelled, so the receipt's ladder is clear before there's a real one. */}
-                <figure className="mt-2 rounded-[13px] border border-dashed border-line-2 p-3 text-faint">
-                  <figcaption className="sr-only">Sample receipt</figcaption>
-                  <p className="flex items-baseline justify-between gap-4">
-                    <span className="min-w-0 truncate text-[12.5px]">Sample Artist - Nightbus (demo)</span>
-                    <Chip>Sample</Chip>
-                  </p>
-                  <ol aria-label="What a receipt can say, in order" className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                    {["Delivered", "Listened", "Downloaded", "Replied", "Played out"].map((s, i) => (
-                      <li key={s} className="flex items-center gap-2">
-                        {i > 0 && <span aria-hidden>→</span>}
-                        <span className="flex items-center gap-1.5">
-                          {/* A receipt starts lit: Delivered is the lime light until something happens. */}
-                          <span aria-hidden className={`size-1.5 rounded-full ${i === 0 ? "bg-lime" : "border border-current"}`} />
-                          {s}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </figure>
-              </>
-            )}
-            {older.length > 0 && (
-              // Sends over 10 days old fold away so the page stays short; open it to see them.
-              <details className="group mt-1.5">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-[11px] border border-line bg-well px-3 text-[12.5px] font-semibold text-bone hover:bg-ink-4 [&::-webkit-details-marker]:hidden">
-                  <span>Older than 10 days</span>
-                  <span className="flex items-center gap-2">
-                    <span className="tnum"><Chip>{older.length}</Chip></span>
-                    <span aria-hidden className="text-mute transition-transform group-open:rotate-90 motion-reduce:transition-none">
-                      <Icon name="chev" className="size-4" />
-                    </span>
-                  </span>
-                </summary>
-                <ul className="mt-1">{older.map(row)}</ul>
-              </details>
-            )}
-          </section>
-        </div>
+      {banner}
+      <div className="page-gutter py-4 sm:py-7">
+        <SendComposer
+          host={APP_URL.replace(/^https?:\/\//, "")}
+          account={{ name: user.name, email: user.email }}
+          initial={to}
+          before={before}
+          latest={latest}
+          total={sends.length}
+        />
       </div>
-    </div>
     </>
   );
 }
