@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { CARD } from "@/components/Kit";
 import { useConfirm } from "@/components/Dialog";
 import { FormError } from "@/components/Feedback";
-import { PlayIcon, PlayerWaveform, usePlayer, type PlayerTrack } from "@/components/Player";
+import { PlayIcon, PlayerWaveform, usePlayer } from "@/components/Player";
+import { musicToPlayer as toPlayer } from "@/lib/player-track";
 import { useToast } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
 import { deleteMusic, moveMusic, renameMusic } from "../actions/music";
@@ -14,14 +15,12 @@ import { MoreIcon, Sheet } from "./ProjectsUI";
 
 export type MusicItem = { id: number; title: string; artist: string; duration: number | null; peaks: number[] | null; added: string };
 
-/** A Projects track in the player: a negative id so it never matches a desk track, and its own audio route. */
-const toPlayer = (t: MusicItem): PlayerTrack => ({ id: -t.id, src: `/api/music/${t.id}/audio`, title: t.title, artist: t.artist, peaks: t.peaks, duration: t.duration, played: true });
-
 /**
  * The desk's own tracks in one place (a project, or those in none): play any of them; the owner and admins rename,
- * move to another project and delete. `here` is the project on screen (null: in no project).
+ * move to another project and delete. `here` is the project on screen (null: in no project); `numbered` shows each
+ * track's place (a project's page).
  */
-export function MusicList({ tracks, canEdit, folders, here, empty }: { tracks: MusicItem[]; canEdit: boolean; folders: { id: number; name: string }[]; here: number | null; empty: string }) {
+export function MusicList({ tracks, canEdit, folders, here, empty, numbered = false }: { tracks: MusicItem[]; canEdit: boolean; folders: { id: number; name: string }[]; here: number | null; empty: string; numbered?: boolean }) {
   const { current, playing, play, toggle, seek } = usePlayer();
   const [hidden, setHidden] = useState<number[]>([]);
   const [editing, setEditing] = useState<number | null>(null);
@@ -56,14 +55,14 @@ export function MusicList({ tracks, canEdit, folders, here, empty }: { tracks: M
     void leave(t, () => moveMusic(t.id, folder), `Moved ${t.title} to ${name}`);
   }
 
-  if (!shown.length) return <p className={`${CARD} p-5 text-[13px] text-mute`}>{empty}</p>;
+  if (!shown.length) return <p className={numbered ? "text-[12.5px] text-mute" : `${CARD} p-5 text-[13px] text-mute`}>{empty}</p>;
 
   const targets: { id: number | null; name: string }[] = [...folders.filter((f) => f.id !== here), ...(here === null ? [] : [{ id: null, name: "No project" }])];
 
   return (
     <>
       <ul className={`${CARD} flex flex-col`} aria-label="Tracks">
-        {shown.map((t) => {
+        {shown.map((t, i) => {
           const on = current?.id === -t.id;
           return (
             <li key={t.id} className="flex flex-col gap-2 border-t border-line p-3 first:border-t-0">
@@ -71,10 +70,15 @@ export function MusicList({ tracks, canEdit, folders, here, empty }: { tracks: M
                 <RenameForm t={t} onDone={() => setEditing(null)} />
               ) : (
                 <div className="flex items-center gap-3">
+                  {numbered && (
+                    <span aria-hidden className="w-5 shrink-0 text-center text-[12px] text-mute tnum">
+                      {i + 1}
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => (on ? toggle() : play(toPlayer(t), queue))}
-                    className="grid size-11 shrink-0 place-items-center rounded-full bg-lime text-ink"
+                    className={`grid size-11 shrink-0 place-items-center rounded-full ${numbered ? "border border-line bg-well text-bone" : "bg-lime text-ink"}`}
                     aria-label={on && playing ? `Pause ${t.title}` : `Play ${t.title}`}
                   >
                     <PlayIcon playing={on && playing} />

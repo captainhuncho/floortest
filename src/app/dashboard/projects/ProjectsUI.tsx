@@ -3,24 +3,17 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CARD, Icon, IconBox, NameCover } from "@/components/Kit";
+import { CARD, Icon, IconBox } from "@/components/Kit";
 import { useConfirm } from "@/components/Dialog";
 import { FormError } from "@/components/Feedback";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import { useToast } from "@/components/Toast";
-import { fmtTime } from "@/lib/format";
 import { createProject, deleteProject, renameProject } from "../actions/music";
-import { GHOST, GHOST_TALL, LIME } from "../kitButtons";
+import { GHOST_TALL, LIME } from "../kitButtons";
 import { MoveToFolder } from "../collections/Folders";
+import { FolderRow, MoreDots, ROUND, trackCount } from "../collections/FolderRow";
 
 export type ProjectView = { id: number; name: string; count: number; duration: number };
-
-/** Total length as "1 h 04 min" or "12 min" (a track's own length stays m:ss). */
-export function fmtLength(sec: number) {
-  if (!sec) return "0 min";
-  const m = Math.round(sec / 60);
-  return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : m ? `${m} min` : fmtTime(sec);
-}
 
 /** The ··· on a card or page head (as on Collections). */
 export function MoreIcon() {
@@ -34,7 +27,7 @@ export function MoreIcon() {
 }
 
 /** Options over the whole screen, as on Collections; a tap outside or Escape closes it. */
-export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function Sheet({ title, onClose, children, role = "menu" }: { title: string; onClose: () => void; children: React.ReactNode; /** "dialog" when it holds a form. */ role?: "menu" | "dialog" }) {
   const box = useRef<HTMLDivElement>(null);
   useFocusTrap(box);
   useEffect(() => {
@@ -47,7 +40,8 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
       <div
         ref={box}
         tabIndex={-1}
-        role="menu"
+        role={role}
+        aria-modal={role === "dialog" || undefined}
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-sm overflow-hidden rounded-[18px] border border-line bg-card text-[13px] text-bone shadow-pop"
@@ -60,13 +54,13 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
 }
 
 /** A project's name, in a small form (new or rename). */
-function NameForm({ initial = "", label, onSave, onCancel }: { initial?: string; label: string; onSave: (name: string) => Promise<string | null>; onCancel: () => void }) {
+function NameForm({ initial = "", label, bare = false, onSave, onCancel }: { initial?: string; label: string; /** Inside a sheet: no card of its own. */ bare?: boolean; onSave: (name: string) => Promise<string | null>; onCancel: () => void }) {
   const [name, setName] = useState(initial);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   return (
     <form
-      className={`flex w-full flex-wrap items-end gap-3 ${CARD} p-3`}
+      className={`flex w-full flex-wrap items-end gap-3 ${bare ? "" : `${CARD} p-3`}`}
       onSubmit={(e) => {
         e.preventDefault();
         start(async () => setError((await onSave(name)) ?? ""));
@@ -74,7 +68,7 @@ function NameForm({ initial = "", label, onSave, onCancel }: { initial?: string;
     >
       <label className="block min-w-0 flex-1 basis-60 space-y-1.5">
         <span className="text-[11.5px] text-mute">Project name</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="e.g. Summer EP" autoFocus required maxLength={60} />
+        <input value={name} onChange={(e) => setName(e.target.value)} className="input max-sm:text-base" placeholder="e.g. Summer EP" autoFocus required maxLength={60} />
       </label>
       <button className={LIME} disabled={pending}>
         {pending ? "Saving…" : label}
@@ -167,97 +161,59 @@ function ProjectOptions({ p, onClose, onRename, onMove, showOpen }: { p: Project
   );
 }
 
-/** The ··· button and what it opens; `showOpen` on a card (the page head is already the project). */
-function ProjectMenu({ p, showOpen, onRename, onMove }: { p: ProjectView; showOpen: boolean; onRename: () => void; onMove?: () => void }) {
+/** The ··· button and what it opens (rename in a sheet of its own); `showOpen` in the list (the page is already the project). */
+function ProjectMenu({ p, showOpen, onMove }: { p: ProjectView; showOpen: boolean; onMove?: () => void }) {
+  const router = useRouter();
   const [menu, setMenu] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   return (
     <>
-      <button
-        onClick={() => setMenu(true)}
-        aria-haspopup="menu"
-        aria-label={`More for ${p.name}`}
-        className="relative z-10 grid size-11 shrink-0 place-items-center rounded-[12px] border border-line bg-well text-mute hover:text-bone"
-      >
-        <MoreIcon />
+      <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`More for ${p.name}`} className={ROUND}>
+        <MoreDots />
       </button>
-      {menu && <ProjectOptions p={p} showOpen={showOpen} onClose={() => setMenu(false)} onRename={onRename} onMove={onMove} />}
+      {menu && <ProjectOptions p={p} showOpen={showOpen} onClose={() => setMenu(false)} onRename={() => setRenaming(true)} onMove={onMove} />}
+      {renaming && (
+        <Sheet title={`Rename ${p.name}`} onClose={() => setRenaming(false)} role="dialog">
+          <div className="hover:bg-transparent!">
+            <NameForm
+              initial={p.name}
+              label="Save"
+              bare
+              onCancel={() => setRenaming(false)}
+              onSave={async (name) => {
+                const r = await renameProject(p.id, name);
+                if (!r.ok) return r.error;
+                setRenaming(false);
+                router.refresh();
+                return null;
+              }}
+            />
+          </div>
+        </Sheet>
+      )}
     </>
   );
 }
 
-function RenameProject({ p, onDone }: { p: ProjectView; onDone: () => void }) {
-  const router = useRouter();
-  return (
-    <NameForm
-      initial={p.name}
-      label="Save"
-      onCancel={onDone}
-      onSave={async (name) => {
-        const r = await renameProject(p.id, name);
-        if (!r.ok) return r.error;
-        onDone();
-        router.refresh();
-        return null;
-      }}
-    />
-  );
-}
-
-/** One project as a card (as a collection's): cover, name, its tracks and length. The whole card opens it. */
+/** One project as a folder in the list: the plain music tile (project tracks carry no artwork yet), its name and its tracks. The whole row opens it. */
 export function ProjectTile({ p, canEdit, folders, folderId = null }: { p: ProjectView; canEdit: boolean; /** The desk's project folders, for Move to folder. */ folders?: { id: number; name: string }[]; folderId?: number | null }) {
-  const [renaming, setRenaming] = useState(false);
   const [moving, setMoving] = useState(false);
-  if (renaming) return <RenameProject p={p} onDone={() => setRenaming(false)} />;
   return (
-    <div data-card className={`relative flex flex-col gap-2.5 ${CARD} p-3`}>
+    <FolderRow
+      href={`/dashboard/projects/${p.id}`}
+      name={p.name}
+      spoken={`Open ${p.name}, project, ${trackCount(p.count)}`}
+      covers={[]}
+      empty={p.count === 0}
+      line={`Project · ${trackCount(p.count)}`}
+      menu={canEdit && <ProjectMenu p={p} showOpen onMove={folders ? () => setMoving(true) : undefined} />}
+    >
       {moving && folders && <MoveToFolder kind="project" itemId={p.id} itemName={p.name} current={folderId} folders={folders} onClose={() => setMoving(false)} />}
-      <div className="flex items-start gap-2.5">
-        <NameCover name={p.name} />
-        <div className="min-w-0 flex-1">
-          <Link href={`/dashboard/projects/${p.id}`} className="block truncate text-[15px] font-semibold tracking-[-0.015em] text-bone after:absolute after:inset-0 after:rounded-[18px]">
-            {p.name}
-          </Link>
-          <p className="mt-1 text-[11.5px] text-mute">Project</p>
-        </div>
-        {canEdit && <ProjectMenu p={p} showOpen onRename={() => setRenaming(true)} onMove={folders ? () => setMoving(true) : undefined} />}
-      </div>
-      <dl className="grid grid-cols-2 text-center">
-        <div className="flex flex-col">
-          <dt className="text-[11.5px] text-mute">Tracks</dt>
-          <dd className="text-[16px] font-semibold leading-tight text-bone tnum">{p.count}</dd>
-        </div>
-        <div className="flex flex-col">
-          <dt className="text-[11.5px] text-mute">Length</dt>
-          <dd className="text-[16px] font-semibold leading-tight text-bone tnum">{fmtLength(p.duration)}</dd>
-        </div>
-      </dl>
-    </div>
+    </FolderRow>
   );
 }
 
-/** A project page's head: back to Projects, cover, name, its tracks and length, and ··· options. */
-export function ProjectHeader({ p, canEdit }: { p: ProjectView; canEdit: boolean }) {
-  const [renaming, setRenaming] = useState(false);
-  return (
-    <header className="flex flex-col gap-3">
-      <Link href="/dashboard/projects" className={`${GHOST} self-start`}>
-        <Icon name="chev" className="size-3.5 rotate-180" />
-        Projects
-      </Link>
-      {renaming ? (
-        <RenameProject p={p} onDone={() => setRenaming(false)} />
-      ) : (
-        <div className="flex items-center gap-3">
-          <NameCover name={p.name} size="size-[52px]" text="text-[10px]" />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">{p.name}</h1>
-            <p className="mt-0.5 text-[12px] text-mute tnum">
-              {p.count} {p.count === 1 ? "track" : "tracks"} · {fmtLength(p.duration)}
-            </p>
-          </div>
-          {canEdit && <ProjectMenu p={p} showOpen={false} onRename={() => setRenaming(true)} />}
-        </div>
-      )}
-    </header>
-  );
+/** The tools on a project's page: ··· with rename and delete. */
+export function ProjectTools({ p }: { p: ProjectView }) {
+  return <ProjectMenu p={p} showOpen={false} />;
 }

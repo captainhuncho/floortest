@@ -51,4 +51,5 @@ test("the player state action returns nothing in ops View as, and checks the des
   const fn = src.slice(src.indexOf("export async function playerTrackState"), src.indexOf("/** Kept tracks only"));
   assert.match(fn, /if \(await viewingAs\(\)\) return null;[\s\S]*await requireUser\(\)/, "View as first, then sign-in");
   assert.match(fn, /trackStateFor\(u, Number\(trackId\)\)/);
+  assert.match(fn, /if \(!canMarkPlayedOut\(u\)\) return null;[\s\S]*trackStateFor/, "nothing for anyone who can't mark played out");
 });

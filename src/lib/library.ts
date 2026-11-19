@@ -153,12 +153,13 @@ export async function moveLibraryTrack(desk: Pick<User, "id" | "actor_id">, id: 
 type LibraryMeta = { kind: typeof LIBRARY_KIND; title: string; artist: string; genre: string; originalName: string; email: string; folderId: number | null };
 
 /** Step 1: where to upload the file; the bytes go straight to storage. */
-export async function startLibraryUpload(desk: Desk, d: { fileName: string; size: number; title: string; artist: string; genre: string; rights: boolean; folderId?: number | null }) {
+export async function startLibraryUpload(desk: Desk, d: { fileName: string; size: number; title: string; artist: string; genre: string; folderId?: number | null }) {
   const ext = d.fileName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(d.size) || d.size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
   if (d.size > MAX_UPLOAD_BYTES) throw new IntakeError("That file is over 250 MB. Upload an MP3 or a smaller WAV.", 413);
-  if (!d.rights) throw new IntakeError("Confirm you're allowed to keep this file on FloorTest.", 400);
+  // No separate rights tick (owner, 16 Nov): the Terms the person accepted cover what they keep here, and the route
+  // refuses anyone who hasn't accepted the current Terms (currentDeskForChange answers 403 termsNeeded).
   const title = d.title.trim().slice(0, 200);
   if (!title) throw new IntakeError("Add a track title.", 400);
   const folderId = d.folderId == null ? null : Number(d.folderId);

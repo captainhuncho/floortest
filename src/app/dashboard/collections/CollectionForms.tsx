@@ -8,9 +8,10 @@ import { useRouter } from "next/navigation";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions/collections";
 import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
-import { CARD, Chip, Icon, IconBox, NameCover } from "@/components/Kit";
+import { CARD, Chip, Icon, IconBox } from "@/components/Kit";
 import { LinkRow } from "../floor/FloorClient";
 import { MoveToFolder } from "./Folders";
+import { CalloutState, FolderRow, MoreDots, ROUND, trackCount } from "./FolderRow";
 import type { ShareCardTarget } from "./callout-card";
 import { DANGER, GHOST, GHOST_TALL, LIME } from "../kitButtons";
 import type { BriefItem } from "@/lib/brief";
@@ -41,6 +42,8 @@ type C = {
   full: boolean;
   /** URL of the collection's artwork, if it has one. */
   art: string | null;
+  /** Its cover in the list and on its page: up to four art URLs, its own artwork first (src/lib/covers.ts). */
+  covers: string[];
 };
 
 const toDateInput = (ts: number | null) => {
@@ -62,44 +65,6 @@ function StateChip({ live, closed, full, closesLabel, idle }: { live: boolean; c
       </Chip>
     );
   return <Chip>{closed ? (full ? "Full" : `Closed${closesLabel ? ` ${closesLabel}` : ""}`) : idle}</Chip>;
-}
-
-/** The ··· on a card or page head; Kit has no "more" icon, so it's drawn here. */
-function MoreIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
-      <circle cx="6" cy="12" r="1.6" />
-      <circle cx="12" cy="12" r="1.6" />
-      <circle cx="18" cy="12" r="1.6" />
-    </svg>
-  );
-}
-
-/** The collection's artwork, or its initials on a cover square when it has none. */
-function CollectionCover({ c }: { c: Pick<C, "name" | "art"> }) {
-  if (!c.art) return <NameCover name={c.name} />;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={c.art} alt="" className="size-[38px] shrink-0 rounded-[10px] border border-line object-cover" />;
-}
-
-/**
- * How full a capped callout is, as a row of ticks (the mock's capacity strip), with the numbers in text beside it.
- * Any track at all fills one tick, and only a full callout fills the last.
- */
-export function CapTicks({ used, limit, cells = 25 }: { used: number; limit: number; cells?: number }) {
-  const filled = used <= 0 ? 0 : used >= limit ? cells : Math.min(cells - 1, Math.max(1, Math.round((used / limit) * cells)));
-  return (
-    <div className="flex items-center gap-2">
-      <div aria-hidden className="flex h-3.5 flex-1 gap-[2px]">
-        {Array.from({ length: cells }, (_, i) => (
-          <span key={i} className={`flex-1 rounded-[2px] ${i < filled ? "bg-lime" : "bg-line-2"}`} />
-        ))}
-      </div>
-      <span className="shrink-0 font-mono text-[11px] text-mute tnum">
-        {used} of {limit}
-      </span>
-    </div>
-  );
 }
 
 function CollectionCard({ c, receiving, closed, startEditing = false, onDone }: { c: C; receiving: boolean; closed: boolean; startEditing?: boolean; /** Called after Save or Cancel, e.g. to close the pop-up the form sits in. */ onDone?: () => void }) {
@@ -310,83 +275,37 @@ export function Folder({ tab, hatched = false, children }: { tab: React.ReactNod
 }
 
 /**
- * One callout as a card (the mock): cover, name and where it stands; to review, kept and tracks; how full it is if
- * capped; the link while it's receiving; then the one next step. The whole card opens it; ··· has every option.
+ * One callout as a folder in the list (owner, 17 Nov: option 43): its cover, its name and one line (where it stands,
+ * what it is, how many tracks). The whole row opens it; ··· has every option.
  */
-export function CollectionTile({ c, receiving, closed, canManage = true, canEdit = true, link, card, folders, folderId = null }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** May run callouts: owner, A&R / Admin, or a ticked Member (the server checks too). */ canEdit?: boolean; /** The desk's public link, shown on the receiving card. */ link?: string; /** The callout the link's Share offers as a card. */ card?: ShareCardTarget; /** The desk's callout folders, for Move to folder (owners and admins). */ folders?: { id: number; name: string }[]; /** The folder it's filed in. */ folderId?: number | null }) {
+export function CollectionTile({ c, receiving, closed, canManage = true, canEdit = true, link, card, folders, folderId = null }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** May run callouts (owner, A&R / Admin, or a ticked Member): shows Edit. The server checks too. */ canEdit?: boolean; /** The desk's public link, shared from the receiving callout's ··· menu. */ link?: string; /** The callout the link's Share offers as a card. */ card?: ShareCardTarget; /** The desk's callout folders, for Move to folder (owners and admins). */ folders?: { id: number; name: string }[]; /** The folder it's filed in. */ folderId?: number | null }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [moving, setMoving] = useState(false);
-  const [pending, start] = useTransition();
   const live = receiving && !closed;
-  const bpm = c.bpmMin || c.bpmMax ? [c.bpmMin, c.bpmMax].filter(Boolean).join("–") : null;
-  const figures: [string, number][] = [
-    ["To review", c.needsReview],
-    ["Kept", c.kept],
-    ["Tracks", c.count],
-  ];
+  const state = live ? "receiving" : closed ? (c.full ? "full" : "closed") : "open";
   return (
-    <div data-card className={`relative flex flex-col gap-2.5 ${CARD} p-3 ${live ? "border-lime/55" : ""}`}>
-      <div className="flex items-start gap-2.5">
-        <CollectionCover c={c} />
-        <div className="min-w-0 flex-1">
-          <Link
-            href={`/dashboard/collections/${c.id}`}
-            className="block truncate text-[15px] font-semibold tracking-[-0.015em] text-bone after:absolute after:inset-0 after:rounded-[18px]"
-          >
-            {c.name}
-          </Link>
-          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] text-mute">
-            <StateChip live={live} closed={closed} full={c.full} closesLabel={c.closesLabel} idle="Open" />
-            {!closed && c.closesLabel && <span>Closes {c.closesLabel}</span>}
-          </p>
-        </div>
-        <button
-          onClick={() => setMenu((m) => !m)}
-          aria-haspopup="menu"
-          aria-label={`More for ${c.name}`}
-          className="relative z-10 grid size-11 shrink-0 place-items-center rounded-[12px] border border-line bg-well text-mute hover:text-bone"
-        >
-          <MoreIcon />
+    <FolderRow
+      href={`/dashboard/collections/${c.id}`}
+      name={c.name}
+      spoken={`Open ${c.name}, callout, ${state}, ${trackCount(c.count)}`}
+      covers={c.covers}
+      empty={c.count === 0 && c.covers.length === 0}
+      line={
+        <>
+          <CalloutState live={live} closed={closed} full={c.full} closesLabel={c.closesLabel} /> · Callout · {trackCount(c.count)}
+        </>
+      }
+      menu={
+        <button onClick={() => setMenu((m) => !m)} aria-haspopup="menu" aria-label={`More for ${c.name}`} className={ROUND}>
+          <MoreDots />
         </button>
-      </div>
-      <dl className="grid grid-cols-3 text-center">
-        {figures.map(([k, v]) => (
-          <div key={k} className="flex flex-col">
-            <dt className="text-[11.5px] text-mute">{k}</dt>
-            <dd className="text-[16px] font-semibold leading-tight text-bone tnum">{v}</dd>
-          </div>
-        ))}
-      </dl>
-      {c.maxTracks ? <CapTicks used={c.count} limit={c.maxTracks} /> : null}
-      {live && link && (
-        <div className="relative z-10 flex flex-col gap-1.5">
-          <p className="text-[11.5px] text-mute">Your link sends here</p>
-          <LinkRow link={link} card={card} />
-        </div>
-      )}
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
-        {c.needsReview > 0 && !closed ? (
-          <Link href={`/dashboard/review?view=queue&c=${c.id}`} className={`${GHOST} relative z-10`}>
-            <Icon name="inbox" className="size-[15px]" />
-            Review {c.needsReview} new
-          </Link>
-        ) : (
-          <span className="text-[11.5px] text-mute">{closed ? "No longer taking tracks" : live ? "Nothing new to review" : "Not receiving"}</span>
-        )}
-        {!live && !closed && canManage ? (
-          <button className={`${GHOST} relative z-10`} disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
-            <Icon name="send" className="size-[15px]" />
-            Send new tracks here
-          </button>
-        ) : bpm ? (
-          <span className="text-[11.5px] text-mute tnum">{bpm} BPM</span>
-        ) : null}
-      </div>
-      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} onEdit={() => setEditing(true)} onMove={folders && canManage ? () => setMoving(true) : undefined} onClose={() => setMenu(false)} showOpen />}
+      }
+    >
+      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} link={live ? link : undefined} card={card} onEdit={() => setEditing(true)} onMove={folders && canManage ? () => setMoving(true) : undefined} onClose={() => setMenu(false)} showOpen />}
       {editing && <EditDialog c={c} receiving={receiving} closed={closed} onClose={() => setEditing(false)} />}
       {moving && folders && <MoveToFolder kind="callout" itemId={c.id} itemName={c.name} current={folderId} folders={folders} onClose={() => setMoving(false)} />}
-    </div>
+    </FolderRow>
   );
 }
 
@@ -417,10 +336,16 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
 }
 
 /** The shared options for one collection. */
-function CollectionOptions({ c, receiving, canManage, canEdit, onEdit, onMove, onClose, showOpen }: { c: C; receiving: boolean; canManage: boolean; canEdit: boolean; onEdit: () => void; /** Move to folder, where the list offers folders. */ onMove?: () => void; onClose: () => void; showOpen: boolean }) {
+function CollectionOptions({ c, receiving, canManage, canEdit, link, card, onEdit, onMove, onClose, showOpen }: { c: C; receiving: boolean; canManage: boolean; /** May run callouts: shows Edit collection. */ canEdit: boolean; /** The desk's link, while it sends tracks to this callout. */ link?: string; card?: ShareCardTarget; onEdit: () => void; /** Move to folder, where the list offers folders. */ onMove?: () => void; onClose: () => void; showOpen: boolean }) {
   const [pending, start] = useTransition();
   return (
     <OptionsSheet title={c.name} onClose={onClose}>
+      {link && (
+        <div>
+          <p className="mb-1.5 text-[11.5px] text-mute">Share the link: it sends here</p>
+          <LinkRow link={link} card={card} />
+        </div>
+      )}
       {!receiving && canManage && (
         <button role="menuitem" disabled={pending} onClick={() => start(async () => { await setActiveCollection(c.id); onClose(); })}>
           Send new tracks here
@@ -446,8 +371,8 @@ function CollectionOptions({ c, receiving, canManage, canEdit, onEdit, onMove, o
           Move to folder
         </button>
       )}
-      <div>
-        <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
+      <div className="[&_a]:min-h-11 [&_button]:min-h-11 [&_span]:min-h-11">
+        <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" quiet />
       </div>
       <button role="menuitem" className="text-center! text-mute" onClick={onClose}>
         Cancel
@@ -456,37 +381,34 @@ function CollectionOptions({ c, receiving, canManage, canEdit, onEdit, onMove, o
   );
 }
 
-/** A collection page's head, every screen size: back to Collections, cover, name, where it stands, and ··· options. */
-export function CollectionDetailHeader({ c, receiving, closed, canManage = true, canEdit = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** May run callouts (the server checks too). */ canEdit?: boolean }) {
+/** The tools on a callout's page: its link while it's receiving, and ··· with every option. */
+export function CalloutTools({ c, receiving, closed, canManage = true, canEdit = true, link, card }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** May run callouts (owner, A&R / Admin, or a ticked Member): shows Edit. The server checks too. */ canEdit?: boolean; /** The desk's public link, while it sends tracks here. */ link?: string; card?: ShareCardTarget }) {
   const [menu, setMenu] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [editing, setEditing] = useState(false);
   return (
-    <header className="flex flex-col gap-1.5">
-      <Link href="/dashboard/collections" aria-label="Back to Collections" className="-my-2 inline-flex min-h-11 w-fit items-center gap-1 text-[12px] text-mute hover:text-bone">
-        <Icon name="chev" className="size-3.5 rotate-180" />
-        Collections
-      </Link>
-      <div className="flex items-center gap-2.5">
-        <CollectionCover c={c} />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">{c.name}</h1>
-          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] text-mute">
-            <StateChip live={receiving && !closed} closed={closed} full={c.full} closesLabel={c.closesLabel} idle="Not receiving" />
-            {!closed && c.closesLabel && <span>Closes {c.closesLabel}</span>}
-          </p>
-        </div>
-        <button
-          onClick={() => setMenu(true)}
-          aria-haspopup="menu"
-          aria-label={`Options for ${c.name}`}
-          className="grid size-11 shrink-0 place-items-center rounded-[12px] border border-line bg-well text-mute hover:text-bone"
-        >
-          <MoreIcon />
+    <>
+      {link && (
+        <button onClick={() => setSharing(true)} aria-haspopup="dialog" aria-label="Share the link" className={ROUND}>
+          <Icon name="link" className="size-[18px]" />
         </button>
-      </div>
-      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
+      )}
+      <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`Options for ${c.name}`} className={ROUND}>
+        <MoreDots />
+      </button>
+      {sharing && link && (
+        <OptionsSheet title="Your link sends here" onClose={() => setSharing(false)}>
+          <div>
+            <LinkRow link={link} card={card} />
+          </div>
+          <button className="text-center! text-mute" onClick={() => setSharing(false)}>
+            Close
+          </button>
+        </OptionsSheet>
+      )}
+      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} canEdit={canEdit} link={link} card={card} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
       {editing && <EditDialog c={c} receiving={receiving} closed={closed} onClose={() => setEditing(false)} />}
-    </header>
+    </>
   );
 }
 

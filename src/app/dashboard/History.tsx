@@ -37,9 +37,11 @@ export function History({
             <p>
               {showSender && e.sender_name && <span className="text-mute">{e.sender_name}: </span>}
               <span className="font-medium">{LABEL[e.type]}</span>
-              {e.track_title && e.type !== "note" && e.type !== "reply" && (
-                <span className={e.track_id === currentTrackId ? "text-bone" : "text-mute"}> “{e.track_title}”</span>
+              {/* The open track's own entries don't repeat its title (owner, 18 Nov): "You kept · 10 Nov". */}
+              {e.track_title && e.type !== "note" && e.type !== "reply" && e.track_id !== currentTrackId && (
+                <span className="text-mute"> “{e.track_title}”</span>
               )}
+              {e.track_title && e.track_id === currentTrackId && e.type !== "note" && e.type !== "reply" && <span className="text-mute"> this track</span>}
               {(e.type === "moved" || e.type === "submitted") && e.detail && <span className="text-mute"> {e.detail}</span>}
             </p>
             {(e.type === "note" || e.type === "reply") && (

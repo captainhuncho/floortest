@@ -4,20 +4,22 @@ import { useState, useTransition } from "react";
 import { useConfirm } from "@/components/Dialog";
 import { stopSharing } from "./actions";
 
-/** The artist's own off switch for private sharing of this track. Asks first; it can't be undone from here. */
+/**
+ * The artist's own off switch for private sharing of this track: a quiet link in the receipt's bar (what sharing means
+ * is said under Details). Asks first; it can't be undone from here.
+ */
 export function StopSharing({ token, receiver }: { token: string; receiver: string }) {
   const [busy, start] = useTransition();
   const [done, setDone] = useState(false);
   const [ask, confirmDialog] = useConfirm();
   if (done)
     return (
-      <p role="status" className="text-[13px] text-mute">
+      <p role="status" className="max-w-[40ch] text-center text-[12.5px] leading-[1.5] text-mute">
         Private sharing stopped. Nobody new can hear this track through {receiver}&apos;s share links.
       </p>
     );
   return (
-    <p className="text-[13px] text-mute">
-      {receiver} may share this track privately with people they name, who must confirm their email first.{" "}
+    <>
       <button
         type="button"
         disabled={busy}
@@ -30,11 +32,11 @@ export function StopSharing({ token, receiver }: { token: string; receiver: stri
           });
           if (ok) start(async () => void ((await stopSharing(token)) && setDone(true)));
         }}
-        className="text-bone underline underline-offset-4 tap-text"
+        className="min-h-11 px-3 text-[13px] text-mute underline underline-offset-4"
       >
         {busy ? "Stopping…" : "Stop private sharing"}
       </button>
       {confirmDialog}
-    </p>
+    </>
   );
 }

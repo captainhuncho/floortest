@@ -14,14 +14,14 @@ export function PlayedOut({ trackId, senderName, at, note }: { trackId: number; 
 
   if (done)
     return (
-      <p className="flex items-center gap-2 text-sm">
+      <p data-played-out tabIndex={-1} className="flex items-center gap-2 text-sm">
         <span className="chip border-lime/60 text-lime">Played out</span>
         <span className="text-mute">{done !== "done" ? done : `${senderName} was told`}</span>
       </p>
     );
   if (!open)
     return (
-      <button className="btn-ghost btn-sm" onClick={() => setOpen(true)}>
+      <button data-more="played" className="btn-ghost btn-sm" onClick={() => setOpen(true)}>
         Played it out
       </button>
     );

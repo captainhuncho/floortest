@@ -54,7 +54,7 @@ export function NoteForm({ onNote }: { onNote: (fd: FormData) => Promise<void> }
   const ref = useRef<HTMLFormElement>(null);
   if (!open)
     return (
-      <button className="btn-ghost btn-sm mt-4" onClick={() => setOpen(true)}>
+      <button data-more="note" className="btn-ghost btn-sm mt-4" onClick={() => setOpen(true)}>
         + Private note
       </button>
     );

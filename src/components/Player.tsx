@@ -1,7 +1,6 @@
 "use client";
 
 import { useRenderProbe } from "@/lib/render-probe";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { analyzeAudio } from "@/lib/analyze";
@@ -12,8 +11,6 @@ import { SEEK_STEP } from "@/lib/media-session";
 import { VOLUME_STEP, clampVolume, playerKey, saveVolume, savedVolume } from "@/lib/player-keys";
 import { useMediaSession } from "@/lib/use-media-session";
 import { isCharacterKey, overlayOpen, shortcutsOn } from "./useShortcuts";
-import { useToast } from "./Toast";
-import { VolumeNote } from "./VolumeNote";
 import { Waveform } from "./Waveform";
 
 export type PlayerTrack = {
@@ -28,6 +25,8 @@ export type PlayerTrack = {
    * listened and have no waveform backfill; their `id` is negative so it never matches a desk track's.
    */
   src?: string;
+  /** Kept, Not for me or neither, as the list that started it knew; the bar's heart reads it. Absent: nothing to decide. */
+  decision?: "kept" | "passed" | null;
 };
 
 const audioUrl = (t: Pick<PlayerTrack, "id" | "src">) => t.src ?? `/api/tracks/${t.id}/audio`;
@@ -43,12 +42,22 @@ type Ctx = {
   toggle: () => void;
   seek: (fraction: number) => void;
   seekBy: (seconds: number) => void;
+  /** The track after (1) or before (-1) the loaded one in the list it was started from. */
+  skip: (by: 1 | -1) => void;
+  hasNext: boolean;
+  hasPrev: boolean;
+  /** The tracks after the loaded one in the list it was started from, for the expanded player's Up next. */
+  upNext: PlayerTrack[];
+  /** A list or the bar decided a track: the loaded track and its queue take the new answer, so every heart agrees. */
+  markDecision: (id: number, decision: "kept" | "passed" | null) => void;
   /** Goes up by one each time a track won't play (no connection, or the file is gone), so the bar can say so. */
   failures: number;
   /** The player's own volume (0–1) and mute, remembered on this device. Hardware volume keys are the device's. */
   volume: number;
   muted: boolean;
-  /** Goes up by one each time the volume or mute is changed from the keyboard, so the bar shows the note. */
+  /** Sets both, on the audio and remembered on this device (the bar's speaker button and slider). */
+  setVolume: (volume: number, muted: boolean) => void;
+  /** Goes up by one each time the volume or mute is changed, so the bar shows the note. */
   volumeTouched: number;
 };
 
@@ -99,8 +108,8 @@ export function PlayerWaveform({ on, length, ...rest }: { on: boolean; length: n
   return <Waveform {...rest} progress={on && length ? time / length : 0} duration={length} />;
 }
 
-/** The playing position as m:ss, for the bar and the mini player. */
-function PlayerClock({ className }: { className?: string }) {
+/** The playing position as m:ss, for the bar. */
+export function PlayerClock({ className }: { className?: string }) {
   useRenderProbe("PlayerClock");
   return <span className={className}>{fmtTime(usePlayerTime())}</span>;
 }
@@ -131,6 +140,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (name !== "NotAllowedError" && name !== "AbortError") setFailures((n) => n + 1);
   }, []);
   const queue = useRef<PlayerTrack[]>([]);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
+  const [upNext, setUpNext] = useState<PlayerTrack[]>([]);
+  // Which neighbours the loaded track has in its queue, for the bar's Previous and Next.
+  const syncNeighbours = useCallback((id: number) => {
+    const i = queue.current.findIndex((t) => t.id === id);
+    setHasPrev(i > 0);
+    setHasNext(i >= 0 && i < queue.current.length - 1);
+    setUpNext(i >= 0 ? queue.current.slice(i + 1) : []);
+  }, []);
   // "Listened" is counted by the server: the player says when a track starts or resumes ("play") and checks in about
   // every 10 s of sound actually heard ("beat"; seeks excluded). The server credits real time only (src/lib/review.ts).
   const listened = useRef({ id: 0, src: "", last: 0, sinceBeat: 0, reported: false, duration: 0 as number | null });
@@ -173,6 +192,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // A track with its own src (Projects) is never reported as listened: there is nobody's track to mark.
     listened.current = { id: t.id, src: audioUrl(t), last: 0, sinceBeat: 0, reported: t.played || !!t.src, duration: t.duration };
     setCurrent(t);
+    syncNeighbours(t.id);
     timeStore.set(0);
     setDuration(t.duration ?? 0);
     a.src = audioUrl(t);
@@ -289,14 +309,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const a = audio.current!;
       // The track loaded right now (a ref, so a play() from an older render, like a decision's rollback, sees it too).
       if (listened.current.id === t.id) {
+        if (q) syncNeighbours(t.id);
         if (a.paused) void a.play().catch(refused);
         else a.pause();
         return;
       }
       start(t);
     },
-    [start, refused],
+    [start, refused, syncNeighbours],
   );
+
+  const markDecision = useCallback((id: number, decision: "kept" | "passed" | null) => {
+    queue.current = queue.current.map((t) => (t.id === id && "decision" in t ? { ...t, decision } : t));
+    setCurrent((c) => (c?.id === id && "decision" in c ? { ...c, decision } : c));
+  }, []);
 
   const toggle = useCallback(() => {
     const a = audio.current;
@@ -360,8 +386,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // visible one (1 Nov; scratchpad dupe probe). Hydrating the server HTML also shows the page sooner. The time is not
   // in it (its own store, usePlayerTime), so playing changes this only on play, pause, buffering or a new track.
   const value = useMemo(
-    () => ({ current, playing, buffering, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched }),
-    [current, playing, buffering, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched],
+    () => ({ current, playing, buffering, duration, play, toggle, seek, seekBy, skip: step, hasNext, hasPrev, upNext, markDecision, failures, volume, muted, setVolume: changeVolume, volumeTouched }),
+    [current, playing, buffering, duration, play, toggle, seek, seekBy, step, hasNext, hasPrev, upNext, markDecision, failures, volume, muted, changeVolume, volumeTouched],
   );
   return (
     <PlayerContext.Provider value={value}>
@@ -387,77 +413,6 @@ export function PlayIcon({ playing, className = "h-4 w-4" }: { playing: boolean;
  * The buffering ring: a 2px arc turning around a play button while audio loads. It sits inside the button (which
  * needs `relative` and `data-buffering` while loading) and fades in after 150ms, so a fast start never flashes it.
  */
-function BufferRing({ className = "-inset-1" }: { className?: string }) {
+export function BufferRing({ className = "-inset-1" }: { className?: string }) {
   return <span aria-hidden data-buffer-ring className={`pointer-events-none absolute rounded-full ${className}`} />;
-}
-
-export function PlayerBar() {
-  const { current, playing, buffering, duration, toggle, seek, failures, volume, muted, volumeTouched } = usePlayer();
-  useRenderProbe("PlayerBar");
-  const toast = useToast();
-  useEffect(() => {
-    if (failures) toast.show({ message: "This track won't play right now. Check your connection, then press play again.", tone: "error" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per failure, not when the toast API changes
-  }, [failures]);
-  if (!current) return null;
-  const d = duration || current.duration || 0;
-  return (
-    <>
-      {/* Phones (Figma "Mini Player"): floats above the tab bar and stays put across screens. */}
-      <div data-mini-player className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-ink-4 bg-ink p-3 md:hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0" />
-        {/* The title opens the track; the waveform beside it only seeks, so one tap never does both. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="flex items-center justify-between gap-2">
-            <Link href={current.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${current.id}`} className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
-              {current.title}
-            </Link>
-            <span className="flex shrink-0 items-center gap-2">
-              <VolumeNote volume={volume} muted={muted} touched={volumeTouched} />
-              <PlayerClock className="text-[11px] text-faint tnum" />
-            </span>
-          </span>
-          <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={18} label={`Seek ${current.title}`} />
-        </div>
-        {/* A 44px tap area around the 28px button; the negative margin keeps the layout as drawn. */}
-        <button
-          onClick={toggle}
-          className="-m-2 grid size-11 shrink-0 place-items-center"
-          aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
-          aria-busy={buffering || undefined}
-          data-buffering={buffering ? "" : undefined}
-        >
-          <span className="relative grid size-7 place-items-center rounded-panel bg-white text-ink">
-            <PlayIcon playing={playing} />
-            <BufferRing className="-inset-[5px] text-bone" />
-          </span>
-        </button>
-      </div>
-    <div data-player-bar className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-ink/95 backdrop-blur md:block">
-      <div className="flex items-center gap-4 px-4 py-3">
-        <button
-          onClick={toggle}
-          className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-lime text-ink"
-          aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
-          aria-busy={buffering || undefined}
-          data-buffering={buffering ? "" : undefined}
-        >
-          <PlayIcon playing={playing} />
-          <BufferRing className="-inset-[5px] text-lime" />
-        </button>
-        <Link href={current.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${current.id}`} className="w-40 min-w-0 shrink-0 sm:w-56">
-          <p className="truncate text-sm font-medium">{current.title}</p>
-          <p className="truncate text-sm text-mute">{current.artist}</p>
-        </Link>
-        <PlayerClock className="hidden text-sm text-mute tnum sm:block" />
-        <div className="min-w-0 flex-1">
-          <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={32} label={`Seek ${current.title}`} />
-        </div>
-        <span className="hidden text-sm text-mute tnum sm:block">{fmtTime(d)}</span>
-        <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="w-20 text-right" />
-      </div>
-    </div>
-    </>
-  );
 }

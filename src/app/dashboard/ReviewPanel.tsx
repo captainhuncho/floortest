@@ -1,5 +1,6 @@
 import { CuePoint } from "@/components/CuePoint";
 import { currentUser } from "@/lib/auth";
+import { canMarkPlayedOut } from "@/lib/played-out-prompt";
 import { decisionLocked } from "@/lib/review";
 import { ProfileLinks } from "@/components/ProfileLinks";
 import { readLinks } from "@/lib/socials";
@@ -20,17 +21,16 @@ import { reportTrack } from "./actions/report";
 import { atLeast } from "@/lib/account-members";
 import { PrepBox } from "./PrepBox";
 import { parseCues } from "@/lib/cues";
-import { DetailPlayer } from "./DetailPlayer";
 import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
 import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
 import { TrackStepper } from "./review/TrackStepper";
 import type { Step } from "./review/QueueState";
-import { ReplyCard } from "./review/ReplyCard";
+import { CardControls, CoverSteps, PanelCalls, StoryBars } from "./review/NowReviewing";
 import { MoveToProjects } from "./projects/MoveToProjects";
 import { listFolders } from "@/lib/library";
-import { CARD, Chip, Cover, Icon, IconBox, InfoRow, initials } from "@/components/Kit";
+import { CARD, Chip, Icon, IconBox, initials } from "@/components/Kit";
 
 export async function ReviewPanel({
   track: t,
@@ -66,8 +66,8 @@ export async function ReviewPanel({
     t.release_id
       ? q.get<{ id: string; title: string; artist: string; kind: string }>("SELECT id, title, artist, kind FROM releases WHERE id = ? AND user_id = ?", t.release_id, t.user_id)
       : Promise.resolve(undefined),
-    q.get<{ sent: number; kept: number; downloaded: number }>(
-      `SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept, COUNT(downloaded_at) AS downloaded FROM tracks WHERE sender_id = ?`,
+    q.get<{ sent: number; kept: number }>(
+      `SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept FROM tracks WHERE sender_id = ?`,
       sender.id,
     ).then((r) => r!),
     // Artwork the sender attached (Team plans); tracks in a folder share the cover the sender attached to the release.
@@ -95,6 +95,8 @@ export async function ReviewPanel({
     peaks: t.peaks ? JSON.parse(t.peaks) : null,
     duration: t.duration,
     played: !!t.played_at,
+    // So the floating player's heart shows for a track started from this card.
+    decision: t.decision,
   };
   const removal = deletesAt(t);
   // A track the desk added itself (sent from its own account) can move to Projects; a sender's never can (owner, 13 Nov).
@@ -141,7 +143,26 @@ export async function ReviewPanel({
 
   // What the decision needs, in one line: tempo, key, length, genre, mix.
   const length = t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : null;
-  const meta = [t.bpm && `${Math.round(t.bpm)} BPM`, t.musical_key, length, t.genre, t.mix_status && MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS]].filter(Boolean).join(" · ");
+  // One line: genre, tempo, the key only when the sender typed one, length, mix, who sent it and how long it has waited.
+  const info = [
+    t.genre,
+    t.bpm && `${Math.round(t.bpm)} BPM`,
+    t.musical_key,
+    length,
+    t.mix_status && MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS],
+    `sent by ${sender.name}${collectionName ? ` via ${collectionName}` : ""}`,
+    t.decision ? `arrived ${ago(t.created_at)}` : `waiting ${ago(t.created_at).replace(/ ago$/, "")}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  // Up to two short facts, only from what this desk's own records say about the sender.
+  const before = stats.sent - 1;
+  const keptBefore = stats.kept - (t.decision === "kept" ? 1 : 0);
+  const facts = [
+    before > 0 && `${sender.name} has sent ${before} before`,
+    keptBefore > 0 && `You kept ${keptBefore} of them`,
+  ].filter((f): f is string => !!f);
+  const [at, total] = position ? position.split(" of ").map(Number) : [0, 0];
   // The auto-delete date matters at decision time only when it's close.
   const soon = removal && removal - now() < 7 * 86_400_000 ? Math.max(0, Math.ceil((removal - now()) / 86_400_000)) : null;
   // Signals that change the decision stay visible: may it be played out, is it out already, made with AI, a duplicate, going soon.
@@ -196,31 +217,47 @@ export async function ReviewPanel({
     // (rendered with the page, so the buttons are there before any JavaScript runs); under it the sender's note and
     // the reply on one side and the folded Details on the other, side by side when there's room.
     <div className="flex flex-col gap-4">
-      <section aria-labelledby={`track-h-${t.id}`} className={`${card} flex flex-col gap-3`}>
-        <div className="flex items-start gap-3">
-          {art ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={art} alt={`Artwork for ${t.title}`} className="size-[46px] shrink-0 rounded-[10px] border border-line object-cover md:size-14" />
-          ) : (
-            <Cover text={initials(t.title)} size="size-[46px]" />
-          )}
-          <div className="min-w-0 flex-1">
-            <h2 id={`track-h-${t.id}`} className="line-clamp-2 text-[18px] font-semibold leading-tight tracking-[-0.02em] text-bone">
+      <section aria-labelledby={`track-h-${t.id}`} className={`${card} flex flex-col gap-3.5 md:flex-row md:items-start md:gap-5`}>
+        <div className="mx-auto w-full max-w-[200px] shrink-0 md:mx-0 md:max-[1179px]:w-28 min-[1180px]:w-[168px]">
+          {at && total > 1 && <StoryBars at={at} total={total} />}
+          <div className="relative">
+            {art ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={art} alt={`Artwork for ${t.title}`} className="aspect-square w-full rounded-[14px] border border-line object-cover" />
+            ) : (
+              <div aria-hidden className="grid aspect-square w-full place-items-center rounded-[14px] border border-line bg-well text-[28px] font-semibold tracking-[-0.02em] text-mute">
+                {initials(t.title)}
+              </div>
+            )}
+            <CoverSteps fromId={t.id} prev={prev} next={next} />
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="hidden items-center justify-between gap-3 md:flex">
+            <p className="text-[11.5px] font-semibold text-mute tnum">Now reviewing{position ? ` · ${position}` : ""}</p>
+            <TrackStepper fromId={t.id} prev={prev} next={next} position={null} />
+          </div>
+          <div className="min-w-0 max-md:text-center">
+            <h2 id={`track-h-${t.id}`} className="line-clamp-2 text-[20px] font-semibold leading-tight tracking-[-0.02em] text-bone">
               {t.title}
             </h2>
-            <p className="mt-0.5 text-[11.5px] text-mute">
-              {[t.artist, collectionName && `for ${collectionName}`, `arrived ${ago(t.created_at)}`].filter(Boolean).join(" · ")}
-            </p>
+            <p className="mt-0.5 truncate text-[13px] text-mute">{t.artist}</p>
+            <p className="mt-1.5 text-[11.5px] text-mute tnum">{info}</p>
           </div>
-          <TrackStepper fromId={t.id} prev={prev} next={next} position={position ?? null} />
+          {facts.length > 0 && (
+            <ul className="flex flex-col gap-0.5 text-[12px] text-mute max-md:items-center">
+              {facts.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          )}
+          {tags}
+          {releaseBlock}
+          <CardControls track={player} prev={prev} next={next} />
+          <DecisionRail track={{ ...player, decision: t.decision }} senderName={sender.name} selfHref={selfHref} next={next} prev={prev}>
+            <PanelCalls trackId={t.id} href={selfHref} senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
+          </DecisionRail>
         </div>
-        {meta && <p className="font-mono text-[11.5px] text-mute tnum">{meta}</p>}
-        {tags}
-        {releaseBlock}
-
-        <DetailPlayer track={player} />
-
-        <DecisionRail track={{ ...player, decision: t.decision }} senderName={sender.name} selfHref={selfHref} next={next} prev={prev} />
       </section>
 
       <div className="grid min-w-0 gap-4 md:grid-cols-2 md:items-start">
@@ -249,15 +286,13 @@ export async function ReviewPanel({
             )}
           </section>
 
-          <section aria-label={`Reply to ${sender.name}`} className={card}>
-            <ReplyCard senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
-          </section>
-
           {t.decision === "kept" && (
             <>
-              <div className={card}>
-                <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
-              </div>
+              {desk && canMarkPlayedOut(desk) && (
+                <div className={card}>
+                  <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
+                </div>
+              )}
               <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
             </>
           )}
@@ -265,29 +300,61 @@ export async function ReviewPanel({
           {team > 0 && <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
 
           {stemsOn && <StemsBox track={t} senderName={sender.name} />}
+
+          <section className={card} aria-labelledby="sender-h">
+            <div className="flex items-center justify-between gap-2">
+              <h3 id="sender-h" className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em] text-bone">
+                <IconBox name="user" small />
+                Sender
+              </h3>
+              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline">
+                Full history →
+              </Link>
+            </div>
+            <p className="mt-1 text-[12px] break-all text-mute">{sender.email}</p>
+            {readLinks(sender.links).length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <ProfileLinks links={readLinks(sender.links)} size={18} />
+                <span title="Anyone can paste a profile link. FloorTest hasn't checked these belong to the sender.">
+                  <Chip>Links not verified</Chip>
+                </span>
+              </div>
+            )}
+            {senderAccount && (
+              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+                <Chip tone="acc">FloorTest user</Chip>
+                <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
+                  /{senderAccount.handle}
+                </a>
+                {senderAccount.identity_status === "verified" && <span className="inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
+              </p>
+            )}
+            <NoteForm onNote={addNote.bind(null, sender.id, t.id)} />
+            <div className="mt-3 text-[13px]">
+              <History events={events} currentTrackId={t.id} />
+            </div>
+          </section>
         </div>
 
         <PanelDetails
           summary={
-            <span className="flex min-w-0 items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <IconBox name="music" small />
-                <span className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Details</span>
-              </span>
-              <span className="truncate text-[11.5px] text-mute">file, dates, move, delete, report, sender</span>
+            <span className="flex items-center gap-2">
+              <IconBox name="music" small />
+              <span className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Details</span>
             </span>
           }
         >
-          <dl className="flex flex-col gap-1.5">
-            <InfoRow icon="folder" label="Collection">{collectionName ?? "Unsorted"}</InfoRow>
-            <InfoRow icon="wave" label="Format">{`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`}</InfoRow>
-            <InfoRow icon="clock" label="Received">{fmtDate(t.created_at)}</InfoRow>
-            <InfoRow icon="head" label="Listened">{t.played_at ? fmtDate(t.played_at) : "Not yet"}</InfoRow>
-            <InfoRow icon="dl" label="Downloaded">{t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"}</InfoRow>
-            <InfoRow icon="cal" label="Kept until">{removal ? fmtDay(removal) : "You delete it"}</InfoRow>
-            {t.isrc && <InfoRow icon="tag" label="ISRC">{t.isrc}</InfoRow>}
+          {/* Compact facts (owner, 18 Nov): one plain line each. The collection shows in the Move picker below. */}
+          <dl className="divide-y divide-line text-[12px]">
+            <Fact label="Format">{`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`}</Fact>
+            <Fact label="Received">{fmtDate(t.created_at)}</Fact>
+            <Fact label="Listened">{t.played_at ? fmtDate(t.played_at) : "Not yet"}</Fact>
+            <Fact label="Downloaded">{t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"}</Fact>
+            <Fact label="Kept until" hint={removal ? "Then deleted unless you keep it" : undefined}>
+              {removal ? fmtDay(removal) : "You delete it"}
+            </Fact>
+            {t.isrc && <Fact label="ISRC">{t.isrc}</Fact>}
           </dl>
-          {removal && <p className="mt-1.5 px-0.5 text-[11.5px] text-mute">Then deleted unless you keep it.</p>}
 
           <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
             <a
@@ -335,44 +402,21 @@ export async function ReviewPanel({
             )}
           </div>
 
-          <section className="mt-4 border-t border-line pt-3" aria-labelledby="sender-h">
-            <div className="flex items-center justify-between gap-2">
-              <h3 id="sender-h" className="flex items-center gap-2 text-[13px] font-semibold text-bone">
-                <Icon name="user" className="size-[15px] text-mute" />
-                Sender
-              </h3>
-              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline">
-                Full history →
-              </Link>
-            </div>
-            <p className="mt-1 text-[12px] break-all text-mute">{sender.email}</p>
-            {readLinks(sender.links).length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <ProfileLinks links={readLinks(sender.links)} size={18} />
-                <span title="Anyone can paste a profile link. FloorTest hasn't checked these belong to the sender.">
-                  <Chip>Links not verified</Chip>
-                </span>
-              </div>
-            )}
-            {senderAccount && (
-              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
-                <Chip tone="acc">FloorTest user</Chip>
-                <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
-                  /{senderAccount.handle}
-                </a>
-                {senderAccount.identity_status === "verified" && <span className="inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
-              </p>
-            )}
-            <p className="mt-1.5 text-[12px] text-mute tnum">
-              {stats.sent} sent · {stats.kept} kept · {stats.downloaded} downloaded · since {fmtDay(sender.created_at)}
-            </p>
-            <NoteForm onNote={addNote.bind(null, sender.id, t.id)} />
-            <div className="mt-4 text-[13px]">
-              <History events={events} currentTrackId={t.id} />
-            </div>
-          </section>
         </PanelDetails>
       </div>
+    </div>
+  );
+}
+
+/** One fact in Details: label on the left, value on the right, an optional quiet line under the value. */
+function Fact({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1.5">
+      <dt className="shrink-0 text-mute">{label}</dt>
+      <dd className="min-w-0 text-right">
+        <span className="block truncate font-semibold text-bone tnum">{children}</span>
+        {hint && <span className="block text-[11px] text-mute">{hint}</span>}
+      </dd>
     </div>
   );
 }

@@ -134,6 +134,9 @@ export async function decide(user: User, t: Track, decision: Decision) {
     return { decision: was.decision, decided_at: was.decided_at };
   });
   if (!prev) return null;
+  // Keeping a track that's already kept (to put it back in Prepare) isn't a new call: no second "You kept" in the
+  // sender's history (owner, 18 Nov). 0 matches no event, so undo then only restores the row.
+  if (prev.decision === decision) return { prev, eventId: 0 };
   const eventId = await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: t.sender_id, track_id: t.id, type: decision, detail: "" });
   return { prev, eventId };
 }

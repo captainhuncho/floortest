@@ -45,17 +45,17 @@ test("the sender sends a WAV to the receiver's link", async ({ page }) => {
   await page.goto("/dashboard/send?to=maxwell");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles(wavFile());
   // Wait until the file is read (length and BPM shown), so typing isn't undone when its details fill in.
-  await expect(page.getByText(/WAV · \d+ KB · \d+:\d+/)).toBeVisible();
-  await page.getByLabel("Track title").fill(title);
+  await expect(page.getByText(/WAV · \d+:\d+/)).toBeVisible();
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
   await page.getByLabel("Artist").fill("E2E Artist");
-  // Genre, mix, release and AI are tap choices: the visible label is what a sender taps.
-  await page.getByRole("group", { name: /^Genre/ }).locator("label").first().click();
-  await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
-  await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
-  await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
+  // Genre, mix, release and AI are tap choices: buttons, named by their full wording.
+  await page.getByRole("group", { name: /^Genre/ }).getByRole("button").first().click();
+  await page.getByRole("group", { name: /^Mix/ }).getByRole("button", { name: "Mixed, not mastered" }).click();
+  await page.getByRole("group", { name: /^Release/ }).getByRole("button", { name: "Unreleased" }).click();
+  await page.getByRole("group", { name: /^AI use/ }).getByRole("button", { name: "None", exact: true }).click();
   await page.getByRole("button", { name: /^Send to / }).click();
   // Generous: on a cold dev build the first upload compiles the whole send path.
-  await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByText(/Your receipt is on its way to/)).toBeVisible({ timeout: 180_000 });
   await expect(page.getByRole("heading", { name: /^Sent \(\d+\)$/ })).toBeVisible();
 });
 
@@ -68,9 +68,14 @@ test("the receiver keeps it and downloads it from Prepare for set", async ({ pag
   await page.getByRole("button", { name: /^Keep/ }).locator("visible=true").first().click();
   await page.goto("/dashboard/prepare");
   await expect(page.getByText(title).locator("visible=true").first()).toBeVisible();
-  await page.getByRole("button", { name: "Download kept" }).click();
-  await page.getByLabel("Name the new folder").fill("E2E Set");
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Download", exact: true }).click()]);
+  await page.getByRole("button", { name: "Download crate" }).click();
+  // The sheet: a folder name, three choices (files with a playlist is the default), one download button. Counted inside
+  // the sheet only: the one-time feedback ask (its own Type radios) can be on the page by now.
+  const sheet = page.getByRole("dialog", { name: "Download crate" });
+  await expect(sheet.getByRole("radio")).toHaveCount(3);
+  await expect(sheet.getByRole("radio", { name: /^Tracks \+ playlist/ })).toBeChecked();
+  await sheet.getByLabel("Folder name").fill("E2E Set");
+  const [download] = await Promise.all([page.waitForEvent("download"), sheet.getByRole("link", { name: /^Download \d+ tracks?$/ }).click()]);
   expect(download.suggestedFilename()).toBe("E2E Set.zip");
   const zip = await download.path();
   expect(fs.statSync(zip).size).toBeGreaterThan(200_000); // the WAV went in whole

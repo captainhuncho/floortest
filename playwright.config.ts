@@ -42,6 +42,8 @@ const env = {
   SEED_LINK_PAGES: "1",
   // Seeded accounts have seen the first-visit tour, so it doesn't cover what other tests click; signed-up ones still get it (scripts/seed.ts).
   SEED_TOUR_SEEN: "1",
+  // Seeded accounts have had the one-time feedback ask, so its card doesn't appear mid-suite (scripts/seed.ts).
+  SEED_FEEDBACK_ASKED: "1",
   // Seeded accounts have accepted the current Terms, so log-ins aren't stopped at /accept-terms (scripts/seed-terms.ts).
   SEED_TERMS_ACCEPTED: "1",
   ADMIN_EMAILS: "ops@floortest.test",

@@ -8,6 +8,7 @@ import { logAdmin } from "./admin-log";
 import { purgeAccount } from "./privacy";
 import { recordIncident } from "./incidents";
 import { APP_URL, sendMail } from "./mail";
+import { UNDO_DAYS } from "./undo-days";
 
 /**
  * Deleted accounts (owner, 15 Nov). Deleting switches the account off at once: deletion_requested_at is set and the
@@ -17,7 +18,7 @@ import { APP_URL, sendMail } from "./mail";
  * On day 14 the nightly job keeps a minimal evidence record (6 years) and purges the account. A super admin's legal
  * hold stops the purge and the evidence expiry; releasing it restarts the clock.
  */
-export const UNDO_DAYS = 14;
+export { UNDO_DAYS };
 export const EVIDENCE_YEARS = 6;
 const DAY = 86_400_000;
 export const UNDO_MS = UNDO_DAYS * DAY;

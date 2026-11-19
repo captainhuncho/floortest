@@ -94,17 +94,20 @@ export async function clearKept() {
 
 /**
  * Read-only, for the expanded player: whether Played out can be offered on this track. Null for anything not on the desk,
- * and in ops View as (read-only: no Played out there). The one source for these flags; the player track itself stays lean.
+ * in ops View as (read-only: no Played out there), and for anyone the action below refuses (a Member, a label desk). The one
+ * source for these flags; the player track itself stays lean.
  */
 export async function playerTrackState(trackId: number) {
   if (await viewingAs()) return null;
   const u = await requireUser();
+  if (!canMarkPlayedOut(u)) return null;
   return (await trackStateFor(u, Number(trackId))) ?? null;
 }
 
-/** Kept tracks only: tells the sender it was played in a set. */
+/** Kept tracks only: tells the sender it was played in a set. DJ desks only, owner and A&R / Admin, as the batch below. */
 export async function playedOut(trackId: number, note: string) {
   const u = await requireUser();
+  if (!canMarkPlayedOut(u)) return false;
   const t = await ownedTrack(u, trackId);
   if (!t || t.decision !== "kept") return false;
   await trackUse(u.id, "played_out");

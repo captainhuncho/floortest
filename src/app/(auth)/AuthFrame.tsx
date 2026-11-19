@@ -14,6 +14,7 @@ const PATHS = {
   share: <><path d="M12 15V4M8 8l4-4 4 4" /><path d="M5 12v6.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V12" /></>,
   eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>,
   eyeOff: <><path d="M4 4l16 16" /><path d="M10.6 6.1A9.6 9.6 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-2.8 3.4M6.4 7.6A16.6 16.6 0 0 0 2.5 12S6 18.5 12 18.5a9 9 0 0 0 4-.9" /><path d="M9.9 10a3 3 0 0 0 4.2 4.1" /></>,
+  mail: <><rect x="3.5" y="5.5" width="17" height="13" rx="2.5" /><path d="M4.5 7.5l7.5 5.5 7.5-5.5" /></>,
   key: <><circle cx="8" cy="15" r="4" /><path d="M11 12l8-8M16 7l2.5 2.5M14 9l2 2" /></>,
   user: <><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
   head: <><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><rect x="3.5" y="14" width="4" height="6" rx="1.5" /><rect x="16.5" y="14" width="4" height="6" rx="1.5" /></>,
@@ -49,7 +50,9 @@ export function CrestMoment({ line = "One link for every track you're sent." }: 
 /**
  * The shell every sign-in, sign-up and recovery screen sits in (auth.css has the layout rules). `step` (1 to 7) shows
  * the progress line and count; `back` is the Back control; `aside` is what shows through the desktop frame's open
- * side. `form` turns the column into the form, so the action below the content is part of it.
+ * side. `form` turns the column into the form, so the action below the content is part of it. `top` (log in; owner,
+ * 17 Nov, option 54) makes the desktop frame a stage: the logo and `top` across the page, the column on a glass card
+ * at the left, `aside` over the photo at the right; phones and tablets stay as they are.
  */
 export function AuthFrame({
   children,
@@ -61,6 +64,7 @@ export function AuthFrame({
   stepKey,
   form,
   photo = false,
+  top,
 }: {
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -73,6 +77,8 @@ export function AuthFrame({
   form?: React.FormHTMLAttributes<HTMLFormElement>;
   /** Phones: the club photo, toned down, behind this screen (the first and last of sign-up). */
   photo?: boolean;
+  /** Desktop only: the right side of the page's top row, which turns the frame into the stage layout. */
+  top?: React.ReactNode;
 }) {
   const inner = (
     <>
@@ -107,9 +113,15 @@ export function AuthFrame({
     </>
   );
   return (
-    <div className="af-frame">
+    <div className={`af-frame${top ? " af-stage" : ""}`}>
       <KeyboardWatch />
       {photo && <div className="af-photo" aria-hidden />}
+      {top && (
+        <div className="af-top">
+          <Logo className="af-logo" />
+          <span className="aw-have">{top}</span>
+        </div>
+      )}
       <div className="af-panel">{form ? <form className="af-flow" {...form}>{inner}</form> : <div className="af-flow">{inner}</div>}</div>
       <div className="af-view">{aside ?? <CrestMoment />}</div>
     </div>
