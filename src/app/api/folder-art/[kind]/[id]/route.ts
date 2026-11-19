@@ -4,7 +4,7 @@ import { atLeast } from "@/lib/account-members";
 import { currentDeskForChange, currentUser, viewingAs } from "@/lib/auth";
 import { thumbResponse, wantsThumb } from "@/lib/art-thumb";
 import { readFormUpTo } from "@/lib/bounded-form";
-import { discardFiles } from "@/lib/deletion";
+import { drainNow } from "@/lib/deletion";
 import { quarantined, recordDigest } from "@/lib/file-digests";
 import { reserveFile, settleFile } from "@/lib/file-reservations";
 import { artRow, isArtKind, setArt, type ArtKind } from "@/lib/folder-art";
@@ -59,7 +59,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/folder-art/[kin
   // Deleted in between: the new file stays reserved and the nightly check removes it.
   if (old === undefined) return NextResponse.json({ error: GONE }, { status: 404 });
   await settleFile(key);
-  await discardFiles([old], `${o.kind} cover replaced`);
+  // The replaced cover was queued in the same transaction (trigger, migration 0156): delete it now.
+  if (old) await drainNow();
   return NextResponse.json({ ok: true });
 }
 
@@ -72,7 +73,7 @@ export async function DELETE(_req: Request, ctx: RouteContext<"/api/folder-art/[
   if (!atLeast(user.role, "admin")) return NextResponse.json({ error: MEMBER }, { status: 403 });
   const old = await setArt(o.kind, o.row.id, user.id, null);
   if (old === undefined) return NextResponse.json({ error: GONE }, { status: 404 });
-  await discardFiles([old], `${o.kind} cover removed`);
+  if (old) await drainNow();
   return NextResponse.json({ ok: true });
 }
 

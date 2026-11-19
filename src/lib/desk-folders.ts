@@ -2,7 +2,7 @@ import "server-only";
 import { asPerson, now, q, type User } from "./db";
 import { IntakeError } from "./intake";
 import { calloutCovers } from "./covers";
-import { discardFiles } from "./deletion";
+import { drainNow } from "./deletion";
 import { folderArtUrl } from "./folder-art";
 
 /**
@@ -81,8 +81,8 @@ export async function renameDeskFolder(desk: Desk, id: number, raw: string) {
 /** Deletes a folder; what was in it stays, in no folder. False when it isn't on this desk. */
 export async function deleteDeskFolder(desk: Desk, id: number) {
   const gone = await asPerson(desk.actor_id, () => q.get<{ art_key: string | null }>("DELETE FROM desk_folders WHERE id = ? AND user_id = ? RETURNING art_key", id, desk.id));
-  // Its cover goes with it (src/lib/folder-art.ts).
-  if (gone?.art_key) await discardFiles([gone.art_key], "folder deleted");
+  // Its cover goes with it: the delete queued it (trigger, migration 0156), so delete it now.
+  if (gone?.art_key) await drainNow();
   return !!gone;
 }
 

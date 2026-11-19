@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { testDataDir } from "./test-db";
@@ -9,6 +10,7 @@ import { agreeTerms } from "./agree-terms";
 // queued for deletion, and account erasure finds it.
 process.env.DATA_DIR = testDataDir("ft-folder-art-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
+process.env.ADMIN_EMAILS = "fa-staff@example.test";
 delete process.env.DATABASE_URL;
 delete process.env.RESEND_API_KEY;
 delete process.env.S3_BUCKET;
@@ -39,29 +41,44 @@ const png = async () => {
   return new Uint8Array(await sharp({ create: { width: 40, height: 40, channels: 3, background: "#d5ff48" } }).png().toBuffer());
 };
 
-/** Calls the route as `jar`; the status and JSON body. */
-async function call(jar: Jar, method: "GET" | "POST" | "DELETE", kind: string, id: number, bytes?: Uint8Array) {
+/** Calls the route as `jar`; the status. */
+async function call(jar: Jar, method: "GET" | "POST" | "DELETE", kind: string, id: number | string, bytes?: Uint8Array) {
+  return (await answer(jar, method, kind, id, bytes)).status;
+}
+
+/** Calls the route as `jar`; the status and the body text. */
+async function answer(jar: Jar, method: "GET" | "POST" | "DELETE", kind: string, id: number | string, bytes?: Uint8Array) {
   const route = await import("../src/app/api/folder-art/[kind]/[id]/route");
-  let body: FormData | undefined;
+  let body: ArrayBuffer | undefined;
+  const headers: Record<string, string> = {};
   if (bytes) {
-    body = new FormData();
-    body.append("file", new File([bytes as BlobPart], "cover.png", { type: "image/png" }));
+    const form = new FormData();
+    form.append("file", new File([bytes as BlobPart], "cover.png", { type: "image/png" }));
+    // Buffered up front, so a route that stops reading early leaves no stream open after the test.
+    const encoded = new Response(form);
+    headers["content-type"] = encoded.headers.get("content-type")!;
+    body = await encoded.arrayBuffer();
   }
-  const req = new Request(`http://localhost/api/folder-art/${kind}/${id}?v=x`, { method, body });
+  const req = new Request(`http://localhost/api/folder-art/${kind}/${id}?v=x`, { method, body, headers });
   const ctx = { params: Promise.resolve({ kind, id: String(id) }) } as never;
   const out = await inRequest(jar, "10.9.0.3", () => route[method](req, ctx), { dropAfter: true });
-  return (out.answer as Response).status;
+  const res = out.answer as Response;
+  return { status: res.status, body: await res.text() };
 }
 
 const artOf = async (table: string, id: number) => {
   const { q } = await import("../src/lib/db");
   return (await q.get<{ art_key: string | null }>(`SELECT art_key FROM ${table} WHERE id = ?`, id))?.art_key ?? null;
 };
-/** Deleted from storage (discardFiles deletes at once; a failed delete would stay queued for the nightly retry). */
+/** Removed from storage and no longer waiting in the deletion queue. */
 const gone = async (key: string) => {
   const { storage } = await import("../src/lib/storage");
   const { q } = await import("../src/lib/db");
-  return !(await (await storage()).head(key)) || !!(await q.get("SELECT 1 FROM storage_deletions WHERE file_key = ?", key));
+  return !(await (await storage()).head(key)) && !(await q.get("SELECT 1 FROM storage_deletions WHERE file_key = ?", key));
+};
+const queued = async (key: string) => {
+  const { q } = await import("../src/lib/db");
+  return !!(await q.get("SELECT 1 FROM storage_deletions WHERE file_key = ?", key));
 };
 
 async function desk() {
@@ -145,4 +162,67 @@ test("deleting a project or folder deletes its cover; account erasure and the le
   assert.ok(await gone(p), "the project's cover goes with it");
   assert.ok(await deleteDeskFolder(deskUser, d.folder));
   assert.ok(await gone(f), "the folder's cover goes with it");
+});
+
+test("staff viewing the desk can't change or remove a cover", async () => {
+  const { q } = await import("../src/lib/db");
+  const { signViewAs, VIEW_AS_COOKIE } = await import("../src/lib/auth");
+  const d = await desk();
+  const t = Date.now();
+  const staff = Number((await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, kind, tz, created_at, email_verified_at, totp_enabled_at) VALUES ('fa-staff@example.test', 'h', 'Staff', 'fastaff', 'free', 'dj', 'UTC', ?, ?, ?) RETURNING id",
+    t, t, t,
+  ))!.id);
+  const session = crypto.randomBytes(32).toString("hex");
+  await q.run("INSERT INTO admin_sessions (token_hash, user_id, expires_at, created_at, last_seen_at) VALUES (?,?,?,?,?)", session, staff, t + 3_600_000, t, t);
+  assert.equal(await call(await signIn(d.owner), "POST", "project", d.project, await png()), 200);
+  const before = await artOf("library_folders", d.project);
+  for (const [kind, id] of [["project", d.project], ["folder", d.folder]] as const) {
+    const jar = await signIn(d.owner);
+    jar.set(VIEW_AS_COOKIE, signViewAs(staff, d.owner, session, process.env.APP_SECRET!));
+    assert.equal(await call(jar, "POST", kind, id, await png()), 404, `View as can't set a ${kind} cover`);
+    assert.equal(await call(jar, "DELETE", kind, id), 404, `View as can't remove a ${kind} cover`);
+  }
+  assert.equal(await artOf("library_folders", d.project), before, "the cover is unchanged");
+  assert.equal(await artOf("desk_folders", d.folder), null);
+});
+
+test("a body over 8 MB is refused before anything is stored", async () => {
+  const { q } = await import("../src/lib/db");
+  const d = await desk();
+  const big = new Uint8Array(9 * 1024 * 1024);
+  big.set(await png());
+  assert.equal(await call(await signIn(d.owner), "POST", "project", d.project, big), 413);
+  assert.equal(await artOf("library_folders", d.project), null);
+  assert.equal(await q.get("SELECT 1 FROM file_reservations WHERE file_key LIKE ?", `folder-art/p${d.project}-%`), undefined, "nothing reserved or written");
+});
+
+test("an unknown id, another kind or a non-number all get the same 404", async () => {
+  const d = await desk();
+  const owner = await signIn(d.owner);
+  const want = await answer(owner, "POST", "project", 99_999_999, await png());
+  assert.equal(want.status, 404);
+  for (const [kind, id] of [["collection", d.project], ["project", "abc"], ["folder", 99_999_999], ["project", "-1"]] as const) {
+    for (const method of ["POST", "DELETE"] as const) {
+      const got = await answer(owner, method, kind, id, method === "POST" ? await png() : undefined);
+      assert.deepEqual(got, want, `${method} ${kind}/${id}`);
+    }
+    assert.equal(await call(owner, "GET", kind, id), 404, `GET ${kind}/${id}`);
+  }
+});
+
+test("the old cover is queued in the same transaction, so a crash before it's deleted can't orphan it", async () => {
+  const { setArt } = await import("../src/lib/folder-art");
+  const { drainNow } = await import("../src/lib/deletion");
+  const { q } = await import("../src/lib/db");
+  const d = await desk();
+  assert.equal(await call(await signIn(d.owner), "POST", "folder", d.folder, await png()), 200);
+  const first = (await artOf("desk_folders", d.folder))!;
+  // The database change alone, with no clean-up after it (as if the server stopped there).
+  await setArt("folder", d.folder, d.owner, "folder-art/replacement.webp");
+  assert.ok(await queued(first), "replacing queues the old cover");
+  await q.run("DELETE FROM desk_folders WHERE id = ?", d.folder);
+  assert.ok(await queued("folder-art/replacement.webp"), "deleting the folder queues its cover");
+  await drainNow();
+  assert.ok(await gone(first), "the queue deletes it");
 });

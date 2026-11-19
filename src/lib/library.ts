@@ -140,8 +140,8 @@ export async function renameFolder(desk: Pick<User, "id" | "actor_id">, id: numb
 /** Deletes a project; its tracks stay in Projects, in no project. False when it isn't theirs. */
 export async function deleteFolder(desk: Pick<User, "id" | "actor_id">, id: number) {
   const gone = await asPerson(desk.actor_id, () => q.get<{ art_key: string | null }>("DELETE FROM library_folders WHERE id = ? AND user_id = ? RETURNING art_key", id, desk.id));
-  // Its cover goes with it (src/lib/folder-art.ts).
-  if (gone?.art_key) await discardFiles([gone.art_key], "project deleted");
+  // Its cover goes with it: the delete queued it (trigger, migration 0156), so delete it now.
+  if (gone?.art_key) await drainNow();
   return !!gone;
 }
 
