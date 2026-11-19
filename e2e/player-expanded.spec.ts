@@ -133,6 +133,10 @@ test("phone: the mini player's title opens the player full window; Keep and Not 
       };
     }),
   ).toEqual({ space: 56, wave: 124, cover: 56 });
+  // The cover is the link the server picked (the small copy) or the placeholder, and it is a picture that loaded.
+  const cover = player.locator("[data-player-cover]");
+  await expect(cover).toHaveAttribute("src", /(\/icons\/mini-art\.svg|^\/api\/(track|collection)-art\/\d+\?v=[^&]+&size=thumb)$/);
+  await expect.poll(() => cover.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
   // Phones keep one row: Previous, Back 15, play or pause in the middle, Forward 15, Next.
   expect(await player.getByRole("group", { name: "Playback", exact: true }).getByRole("button").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")!.replace(/^(Play|Pause) .*/, "Play or pause")))).toEqual(["Previous track", "Back 15 seconds", "Play or pause", "Forward 15 seconds", "Next track"]);
   await expect(player.getByRole("group", { name: "More playback" })).toBeHidden();

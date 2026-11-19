@@ -9,6 +9,31 @@ import { useRenderProbe } from "@/lib/render-probe";
 import { clearDecision, decideTrack, undoDecision } from "./actions/review";
 import { setPlayerExpanded } from "./playerExpandedStore";
 
+const PLACEHOLDER = "/icons/mini-art.svg";
+
+/**
+ * A track's cover in the players: the link the server picked for it (lib/covers.ts playerCover), or the placeholder,
+ * which also comes back when the picture won't load (artwork removed since the list was read).
+ */
+export function Cover({ src, className, lazy = false, ...rest }: { src?: string | null; className: string; lazy?: boolean; "data-player-cover"?: boolean }) {
+  const shown = src ?? PLACEHOLDER;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={shown}
+      src={shown}
+      alt=""
+      loading={lazy ? "lazy" : undefined}
+      decoding="async"
+      onError={(e) => {
+        if (!e.currentTarget.src.endsWith(PLACEHOLDER)) e.currentTarget.src = PLACEHOLDER;
+      }}
+      className={`${className} object-cover`}
+      {...rest}
+    />
+  );
+}
+
 /** Where the title leads: the track in the Queue, or Projects for the desk's own music. */
 export const trackHref = (t: PlayerTrack) => (t.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${t.id}`);
 
@@ -151,8 +176,7 @@ export function CoverPlay() {
       aria-busy={buffering || undefined}
       data-buffering={buffering ? "" : undefined}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/icons/mini-art.svg" alt="" className="absolute inset-0 size-full" />
+      <Cover src={current.cover} className="absolute inset-0 size-full" />
       <span className="relative grid size-7 place-items-center rounded-full bg-black/55 text-white">
         <PlayIcon playing={playing} className="size-3.5" />
         <BufferRing className="-inset-[3px] text-white" />

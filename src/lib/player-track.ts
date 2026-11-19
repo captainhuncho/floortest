@@ -10,6 +10,8 @@ export const toPlayer = (r: {
   played: boolean;
   /** Passed on when the row has it, so the player's heart knows whether the track is Kept. */
   decision?: "kept" | "passed" | null;
+  /** The cover the server picked for the players, when the list has one. */
+  cover?: string | null;
 }): PlayerTrack => ({
   id: r.id,
   title: r.title,
@@ -18,6 +20,7 @@ export const toPlayer = (r: {
   duration: r.duration,
   played: r.played,
   ...(r.decision !== undefined ? { decision: r.decision } : {}),
+  ...(r.cover ? { cover: r.cover } : {}),
 });
 
 /** A Projects track in the player: a negative id so it never matches a desk track, and its own audio route. */
