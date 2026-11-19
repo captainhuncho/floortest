@@ -13,6 +13,7 @@ import { APP_URL } from "@/lib/mail";
 import { localHour, prefsForView } from "@/lib/notify";
 import { homeStats } from "@/lib/stats";
 import { toPlayer } from "@/lib/player-track";
+import { COVER_COLUMNS, playerCover } from "@/lib/covers";
 import { SwitchCollection } from "./SwitchCollection";
 import { PlayedOutCard } from "./PlayedOutCard";
 import { canMarkPlayedOut, playedOutPrompt } from "@/lib/played-out-prompt";
@@ -70,10 +71,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       user.id,
     ),
     // This week's kept tracks, newest first: the Kept crate's covers and what Play all plays.
-    q.all<{ id: number; title: string; artist: string; duration: number | null; peaks: string | null; played_at: number | null; art_key: string | null }>(
-      `SELECT id, title, artist, duration, peaks, played_at, art_key FROM tracks
-       WHERE user_id = ? AND deleted_at IS NULL AND decision = 'kept' AND decided_at >= ?
-       ORDER BY decided_at DESC, id DESC LIMIT 50`,
+    // The callout is joined on the same desk for the players' cover (lib/covers.ts playerCover).
+    q.all<{ id: number; title: string; artist: string; duration: number | null; peaks: string | null; played_at: number | null; art_key: string | null; collection_id: number | null; callout_art_key: string | null }>(
+      `SELECT t.id, t.title, t.artist, t.duration, t.peaks, t.played_at, ${COVER_COLUMNS}
+       FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id AND c.user_id = t.user_id
+       WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.decision = 'kept' AND t.decided_at >= ?
+       ORDER BY t.decided_at DESC, t.id DESC LIMIT 50`,
       user.id,
       t - 7 * DAY_MS,
     ),
@@ -194,7 +197,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   const waitingCovers: CrateCover[] = waitingNew.map((r) => ({ id: r.id, title: r.title, art: art(r) }));
   const keptCovers: CrateCover[] = keptRows.slice(0, 3).map((r) => ({ id: r.id, title: r.title, art: art(r) }));
-  const playAll = keptRows.map((r) => toPlayer({ ...r, peaks: r.peaks ? JSON.parse(r.peaks) : null, played: !!r.played_at }));
+  const playAll = keptRows.map((r) => toPlayer({ id: r.id, title: r.title, artist: r.artist, duration: r.duration, peaks: r.peaks ? JSON.parse(r.peaks) : null, played: !!r.played_at, cover: playerCover(r) }));
   const showKept = wkKept > 0;
 
   const weekDetail = `${plural(wkIn, "track")} in · ${wkKept} kept${week ? ` · ${wkThird} ${thirdWord}` : ""}`;

@@ -9,7 +9,7 @@ import { asPerson, now, q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
-import { calloutCovers, collectionArtUrl } from "@/lib/covers";
+import { calloutCovers, collectionArtUrl, playerCover } from "@/lib/covers";
 import { DownloadActions } from "../../DownloadActions";
 import { LinkRow } from "../../floor/FloorClient";
 import { APP_URL } from "@/lib/mail";
@@ -54,8 +54,8 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const sharedTracks = links ? Number((await asMe(() => q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND share_ok = 1 AND share_terms IS NOT NULL", c.id)))?.n ?? 0) : 0;
 
   const tracks = await asMe(() =>
-    q.all<ListTrack & { sender_name: string; sender_email: string; sender_verified: number | null }>(
-      `SELECT ${LIST_COLUMNS}, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified
+    q.all<ListTrack & { art_key: string | null; sender_name: string; sender_email: string; sender_verified: number | null }>(
+      `SELECT ${LIST_COLUMNS}, t.art_key, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified
          FROM tracks t JOIN senders s ON s.id = t.sender_id
          WHERE t.user_id = ? AND t.collection_id = ? AND t.deleted_at IS NULL ORDER BY t.created_at DESC LIMIT 500`,
       user.id,
@@ -80,6 +80,8 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     played: !!t.played_at,
     downloaded: !!t.downloaded_at,
     replied: !!t.replied_at,
+    // Every track here came in on this callout, so its cover is already in hand.
+    cover: playerCover({ id: t.id, art_key: t.art_key, collection_id: c.id, callout_art_key: c.art_key }),
     createdAt: t.created_at,
   }));
   const editable = {

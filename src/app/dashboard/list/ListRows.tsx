@@ -39,6 +39,8 @@ export type ListRow = {
   downloaded: boolean;
   replied: boolean;
   createdAt: number;
+  /** The cover the players show for it (lib/covers.ts playerCover). */
+  cover?: string | null;
 };
 
 const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };

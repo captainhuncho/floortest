@@ -9,6 +9,7 @@ import { CARD, Icon, PageHead } from "@/components/Kit";
 import { FilterSheet } from "./FilterSheet";
 import { ListRows, type ListRow } from "./ListRows";
 import { LIST_COLUMNS, type ListTrack } from "../rows";
+import { COVER_COLUMNS, playerCover, type CoverSource } from "@/lib/covers";
 
 type Search = { c?: string; s?: string; q?: string; type?: string; sender?: string; genre?: string; bpm?: string; verified?: string };
 
@@ -70,8 +71,8 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
 
   // The list, sender and genre reads run under the per-person rules (B8) as well as the desk filter.
   const asMe = <T,>(fn: () => Promise<T>) => asPerson(user.actor_id, fn);
-  const tracks = (await asMe(() => q.all<ListTrack & { sender_name: string; sender_email: string; sender_verified: number | null; collection_name: string | null }>(`SELECT ${LIST_COLUMNS}, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified, c.name AS collection_name
-       FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
+  const tracks = (await asMe(() => q.all<ListTrack & Omit<CoverSource, "id"> & { sender_name: string; sender_email: string; sender_verified: number | null; collection_name: string | null }>(`SELECT ${LIST_COLUMNS}, ${COVER_COLUMNS}, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified, c.name AS collection_name
+       FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id AND c.user_id = t.user_id
        WHERE ${where.join(" AND ")} ORDER BY t.created_at DESC LIMIT 500`, ...args)));
 
   const senders = (await asMe(() => q.all<{ id: number; name: string; n: number }>(`SELECT s.id, s.name, COUNT(t.id) AS n FROM senders s JOIN tracks t ON t.sender_id = s.id AND t.deleted_at IS NULL
@@ -110,6 +111,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
     played: !!t.played_at,
     downloaded: !!t.downloaded_at,
     replied: !!t.replied_at,
+    cover: playerCover(t),
     createdAt: t.created_at,
   }));
 

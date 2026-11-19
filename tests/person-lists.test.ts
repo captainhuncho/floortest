@@ -62,7 +62,7 @@ test("the desk list pages read through the person scope", () => {
     assert.equal((src.match(/asMe\(\(\) =>/g) ?? []).length, n, file);
     assert.doesNotMatch(src, /await q\.(all|get|count)/, `${file}: a query outside the person scope`);
   }
-  assert.match(read("prepare/page.tsx"), /loadRows\(user\.id, \{ inSet: true, actor: user\.actor_id \}\)/);
+  assert.match(read("prepare/page.tsx"), /loadRows\(user\.id, \{ inSet: true, covers: true, actor: user\.actor_id \}\)/);
 });
 
 test("the app and offline lists read through the person scope", () => {
