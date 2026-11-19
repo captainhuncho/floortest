@@ -23,6 +23,27 @@ export function pickCovers(own: string | null, tracks: string[]): string[] {
   return [...(own ? [own] : []), ...tracks].slice(0, MAX_COVERS);
 }
 
+/**
+ * A track's cover in the players (mini player, laptop bar, full player). Owner, 18 Nov: the track's own artwork first,
+ * then the artwork its release shares (Review), then the cover of the callout it came in on; with none of those the
+ * players keep their placeholder. Only a link leaves here, never a storage key: both routes check the viewer on every
+ * request, and ?size=thumb asks for the small copy.
+ *
+ * COVER_COLUMNS is what a list query adds for it, with the track as `t` and its callout joined as `c` on the same desk
+ * (c.id = t.collection_id AND c.user_id = t.user_id), so a stray collection_id can never reach another desk's artwork.
+ */
+export const COVER_COLUMNS = "t.art_key, t.collection_id, c.art_key AS callout_art_key";
+export type CoverSource = { id: number; art_key: string | null; collection_id: number | null; callout_art_key: string | null };
+
+const small = (url: string) => `${url}&size=thumb`;
+
+export function playerCover(t: CoverSource, release?: OwnArt | null): string | null {
+  if (t.art_key) return small(trackArtUrl(Number(t.id), t.art_key));
+  if (release) return small(trackArtUrl(Number(release.id), release.art_key));
+  if (t.collection_id && t.callout_art_key) return small(collectionArtUrl(Number(t.collection_id), t.callout_art_key));
+  return null;
+}
+
 /** Every callout's covers on this desk, by callout id. Callouts with no artwork at all are left out. */
 export function coversByCallout(own: OwnArt[], tracks: TrackArt[]): Map<number, string[]> {
   const byCallout = new Map<number, string[]>();

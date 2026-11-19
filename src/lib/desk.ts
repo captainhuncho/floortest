@@ -153,6 +153,23 @@ export async function ownedTrack(desk: DeskActor, trackId: number) {
   );
 }
 
+/**
+ * What the expanded player needs to offer Played out on one track: OK to play in sets, already played out, kept, and the
+ * sender's first name for the toast (never the full name, email or id). Undefined for a track not live on this desk.
+ */
+export async function playerTrackState(desk: DeskActor, trackId: number) {
+  if (!Number.isSafeInteger(trackId) || trackId <= 0) return undefined;
+  const r = await asPerson(desk.actor_id, () =>
+    q.get<{ sets_ok: number; played_out_at: number | null; decision: string | null; sender: string | null }>(
+      `SELECT t.sets_ok, t.played_out_at, t.decision, s.name AS sender FROM tracks t LEFT JOIN senders s ON s.id = t.sender_id
+       WHERE t.id = ? AND t.user_id = ? AND t.deleted_at IS NULL`,
+      trackId, desk.id,
+    ),
+  );
+  if (!r) return undefined;
+  return { setsOk: Boolean(r.sets_ok), playedOutAt: r.played_out_at === null ? null : Number(r.played_out_at), kept: r.decision === "kept", sender: (r.sender ?? "").trim().split(/\s+/)[0] ?? "" };
+}
+
 /** A sender on this desk, checked the same two ways. */
 export async function ownedSender(desk: DeskActor, senderId: number) {
   if (!Number.isSafeInteger(senderId)) return undefined;

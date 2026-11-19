@@ -6,7 +6,7 @@ import { useModalDialog } from "@/components/Dialog";
 import { BufferRing, PlayerClock, type PlayerTrack, PlayerWaveform, PlayIcon, usePlayer } from "@/components/Player";
 import { useToastHost } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
-import { CONTROL, KeepHeart, SkipIcon, trackHref } from "./PlayerBars";
+import { CONTROL, Cover, KeepHeart, SkipIcon, trackHref } from "./PlayerBars";
 import { PlayerActions } from "./PlayerExpandedActions";
 import { playerExpanded, setPlayerExpanded, subscribePlayerExpanded } from "./playerExpandedStore";
 
@@ -149,8 +149,7 @@ export function PlayerExpanded() {
               </div>
 
               <div className="flex items-center gap-3 min-[1024px]:gap-2.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/mini-art.svg" alt="" data-player-cover className="size-14 shrink-0 rounded-xl min-[1024px]:size-11 min-[1024px]:rounded-[10px] [@media(max-height:500px)]:size-11" />
+                <Cover src={current.cover} data-player-cover className="size-14 shrink-0 rounded-xl min-[1024px]:size-11 min-[1024px]:rounded-[10px] [@media(max-height:500px)]:size-11" />
                 {/* The title opens the track's page, whatever its state (Design, 18 Nov). */}
                 <Link href={trackHref(current)} onClick={close} data-open-track className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-md">
                   <h2 id={titleId} className="truncate text-[18px] font-bold leading-6 text-bone">
@@ -201,8 +200,7 @@ export function PlayerExpanded() {
                   {upNext.map((t) => (
                     <li key={t.id}>
                       <button type="button" onClick={() => play(t)} aria-label={`Play ${t.title}`} className="-mx-1.5 flex min-h-14 w-[calc(100%+0.75rem)] items-center gap-2.5 rounded-[11px] px-1.5 py-1.5 text-left transition-colors hover:bg-(--glass-on)">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/icons/mini-art.svg" alt="" loading="lazy" className="size-10 shrink-0 rounded-[8px]" />
+                        <Cover src={t.cover} lazy className="size-10 shrink-0 rounded-[8px]" />
                         <span className="flex min-w-0 flex-1 flex-col">
                           <span className="truncate text-[13px] font-medium text-bone">{t.title}</span>
                           {t.artist && <span className="truncate text-[12px] text-mute">{t.artist}</span>}

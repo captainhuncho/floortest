@@ -124,9 +124,13 @@ function ProjectOptions({ p, onClose, onRename, onMove, showOpen }: { p: Project
   const router = useRouter();
   const toast = useToast();
   const [ask, confirmDialog] = useConfirm();
+  // The confirm lives in this component, so the menu hides while it asks and closes only after the answer: closing
+  // first unmounted the confirm, and Delete project did nothing.
+  const [asking, setAsking] = useState(false);
   const remove = async () => {
-    onClose();
+    setAsking(true);
     const ok = await ask({ title: `Delete ${p.name}?`, body: "The project goes; its tracks stay in Projects, outside any project.", confirmLabel: "Delete project", danger: true });
+    onClose();
     if (!ok) return;
     const r = await deleteProject(p.id);
     if (!r.ok) return toast.show({ message: r.error, tone: "error" });
@@ -135,8 +139,9 @@ function ProjectOptions({ p, onClose, onRename, onMove, showOpen }: { p: Project
   };
   return (
     <>
-      <Sheet title={p.name} onClose={onClose}>
-        {showOpen && (
+      {!asking && (
+        <Sheet title={p.name} onClose={onClose}>
+          {showOpen && (
           <Link role="menuitem" href={`/dashboard/projects/${p.id}`}>
             Open project
           </Link>
@@ -155,7 +160,8 @@ function ProjectOptions({ p, onClose, onRename, onMove, showOpen }: { p: Project
         <button role="menuitem" className="text-center! text-mute" onClick={onClose}>
           Cancel
         </button>
-      </Sheet>
+        </Sheet>
+      )}
       {confirmDialog}
     </>
   );

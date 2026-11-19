@@ -27,6 +27,8 @@ export type PlayerTrack = {
   src?: string;
   /** Kept, Not for me or neither, as the list that started it knew; the bar's heart reads it. Absent: nothing to decide. */
   decision?: "kept" | "passed" | null;
+  /** The cover the players show: a link the server picked (lib/covers.ts playerCover). Absent or null: the placeholder. */
+  cover?: string | null;
 };
 
 const audioUrl = (t: Pick<PlayerTrack, "id" | "src">) => t.src ?? `/api/tracks/${t.id}/audio`;

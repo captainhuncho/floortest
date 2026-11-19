@@ -7,6 +7,7 @@ import { readLinks } from "@/lib/socials";
 import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
+import { playerCover } from "@/lib/covers";
 import { asPerson, q, type Collection, type EventRow, type Sender, type Track, now } from "@/lib/db";
 import { ago, fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
@@ -30,7 +31,7 @@ import type { Step } from "./review/QueueState";
 import { CardControls, CoverSteps, PanelCalls, StoryBars } from "./review/NowReviewing";
 import { MoveToProjects } from "./projects/MoveToProjects";
 import { listFolders } from "@/lib/library";
-import { CARD, Chip, Icon, IconBox, InfoRow, initials } from "@/components/Kit";
+import { CARD, Chip, Icon, IconBox, initials } from "@/components/Kit";
 
 export async function ReviewPanel({
   track: t,
@@ -66,8 +67,8 @@ export async function ReviewPanel({
     t.release_id
       ? q.get<{ id: string; title: string; artist: string; kind: string }>("SELECT id, title, artist, kind FROM releases WHERE id = ? AND user_id = ?", t.release_id, t.user_id)
       : Promise.resolve(undefined),
-    q.get<{ sent: number; kept: number; downloaded: number }>(
-      `SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept, COUNT(downloaded_at) AS downloaded FROM tracks WHERE sender_id = ?`,
+    q.get<{ sent: number; kept: number }>(
+      `SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept FROM tracks WHERE sender_id = ?`,
       sender.id,
     ).then((r) => r!),
     // Artwork the sender attached (Team plans); tracks in a folder share the cover the sender attached to the release.
@@ -97,6 +98,8 @@ export async function ReviewPanel({
     played: !!t.played_at,
     // So the floating player's heart shows for a track started from this card.
     decision: t.decision,
+    // The track's own artwork or its release's (as this card shows), else the cover of the callout it came in on.
+    cover: playerCover({ id: t.id, art_key: t.art_key, collection_id: t.collection_id, callout_art_key: collections.find((c) => c.id === t.collection_id)?.art_key ?? null }, artFrom),
   };
   const removal = deletesAt(t);
   // A track the desk added itself (sent from its own account) can move to Projects; a sender's never can (owner, 13 Nov).
@@ -300,29 +303,61 @@ export async function ReviewPanel({
           {team > 0 && <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
 
           {stemsOn && <StemsBox track={t} senderName={sender.name} />}
+
+          <section className={card} aria-labelledby="sender-h">
+            <div className="flex items-center justify-between gap-2">
+              <h3 id="sender-h" className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em] text-bone">
+                <IconBox name="user" small />
+                Sender
+              </h3>
+              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline">
+                Full history →
+              </Link>
+            </div>
+            <p className="mt-1 text-[12px] break-all text-mute">{sender.email}</p>
+            {readLinks(sender.links).length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <ProfileLinks links={readLinks(sender.links)} size={18} />
+                <span title="Anyone can paste a profile link. FloorTest hasn't checked these belong to the sender.">
+                  <Chip>Links not verified</Chip>
+                </span>
+              </div>
+            )}
+            {senderAccount && (
+              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+                <Chip tone="acc">FloorTest user</Chip>
+                <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
+                  /{senderAccount.handle}
+                </a>
+                {senderAccount.identity_status === "verified" && <span className="inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
+              </p>
+            )}
+            <NoteForm onNote={addNote.bind(null, sender.id, t.id)} />
+            <div className="mt-3 text-[13px]">
+              <History events={events} currentTrackId={t.id} />
+            </div>
+          </section>
         </div>
 
         <PanelDetails
           summary={
-            <span className="flex min-w-0 items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <IconBox name="music" small />
-                <span className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Details</span>
-              </span>
-              <span className="truncate text-[11.5px] text-mute">file, dates, move, delete, report, sender</span>
+            <span className="flex items-center gap-2">
+              <IconBox name="music" small />
+              <span className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Details</span>
             </span>
           }
         >
-          <dl className="flex flex-col gap-1.5">
-            <InfoRow icon="folder" label="Collection">{collectionName ?? "Unsorted"}</InfoRow>
-            <InfoRow icon="wave" label="Format">{`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`}</InfoRow>
-            <InfoRow icon="clock" label="Received">{fmtDate(t.created_at)}</InfoRow>
-            <InfoRow icon="head" label="Listened">{t.played_at ? fmtDate(t.played_at) : "Not yet"}</InfoRow>
-            <InfoRow icon="dl" label="Downloaded">{t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"}</InfoRow>
-            <InfoRow icon="cal" label="Kept until">{removal ? fmtDay(removal) : "You delete it"}</InfoRow>
-            {t.isrc && <InfoRow icon="tag" label="ISRC">{t.isrc}</InfoRow>}
+          {/* Compact facts (owner, 18 Nov): one plain line each. The collection shows in the Move picker below. */}
+          <dl className="divide-y divide-line text-[12px]">
+            <Fact label="Format">{`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`}</Fact>
+            <Fact label="Received">{fmtDate(t.created_at)}</Fact>
+            <Fact label="Listened">{t.played_at ? fmtDate(t.played_at) : "Not yet"}</Fact>
+            <Fact label="Downloaded">{t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"}</Fact>
+            <Fact label="Kept until" hint={removal ? "Then deleted unless you keep it" : undefined}>
+              {removal ? fmtDay(removal) : "You delete it"}
+            </Fact>
+            {t.isrc && <Fact label="ISRC">{t.isrc}</Fact>}
           </dl>
-          {removal && <p className="mt-1.5 px-0.5 text-[11.5px] text-mute">Then deleted unless you keep it.</p>}
 
           <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
             <a
@@ -370,44 +405,21 @@ export async function ReviewPanel({
             )}
           </div>
 
-          <section className="mt-4 border-t border-line pt-3" aria-labelledby="sender-h">
-            <div className="flex items-center justify-between gap-2">
-              <h3 id="sender-h" className="flex items-center gap-2 text-[13px] font-semibold text-bone">
-                <Icon name="user" className="size-[15px] text-mute" />
-                Sender
-              </h3>
-              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline">
-                Full history →
-              </Link>
-            </div>
-            <p className="mt-1 text-[12px] break-all text-mute">{sender.email}</p>
-            {readLinks(sender.links).length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <ProfileLinks links={readLinks(sender.links)} size={18} />
-                <span title="Anyone can paste a profile link. FloorTest hasn't checked these belong to the sender.">
-                  <Chip>Links not verified</Chip>
-                </span>
-              </div>
-            )}
-            {senderAccount && (
-              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
-                <Chip tone="acc">FloorTest user</Chip>
-                <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
-                  /{senderAccount.handle}
-                </a>
-                {senderAccount.identity_status === "verified" && <span className="inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
-              </p>
-            )}
-            <p className="mt-1.5 text-[12px] text-mute tnum">
-              {stats.sent} sent · {stats.kept} kept · {stats.downloaded} downloaded · since {fmtDay(sender.created_at)}
-            </p>
-            <NoteForm onNote={addNote.bind(null, sender.id, t.id)} />
-            <div className="mt-4 text-[13px]">
-              <History events={events} currentTrackId={t.id} />
-            </div>
-          </section>
         </PanelDetails>
       </div>
+    </div>
+  );
+}
+
+/** One fact in Details: label on the left, value on the right, an optional quiet line under the value. */
+function Fact({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1.5">
+      <dt className="shrink-0 text-mute">{label}</dt>
+      <dd className="min-w-0 text-right">
+        <span className="block truncate font-semibold text-bone tnum">{children}</span>
+        {hint && <span className="block text-[11px] text-mute">{hint}</span>}
+      </dd>
     </div>
   );
 }

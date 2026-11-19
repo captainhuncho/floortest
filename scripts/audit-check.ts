@@ -10,14 +10,7 @@ import { execFileSync } from "node:child_process";
 export type Allowed = { id: string; reason: string; expires: string };
 
 /** Accepted advisories. Each one expires: past its date it counts again and the check fails, so it has to be looked at. */
-export const ALLOW: Allowed[] = [
-  {
-    id: "GHSA-fc5q-39xc-vjpf",
-    reason:
-      "picomatch <=4.0.7 ReDoS, reached only through Sentry's build-time wrappingLoader > @rollup/plugin-commonjs; in no server trace, no user input reaches a glob. Owner's yes 17 Nov 2026 (SECURITY.md).",
-    expires: "2026-12-17",
-  },
-];
+export const ALLOW: Allowed[] = [];
 
 type Advisory = { url?: string; source?: number; title?: string; severity?: string };
 type Vuln = { severity: string; via: (string | Advisory)[] };
