@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { afterDiscount, discountNow, offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { confirmBetaUpgrade } from "../actions/settings";
-import { CARD, Icon, PageHead, SectionHead } from "@/components/Kit";
+import { CARD, Icon, PageHead } from "@/components/Kit";
 
 export const metadata = { title: "Checkout — FloorTest" };
 
@@ -35,14 +35,16 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
     <div className="page-gutter py-4 text-bone sm:py-7">
       <div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 sm:gap-5">
       <Link href="/dashboard/plans" className="tap-text -my-2 w-fit text-[11.5px] font-medium text-faint hover:text-bone">
-        ← Plans
+        ‹ Plans
       </Link>
       <PageHead label="Checkout" title={`Upgrade to ${p.name}`} />
 
       <div className="grid gap-4 sm:gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start">
-        <section aria-labelledby="summary-h" className={`${CARD} p-3 sm:p-4`}>
-          <SectionHead id="summary-h" icon="card" title="Order summary" />
-          <div className="mt-3 flex items-baseline justify-between gap-3">
+        <section aria-labelledby="summary-h" className={`${CARD} p-4`}>
+          <h2 id="summary-h" className="sr-only">
+            Order summary
+          </h2>
+          <div className="flex items-baseline justify-between gap-3">
             <p className="text-[14px] font-semibold">FloorTest {p.name}</p>
             <p className="tnum">
               {price}
@@ -84,11 +86,13 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
           <p className="mt-2 text-[11.5px] text-faint">{billing ? "Prices in US dollars. Any tax due where you live is shown before you pay." : "The beta discount applied automatically. No card needed."}</p>
         </section>
 
-        <section aria-labelledby="pay-h" className={`${CARD} p-3 sm:p-4`}>
-          <SectionHead id="pay-h" icon="lock" title={billing ? "Payment" : "Confirm"} />
+        <section aria-labelledby="pay-h" className="md:px-1">
+          <h2 id="pay-h" className="sr-only">
+            {billing ? "Payment" : "Confirm"}
+          </h2>
 
-          <div className="mt-3 space-y-2 text-[12px] text-mute">
-            <h3 className="text-[12.5px] font-semibold text-bone">How renewal works</h3>
+          <div className="space-y-2 text-[13px] leading-5 text-mute">
+            <h3 className="text-[13px] font-semibold text-bone">How renewal works</h3>
             {billing ? (
               <ul className="list-disc space-y-1 pl-4">
                 <li>
@@ -114,7 +118,7 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
           {billing ? (
             <>
               <div className="mt-4 rounded-[11px] border border-dashed border-line-2 bg-well px-4 py-6 text-center text-[13px] text-mute">Card payments aren&apos;t connected yet.</div>
-              <button disabled className="btn-lime mt-4 min-h-11 w-full rounded-[13px]">
+              <button disabled className="btn-lime mt-4 min-h-12 w-full rounded-[14px]">
                 Pay {price} and upgrade
               </button>
             </>

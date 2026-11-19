@@ -110,8 +110,10 @@ Any menu tap (desk, settings rail, ops): the tapped item lights up at once ─�
 
 ## Plans
 ```
-/dashboard/plans ─► choose plan
-   ├─ billing switch off (beta) ─► /dashboard/plans/request ─► ops approves/declines ─► email
+/dashboard/plans ─► usage card ─► phone: pick a plan row (it opens with what it adds) ─► one button · tablet/laptop: the plan cards
+   ─► "Compare every plan" opens the table (any size)
+   ├─ billing switch off (beta), requests open ─► Request Pro ─► /dashboard/plans/request (chips: what you are, tracks you receive) ─► Send request ─► ops approves/declines ─► email
+   ├─ billing off, requests closed ─► "Set by FloorTest during the beta"; /dashboard/checkout goes back to /dashboard/plans
    └─ billing on (after beta) ─► /dashboard/checkout ─► paid (Paddle, to build)
 ```
 

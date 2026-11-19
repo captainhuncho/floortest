@@ -33,6 +33,7 @@ export function PlanCards({
   publicCta,
   freeInBeta = false,
   note = true,
+  quiet = false,
 }: {
   plans: Plan[];
   billing: boolean;
@@ -55,6 +56,11 @@ export function PlanCards({
   freeInBeta?: boolean;
   /** The "Free during beta" line above the cards (pages that say it in their own intro turn it off). */
   note?: boolean;
+  /**
+   * The signed-in plans page (option 62 A): the same cards, quieter. No lift, the featured card marked by a stronger
+   * edge and plain "Recommended" words, the room as one bold line, and the current plan's slot dashed.
+   */
+  quiet?: boolean;
 }) {
   const live = { sharing, teams };
   const sameTools = plans.every((p) => !extrasOf(p, live).length);
@@ -69,7 +75,7 @@ export function PlanCards({
         </p>
       )}
 
-      <ul className={`grid items-stretch gap-4 sm:gap-5 md:py-4 ${planGrid(plans.length)}`}>
+      <ul className={`grid items-stretch gap-4 sm:gap-5 ${quiet ? "" : "md:py-4"} ${planGrid(plans.length)}`}>
         {plans.map((p, i) => {
           const id = p.id;
           const isCurrent = userPlan === id;
@@ -85,12 +91,12 @@ export function PlanCards({
           return (
             <li
               key={id}
-              className={`${CARD} flex min-w-0 flex-col gap-4 p-5 sm:p-6 ${lifted ? "border-lime/60 md:-my-4 md:py-8" : ""}`}
+              className={`${CARD} flex min-w-0 flex-col gap-4 p-5 sm:p-6 ${lifted ? (quiet ? "border-bone/50" : "border-lime/60 md:-my-4 md:py-8") : ""}`}
               aria-current={isCurrent ? "true" : undefined}
             >
               <div className="flex min-h-[26px] items-center justify-between gap-2">
                 <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-bone">{p.name}</h2>
-                {lifted && p.featured && <Chip tone="acc">Recommended</Chip>}
+                {lifted && p.featured && (quiet ? <span className="text-[12px] font-medium text-mute">Recommended</span> : <Chip tone="acc">Recommended</Chip>)}
               </div>
               {p.blurb && <p className="-mt-2 text-[13px] leading-5 text-mute md:min-h-10">{p.blurb}</p>}
 
@@ -148,10 +154,14 @@ export function PlanCards({
               )}
 
               {/* The room a plan gives is the difference that matters most, so it gets its own readout. */}
-              <p className="flex items-baseline gap-2 rounded-[12px] border border-line bg-ink px-3.5 py-2.5">
-                <span className="font-mono text-[19px] font-bold tracking-[-0.02em] text-bone tnum">{p.limit.toLocaleString("en")}</span>
-                <span className="text-[12.5px] text-mute">active tracks</span>
-              </p>
+              {quiet ? (
+                <p className="text-[14px] font-semibold text-bone">{p.limit.toLocaleString("en")} active tracks</p>
+              ) : (
+                <p className="flex items-baseline gap-2 rounded-[12px] border border-line bg-ink px-3.5 py-2.5">
+                  <span className="font-mono text-[19px] font-bold tracking-[-0.02em] text-bone tnum">{p.limit.toLocaleString("en")}</span>
+                  <span className="text-[12.5px] text-mute">active tracks</span>
+                </p>
+              )}
 
               <div>
                 {publicCta ? (
@@ -163,7 +173,7 @@ export function PlanCards({
                     {p.price ? action : "Start free"}
                   </span>
                 ) : isCurrent ? (
-                  <p className={`${SLOT} border-line-2 bg-transparent text-mute`}>
+                  <p className={`${SLOT} ${quiet ? "border-dashed" : ""} border-line-2 bg-transparent text-mute`} aria-disabled={quiet || undefined}>
                     <span className="flex items-center gap-1.5">
                       <Icon name="tick" className="size-4" />
                       Your plan
