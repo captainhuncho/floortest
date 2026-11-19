@@ -79,6 +79,9 @@ Floor (Waiting crate ─► Review; Kept crate ─► Play all or Open the kept 
 Review panel: title · one meta line · tags (sets / release / AI / duplicate / deleting soon) ─► waveform (1–4 jump) ─► Keep · Not for me · Reply ─► next track plays
    While a track is open, the next and previous tracks load in full in the background (DecisionRail), so moving to them shows their details at once; a decision refreshes them. Keep / Not for me move to the next track's page first and save after, so the save's answer carries that page (one trip to the server, not two); the decided track stays out of the list until the save answers
    Details (closed, remembered) ─► format & size · dates · Download · Move · Delete (confirm) · sender email, links, stats, note, last 3 events · Full history →
+Floor "Mark what I played" / Prepare / Tuesday email ─► /dashboard/played-out ("What did you play?", any day; option 65 A, 19 Nov) ─► tap a row (60px, round tick; a real checkbox underneath)
+   ─► Where (optional, 140) ─► "Tell N senders: Played out" ─► toast ─► Floor · error ─► toast, nothing changes · "None this weekend" (Monday prompt open) ─► Floor
+   phones: the buttons in a bar pinned above the player and menu pair (back in the page while Where has focus); laptop: one card, buttons side by side; nothing kept ─► "Back to the Floor"
 Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
 Floor ─► Collections (folders with covers; search · All / Callouts / Projects) ─► New folder (name · Callout / Project / a group of either ─► Create folder; Callout and Edit collection: owner, A&R / Admin, or a ticked Member; Project and groups: owner and A&R / Admin; owner 16 Nov) / open a folder
