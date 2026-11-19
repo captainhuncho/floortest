@@ -111,12 +111,12 @@ export function FirstVisitTour({ tip }: { tip: string | null }) {
 }
 
 /** How FloorTest works: the same tour, any time. Finishing it goes to the Floor, where the link is. */
-export function ReplayTour({ tip }: { tip: string | null }) {
+export function ReplayTour({ tip, className = LIME, label = "Take the tour" }: { tip: string | null; className?: string; label?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={LIME}>
-        Take the tour
+      <button type="button" onClick={() => setOpen(true)} className={className}>
+        {label}
       </button>
       <TourDialog open={open} tip={tip} finishHref="/dashboard/floor" onClose={() => setOpen(false)} />
     </>
