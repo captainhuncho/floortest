@@ -27,7 +27,7 @@ const ROLES: Record<string, Record<string, Need>> = {
   "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin", moveAllToProjects: "admin", moveManyToProjects: "admin" },
   "links.ts": { createShareLink: "admin", resetShareLink: "admin", revokeShareLink: "admin", addLinkRecipients: "admin", removeLinkRecipient: "admin", answerLinkRequest: "admin", setLinkRequests: "admin" },
   "review.ts": {
-    decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member", playedOutBatch: "admin", skipPlayedOutPrompt: "admin",
+    decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member", playerTrackState: "member", playedOutBatch: "admin", skipPlayedOutPrompt: "admin",
     getReplyTemplates: "member", saveReplyTemplate: "member", deleteReplyTemplate: "member", addNote: "member", replyToSender: "member", askForStems: "member",
     savePrep: "member", blockSender: "admin", decideRelease: "member",
   },
