@@ -32,8 +32,8 @@ owner's "try it" typed in BUILD (19 Nov).
 `main` merged into `mobile-next` as `584a4b98`, no conflicts.
 
 ## Live versus unfinished
-Live: the played-out read action (#597, not used on screen yet) and this fix. Ready for the owner's word, Safety
-cleared and CI green: callout tick follow-ups (#668). On `mobile-next` for the owner's try: folder covers (#663),
+Live: the played-out read action (#597, not used on screen yet) and this fix. Shipped after it, report in this PR:
+callout tick follow-ups (#668). On `mobile-next` for the owner's try: folder covers (#663),
 Send music (#662, draft), Change cover for projects and folders (#669, migrations 0156 and 0157). Draft, not yet sent
 for review: the Activity redesign (#670). Waiting for covers on `main`: the volume reveal and the six clearer player
 buttons (local, tests passed).
