@@ -599,11 +599,11 @@ export function SubmitForm({
           )}
         </section>
         {account ? (
-          <p className="px-1 text-[12px] text-dim">
-            Sending as <span className="text-bone">{account.name}</span> ({account.email}). Updates go to your FloorTest account.
+          // Who's sending is said above the Send button (option 58 A); the form still carries it.
+          <>
             <input type="hidden" name="name" value={account.name} />
             <input type="hidden" name="email" value={account.email} />
-          </p>
+          </>
         ) : remembered && !changeYou ? (
           <section aria-label="You" className="flex items-center justify-between gap-2 rounded-xl bg-card px-3 py-1 text-[13px] text-mute">
             <p className="min-w-0 truncate">
@@ -689,11 +689,13 @@ export function SubmitForm({
         </section>
         {errorBox}
         {!account && <Turnstile action="send" siteKey={botCheckKey} />}
-        <div className="flex flex-col gap-3">
+        {/* On phones this wrapper steps out of the layout (contents), so the pinned Send bar sticks against the whole form, not
+            just this box. */}
+        <div className="flex flex-col gap-3 max-sm:contents">
           {/* Senders without an account tick the Terms on a first send and after the Terms change (Research brief, owner 15 Nov). */}
           {!account && terms.needed && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={terms.updated} hash={termsHash ?? terms.hash ?? null} />}
           {/* On phones Send stays pinned at the bottom of the screen while the form scrolls; from tablet up it ends the column. */}
-          <div className="flex flex-col gap-1.5 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3.5 max-sm:border-t max-sm:border-line max-sm:bg-ink/95 max-sm:px-3.5 max-sm:pt-2.5 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] max-sm:backdrop-blur-sm">
+          <div data-send-bar className="flex flex-col gap-1.5 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3.5 max-sm:border-t max-sm:border-line max-sm:bg-ink/95 max-sm:px-3.5 max-sm:pt-2.5 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] max-sm:backdrop-blur-sm">
             {issues.length > 0 && (
               <p role="alert" className={`text-center text-[13px] text-danger ${ENTER}`}>
                 {issues.length === 1 ? "1 thing left: " : `${issues.length} things left: `}
@@ -705,6 +707,11 @@ export function SubmitForm({
                     </button>
                   </span>
                 ))}
+              </p>
+            )}
+            {account && (
+              <p className="text-center text-[12px] text-mute">
+                Sent from your account, {account.name}. Only {receiverName}’s desk hears it.
               </p>
             )}
             {!account && (

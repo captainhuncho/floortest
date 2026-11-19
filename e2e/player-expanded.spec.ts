@@ -51,12 +51,18 @@ test("laptop: the bar's title and chevron open the expanded player; Up next play
     }),
   ).toBeLessThanOrEqual(200);
   expect(await player.getByRole("group", { name: "More playback" }).getByRole("button").evaluateAll((els) => els.slice(0, 2).map((el) => el.getAttribute("aria-label")))).toEqual(["Back 15 seconds", "Forward 15 seconds"]);
-  // Volume is on show with its level, with no pointer near it.
+  // Volume: only the speaker until the pointer is on it or the keyboard reaches it; then the slider and level slide out.
   await page.mouse.move(5, 5);
   const volume = player.getByRole("slider", { name: "Volume" });
-  await expect(volume).toBeVisible();
-  // Below Keep and Not for me, the slider runs on across the row.
-  expect(await volume.evaluate((el) => Math.round(el.getBoundingClientRect().width))).toBeGreaterThan(200);
+  const slide = () => player.locator("[data-volume-slide]").evaluate((el) => Math.round(el.getBoundingClientRect().width));
+  await expect.poll(slide).toBe(0);
+  await player.getByRole("button", { name: "Mute" }).hover();
+  await expect.poll(slide).toBe(208);
+  await page.mouse.move(5, 5);
+  await expect.poll(slide).toBe(0);
+  await volume.focus();
+  await expect.poll(slide).toBe(208);
+  await page.keyboard.press("ArrowLeft");
   await expect(volume).toHaveAttribute("aria-valuetext", /^\d+%$/);
   // Tab stays inside.
   for (let i = 0; i < 14; i++) {

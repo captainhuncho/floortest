@@ -7,6 +7,7 @@ import { agreeTerms } from "./agree-terms";
 // Owner, 16 Nov: owners and A&R / Admins run callouts by role; a Member only once an owner or admin ticks them.
 process.env.DATA_DIR = testDataDir("ft-member-callouts-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
+process.env.ADMIN_EMAILS = "staff@x.io";
 delete process.env.DATABASE_URL;
 delete process.env.RESEND_API_KEY;
 delete process.env.S3_BUCKET;
@@ -75,6 +76,8 @@ test("only the desk's owner or an A&R / Admin ticks, only their own desk's Membe
   await assert.rejects(m.setMemberCallouts(s.desk(s.admin, "admin"), other.memberRow, true), /^Error: Not found$|Not found/, "another desk's member");
   await assert.rejects(m.setMemberCallouts(s.desk(s.admin, "admin"), 99_999_999, true), /Not found/, "a missing id: same answer");
   await assert.rejects(m.setMemberCallouts(s.desk(s.owner, "owner"), s.adminRow, true), /Not found/, "only Member rows take the tick");
+  for (const bad of [s.memberRow + 0.5, -s.memberRow, 0, Number.NaN, Number.MAX_SAFE_INTEGER + 2])
+    await assert.rejects(m.setMemberCallouts(s.desk(s.owner, "owner"), bad, true), /Not found/, `a non-integer or non-positive id (${bad}): same answer`);
   assert.ok(!(await m.canRunCallouts(other.desk(other.member, "member"))), "nothing changed on the other desk");
 
   // The database refuses the person on their own row, past the app.
@@ -109,6 +112,17 @@ test("actions: an unticked Member is refused creating or editing a callout and c
   assert.equal((await q.get<{ name: string }>("SELECT name FROM collections WHERE id = ?", c))!.name, "Owner callout");
   const del = await inRequest(jar, "203.0.113.9", () => art.DELETE(new Request(`http://localhost/api/collection-art/${c}`, { method: "DELETE" }), { params: Promise.resolve({ id: String(c) }) } as never), { dropAfter: true });
   assert.equal((del.answer as Response).status, 403, "artwork: refused");
+  const sharp = (await import("sharp")).default;
+  const png = await sharp({ create: { width: 40, height: 40, channels: 3, background: "#335577" } }).png().toBuffer();
+  const upload = () => {
+    const f = new FormData();
+    f.set("file", new File([new Uint8Array(png)], "art.png", { type: "image/png" }));
+    return new Request(`http://localhost/api/collection-art/${c}`, { method: "POST", body: f });
+  };
+  const artKey = async () => (await q.get<{ art_key: string | null }>("SELECT art_key FROM collections WHERE id = ?", c))!.art_key;
+  const post = await inRequest(jar, "203.0.113.9", () => art.POST(upload(), { params: Promise.resolve({ id: String(c) }) } as never), { dropAfter: true });
+  assert.equal((post.answer as Response).status, 403, "new artwork: refused");
+  assert.equal(await artKey(), null, "no artwork stored");
 
   await m.setMemberCallouts(s.desk(s.owner, "owner"), s.memberRow, true);
   await inRequest(jar, "203.0.113.9", () => actions.createCollection(form("Mine")), { dropAfter: true });
@@ -117,6 +131,9 @@ test("actions: an unticked Member is refused creating or editing a callout and c
   assert.equal((await q.get<{ name: string }>("SELECT name FROM collections WHERE id = ?", c))!.name, "Renamed", "ticked: edits");
   const delOk = await inRequest(jar, "203.0.113.9", () => art.DELETE(new Request(`http://localhost/api/collection-art/${c}`, { method: "DELETE" }), { params: Promise.resolve({ id: String(c) }) } as never), { dropAfter: true });
   assert.notEqual((delOk.answer as Response).status, 403, "ticked: artwork allowed");
+  const postOk = await inRequest(jar, "203.0.113.9", () => art.POST(upload(), { params: Promise.resolve({ id: String(c) }) } as never), { dropAfter: true });
+  assert.equal((postOk.answer as Response).status, 200, "ticked: new artwork saved");
+  assert.match((await artKey()) ?? "", new RegExp(`^collection-art/${c}-[0-9a-f]+\\.webp$`));
   const gone = await inRequest(jar, "203.0.113.9", () => actions.deleteCollection(c, "RENAMED"), { dropAfter: true });
   assert.equal(gone.redirect, "/dashboard/settings/team?denied=1", "deleting stays with the owner and A&R / Admins");
 
@@ -155,8 +172,8 @@ test("through the actions: the tick is logged with actor and member; untick refu
   const memberName = (await q.get<{ name: string }>("SELECT name FROM users WHERE id = ?", s.member))!.name;
 
   // (a) on and off are logged on the desk, naming the member by person and the admin as actor.
-  assert.deepEqual((await asAdmin(() => team.setTeammateCallouts(s.memberRow, true))).answer, { ok: "Saved." });
-  assert.deepEqual((await asAdmin(() => team.setTeammateCallouts(s.memberRow, false))).answer, { ok: "Saved." });
+  // A double click (the same tick twice) still says Saved but leaves one line each way.
+  for (const on of [true, true, false, false]) assert.deepEqual((await asAdmin(() => team.setTeammateCallouts(s.memberRow, on))).answer, { ok: "Saved." });
   const log = await q.all<{ action: string; detail: string; actor_id: number }>("SELECT action, detail, actor_id FROM account_log WHERE user_id = ? AND action LIKE 'team_callouts_%' ORDER BY id", s.owner);
   assert.deepEqual(log.map((r) => [r.action, r.detail, Number(r.actor_id)]), [
     ["team_callouts_on", `${memberName} (user ${s.member})`, s.admin],
@@ -210,4 +227,33 @@ test("fails closed: an A&R / Admin without two-step works as a Member and can't 
   const foreign = (await asOtherOwner(() => team.setTeammateCallouts(s.memberRow, true))).answer as { error?: string };
   assert.equal(foreign.error, "Not found");
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_members WHERE id = ? AND callouts", s.memberRow), 0);
+});
+
+test("View as is read-only here too: staff viewing the owner's desk can't tick a Member or create a callout", async () => {
+  const crypto = await import("node:crypto");
+  const { q } = await import("../src/lib/db");
+  const { createSession, DESK_COOKIE, signViewAs, VIEW_AS_COOKIE } = await import("../src/lib/auth");
+  const team = await import("../src/app/dashboard/actions/account-team");
+  const actions = await import("../src/app/dashboard/actions/collections");
+  const s = await setup();
+  const staff = await person();
+  const t = Date.now();
+  await q.run("UPDATE users SET email = 'staff@x.io' WHERE id = ?", staff);
+  const session = crypto.randomBytes(32).toString("hex");
+  await q.run("INSERT INTO admin_sessions (token_hash, user_id, expires_at, created_at, last_seen_at) VALUES (?,?,?,?,?)", session, staff, t + 3_600_000, t, t);
+  const jar = new Map<string, string>();
+  await inRequest(jar, "203.0.113.40", () => createSession(s.owner));
+  jar.set(DESK_COOKIE, String(s.owner));
+  jar.set(VIEW_AS_COOKIE, signViewAs(staff, s.owner, session, process.env.APP_SECRET!));
+  const viewing = <T,>(fn: () => Promise<T>) => inRequest(jar, "203.0.113.40", fn, { dropAfter: true });
+
+  const tick = await viewing(() => team.setTeammateCallouts(s.memberRow, true));
+  assert.equal(tick.redirect, "/dashboard/floor?readonly=1", "the tick is refused: back to the read-only desk");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_members WHERE id = ? AND callouts", s.memberRow), 0, "not ticked");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_log WHERE user_id = ? AND action LIKE 'team_callouts_%'", s.owner), 0, "nothing logged");
+  const f = new FormData();
+  f.set("name", "Staff callout");
+  const made = await viewing(() => actions.createCollection(f));
+  assert.equal(made.redirect, "/dashboard/floor?readonly=1", "create is refused the same way");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", s.owner), 0, "no callout made");
 });
