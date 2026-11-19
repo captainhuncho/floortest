@@ -1,5 +1,6 @@
 "use client";
 
+import { useCoverChoice } from "./CoverChoice";
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,8 +21,8 @@ import type { CollectionsFilter } from "./CollectionsTabs";
  */
 export type FolderKind = "callout" | "project";
 /** preview: up to four of what's inside, newest first; their art makes the folder's cover (option 57 I). */
-export type FolderView = { id: number; name: string; count: number; preview: { art: string | null }[] };
-type Item = { label: string; icon: "folder" | "tag" | "x"; run: () => void };
+export type FolderView = { id: number; name: string; count: number; preview: { art: string | null }[]; /** Its own cover, when the owner chose one; else the covers of what's inside. */ art?: string | null };
+type Item = { label: string; icon: "folder" | "tag" | "x" | "up"; run: () => void };
 
 const BASE: Record<FolderKind, string> = { callout: "/dashboard/collections", project: "/dashboard/projects" };
 const NOUN: Record<FolderKind, string> = { callout: "callout", project: "project" };
@@ -248,14 +249,15 @@ export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderVi
   const [rename, setRename] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [pending, start] = useTransition();
+  const cover = useCoverChoice("folder", f.id, f.name);
   const holds = `${f.count} ${f.count === 1 ? NOUN[kind] : `${NOUN[kind]}s`}`;
   return (
     <FolderRow
       href={`${BASE[kind]}?folder=${f.id}`}
       name={f.name}
       spoken={`Open ${f.name}, folder, ${holds}`}
-      covers={f.preview.flatMap((p) => (p.art ? [p.art] : []))}
-      empty={f.count === 0}
+      covers={f.art ? [f.art] : f.preview.flatMap((p) => (p.art ? [p.art] : []))}
+      empty={f.count === 0 && !f.art}
       line={`Folder · ${holds}`}
       menu={
         canEdit && (
@@ -265,6 +267,7 @@ export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderVi
         )
       }
     >
+      {cover.picker}
       {menu && (
         <MenuSheet
           title={f.name}
@@ -272,6 +275,8 @@ export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderVi
           items={[
             { label: "Open", icon: "folder", run: () => router.push(`${BASE[kind]}?folder=${f.id}`) },
             { label: "Rename", icon: "tag", run: () => setRename(true) },
+            { label: "Change cover", icon: "up", run: cover.choose },
+            ...(f.art ? [{ label: "Remove cover", icon: "x" as const, run: cover.remove }] : []),
             { label: "Delete folder", icon: "x", run: () => setConfirm(true) },
           ]}
         />

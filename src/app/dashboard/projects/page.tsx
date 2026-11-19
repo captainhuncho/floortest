@@ -41,7 +41,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
       .map((p) => ({
         key: `p${p.id}`,
         name: p.name,
-        node: <ProjectTile p={{ id: p.id, name: p.name, count: p.count, duration: p.duration }} canEdit={canEdit} folders={canEdit ? folderList : undefined} folderId={p.desk_folder_id} />,
+        node: <ProjectTile p={{ id: p.id, name: p.name, count: p.count, duration: p.duration, art: p.art }} canEdit={canEdit} folders={canEdit ? folderList : undefined} folderId={p.desk_folder_id} />,
       })),
   ];
   return (
