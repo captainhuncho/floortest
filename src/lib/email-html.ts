@@ -115,9 +115,28 @@ function renderList(lines: string[]) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="ft-line" style="margin:0 0 20px;border-top:1px solid ${L.line}">${rows.join("")}</table>`;
 }
 
+/**
+ * A code as one box per character (owner, 19 Nov), then the same code once more as one unbroken, selectable string.
+ * The boxes are only for the eye (hidden from screen readers, not selectable); the plain line under them is what Gmail's
+ * "Copy code", iPhone Mail's code suggestion and a long-press copy read, and what a screen reader says. A hyphen in a
+ * code gets no box. Long codes (over 8 characters) get smaller boxes so they still fit a 320px phone.
+ */
+function renderCode(code: string) {
+  const small = code.length > 8;
+  const [w, h, size, gap] = small ? [24, 36, 18, 4] : [38, 50, 26, 6];
+  const cells = [...code]
+    .map((ch, i) => {
+      const spacer = i ? `<td style="width:${gap}px;font-size:0;line-height:0">&nbsp;</td>` : "";
+      if (ch === "-") return `${spacer}<td style="width:${w / 2}px;text-align:center;font-family:${MONO};font-size:${size}px;color:${L.mute}" class="ft-mute">-</td>`;
+      return `${spacer}<td class="ft-panel ft-line" style="width:${w}px;height:${h}px;background:${L.panel};border:1px solid ${L.line};border-radius:8px;text-align:center;vertical-align:middle;font-family:${MONO};font-size:${size}px;line-height:${h}px;font-weight:600;color:${L.text}">${escapeHtml(ch)}</td>`;
+    })
+    .join("");
+  return `<table role="presentation" aria-hidden="true" cellpadding="0" cellspacing="0" style="margin:4px 0 10px;-webkit-user-select:none;user-select:none"><tr>${cells}</tr></table>` +
+    `<p class="ft-mute" style="margin:0 0 20px;font-size:14px;line-height:20px;color:${L.mute}">Code to copy: <span class="ft-text" style="font-family:${MONO};font-size:15px;font-weight:600;letter-spacing:1px;color:${L.text};-webkit-user-select:all;user-select:all">${escapeHtml(code)}</span></p>`;
+}
+
 function renderBlock(b: Block) {
-  if (b.kind === "code")
-    return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px"><tr><td class="ft-panel" style="background:${L.panel};border-radius:8px;padding:14px 20px;font-family:${MONO};font-size:28px;line-height:34px;letter-spacing:4px;color:${L.text}">${escapeHtml(b.lines[0])}</td></tr></table>`;
+  if (b.kind === "code") return renderCode(b.lines[0]);
   if (b.kind === "button")
     return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 10px"><tr><td class="ft-btn" style="background:${L.btn};border-radius:8px"><a href="${escapeHtml(b.url!)}" class="ft-btn-text" style="display:inline-block;padding:11px 18px;font-size:15px;line-height:20px;font-weight:600;color:${L.btnText};text-decoration:none">${escapeHtml(b.lines[0])}</a></td></tr></table>` +
       `<p class="ft-mute" style="margin:0 0 20px;font-size:13px;line-height:19px;color:${L.mute}">Or open ${inline(b.url!)}</p>`;
