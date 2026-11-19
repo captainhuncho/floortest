@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { countsLine, dayLabel, groupLabel, groupSends, isListened, isWaiting } from "../src/lib/sent-groups";
+import { countsLine, dayLabel, groupLabel, groupSends, isListened, isWaiting, sendStep } from "../src/lib/sent-groups";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 17, 12); // Tue 17 Nov 2026, noon UTC
@@ -110,4 +110,20 @@ test("a row's date is weekday, day and short month in the sender's zone, with th
   assert.equal(dayLabel(Date.UTC(2025, 10, 16, 9), NOW), "Sun 16 Nov 2025");
   assert.equal(dayLabel(Date.UTC(2026, 9, 31, 11, 30), NOW, "Pacific/Auckland"), "Sun 1 Nov");
   assert.equal(dayLabel(Date.UTC(2026, 9, 31, 11, 30), NOW, "UTC"), "Sat 31 Oct");
+});
+
+test("sendStep: the strongest thing that happened, lit from delivery on", () => {
+  const sent = { ...none, created_at: NOW - DAY };
+  assert.deepEqual(sendStep(sent, false, 90), { label: "Delivered", lit: true, at: NOW - DAY });
+  assert.deepEqual(sendStep({ ...sent, played_at: NOW }, false, 90), { label: "Listened", lit: true, at: NOW });
+  assert.equal(sendStep({ ...sent, played_at: NOW, downloaded_at: NOW }, false, 90).label, "Downloaded");
+  assert.equal(sendStep({ ...sent, played_at: NOW, replied_at: NOW }, false, 90).label, "Replied");
+  assert.equal(sendStep({ ...sent, replied_at: NOW, played_out_at: NOW }, false, 90).label, "Played out");
+});
+
+test("sendStep: only a track unheard for the whole window goes dim", () => {
+  const sent = { ...none, created_at: NOW - 100 * DAY };
+  assert.deepEqual(sendStep(sent, true, 90), { label: "Not listened to in 90 days", lit: false, at: NOW - 100 * DAY });
+  // Anything that happened still wins over the window.
+  assert.equal(sendStep({ ...sent, downloaded_at: NOW }, true, 90).label, "Downloaded");
 });
