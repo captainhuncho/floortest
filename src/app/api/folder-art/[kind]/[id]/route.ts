@@ -10,6 +10,7 @@ import { reserveFile, settleFile } from "@/lib/file-reservations";
 import { artRow, isArtKind, setArt, type ArtKind } from "@/lib/folder-art";
 import { optimizeImage } from "@/lib/image-optimize";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
+import { allow } from "@/lib/ratelimit";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -36,6 +37,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/folder-art/[kin
   if (!o) return NextResponse.json({ error: GONE }, { status: 404 });
   const { user } = o;
   if (!atLeast(user.role, "admin")) return NextResponse.json({ error: MEMBER }, { status: 403 });
+  // Each upload decodes up to 8 MB: 30 a minute per person, like the collection cover route.
+  if (!(await allow("folder-art", String(user.actor_id), 30, 60_000))) return new Response("Too many requests", { status: 429, headers: { "Retry-After": "60" } });
   // Read with a hard cap, so a body bigger than an image can't be buffered first.
   const form = await readFormUpTo(req, MAX + 64 * 1024);
   if (form === "too-large") return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
