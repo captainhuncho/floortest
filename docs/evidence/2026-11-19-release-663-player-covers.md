@@ -32,6 +32,6 @@ Desk's name for this change).
 
 ## Live versus unfinished
 Live: the played-out read action (#597), the Delete project fix (#667), the callout follow-ups (#668) and the player
-covers. Tried by the owner, Safety cleared, ready for the owner's word: Change cover for projects and folders (#669,
-migrations 0156 and 0157). Tried by the owner, still a draft: Send music (#662). Next on top of this: the volume reveal,
+covers. Shipped after it, report in this PR: Send music (#662). Held: Change cover for projects and folders (#669,
+migrations 0156 and 0157; needs e2e on its upload and deletion paths). Next on top of this: the volume reveal,
 then the six clearer player buttons. Draft, not yet sent for review: the Activity redesign (#670).
