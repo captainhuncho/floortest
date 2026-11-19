@@ -108,6 +108,19 @@ Feedback (every desk page, phones too: the speech-bubble icon in the top bar) �
 Mobile menu: Floor · Collections · Queue · Prepare · More (a sheet: Send music, Contacts, Activity, How it works; from #594; the owner kept it on 17 Nov rather than option 47's menu without More, for now). Desktop sidebar: Floor · Collections · Review Queue · Prepare · Send music; at the foot, How it works then Settings. Contacts and Analytics (owner and A&R / Admin) are rows on Settings; Emails to senders is no longer linked from users' screens (option 47).
 Any menu tap (desk, settings rail, ops): the tapped item lights up at once ─► the page's skeleton (loading.tsx) ─► the page. A thin lime line along the top only if nothing has arrived after 150ms.
 
+## Contacts (option 59 A, 18 Nov)
+```
+More / Settings ─► Contacts (/dashboard/contacts) ─► People | Messages
+   ├─ search (?q=) · Sort button ─► sheet "Sort by" ─► choose ─► list reloads (?sort=; Escape / tap outside / swipe down closes, focus back on Sort)
+   ├─ chip (?show=) ─► list reloads · Show more (?n=)
+   ├─ a new desk ─► Copy your link (copies, toast, ticks Getting started's sharing step)
+   └─ a row ─► /dashboard/contacts/<id>
+        ├─ Email ─► mail app · Note ─► ?compose=note#composer (composer on Private note, cursor in it)
+        ├─ More ─► sheet: Copy email (toast) · Block / Unblock (owners, A&R / Admin) ─► confirm ─► saved
+        ├─ phones: Conversation | Tracks N (?tab=tracks) · from 1024px both columns
+        └─ a track ─► /dashboard/review?view=queue&s=all&t=<id>
+```
+
 ## Plans
 ```
 /dashboard/plans ─► choose plan

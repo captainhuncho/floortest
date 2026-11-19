@@ -2,7 +2,6 @@
 
 import { useRef, useState, useTransition } from "react";
 import { ConfirmDialog, splitQuestion } from "@/components/Dialog";
-import { SEG, segTab } from "@/components/Kit";
 import { QuickReplies } from "./QuickReplies";
 import type { ReplyResult } from "./actions/review";
 
@@ -91,12 +90,15 @@ export function Composer({
   senderName,
   onNote,
   onReply,
+  initialMode = "reply",
 }: {
   senderName: string;
   onNote: (fd: FormData) => Promise<void>;
   onReply: (fd: FormData) => Promise<ReplyResult>;
+  /** The contact page's Note action opens the composer on Private note, ready to type. */
+  initialMode?: "reply" | "note";
 }) {
-  const [mode, setMode] = useState<"reply" | "note">("reply");
+  const [mode, setMode] = useState<"reply" | "note">(initialMode);
   // What happened to the last reply (sent, waiting for approval, already sent, or not sent and why).
   const [notice, setNotice] = useState("");
   const [pending, start] = useTransition();
@@ -122,7 +124,8 @@ export function Composer({
         });
       }}
     >
-      <div className={SEG} role="tablist">
+      {/* Quiet switch (Contacts 59 A): lime is kept for the one Send button below. */}
+      <div className="flex gap-1 rounded-xl border border-line bg-well p-[3px]" role="tablist">
         {(["reply", "note"] as const).map((m) => (
           <button
             key={m}
@@ -130,9 +133,9 @@ export function Composer({
             role="tab"
             aria-selected={mode === m}
             onClick={() => setMode(m)}
-            className={`${segTab(mode === m)} pointer-coarse:min-h-11`}
+            className={`flex min-h-9 flex-1 items-center justify-center rounded-[9px] px-2.5 text-[13px] font-semibold pointer-coarse:min-h-11 ${mode === m ? "bg-ink-4 text-bone" : "text-mute hover:text-bone"}`}
           >
-            {m === "reply" ? `Email ${senderName}` : "Private note"}
+            {m === "reply" ? "Reply by email" : "Private note"}
           </button>
         ))}
       </div>
@@ -145,6 +148,7 @@ export function Composer({
         name="body"
         required
         maxLength={4000}
+        autoFocus={initialMode === "note"}
         className="input mt-2 min-h-24 resize-y"
         placeholder={mode === "note" ? "Private: the sender never sees this." : `Sent to ${senderName} by email.`}
       />
@@ -159,8 +163,8 @@ export function Composer({
           />
         </div>
       )}
-      <button className="btn-lime mt-2 min-h-11 rounded-[13px]" disabled={pending}>
-        {pending ? "Saving…" : mode === "note" ? "Save note" : "Send email"}
+      <button className="btn-lime mt-2 min-h-11 w-full rounded-[13px]" disabled={pending}>
+        {pending ? "Saving…" : mode === "note" ? "Save note" : "Send reply"}
       </button>
       <p role="status" aria-live="polite" className="mt-2 min-h-5 text-[13px] text-mute">
         {mode === "reply" ? notice : ""}

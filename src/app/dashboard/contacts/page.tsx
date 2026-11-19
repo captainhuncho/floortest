@@ -1,12 +1,15 @@
-import { EmptyState } from "@/components/Feedback";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { asPerson, q, likeContains } from "@/lib/db";
-import { pickShow, pickSort, SHOWS } from "./filters";
+import { APP_URL } from "@/lib/mail";
+import { pickShow, pickSort, SHOWS, SORTS } from "./filters";
 import { ago } from "@/lib/format";
-import { CARD, Chip, Cover, Icon, PageHead, SectionHead, SEG, segTab, initials } from "@/components/Kit";
+import { Cover, Icon, initials } from "@/components/Kit";
+import { StartCopy } from "../floor/StartCopy";
 import { ContactMenu } from "./ContactMenu";
+import { SortSheet } from "./SortSheet";
+import { CHIP_ROW, chip, DANGER_TEXT, dayLabel, QSEG, qsegTab, Status, statusOf } from "./ui";
 
 export const metadata = { title: "Contacts — FloorTest" };
 
@@ -37,25 +40,23 @@ const FROMS = [
   ["you", "Your replies"],
 ] as const;
 
-const short = (ts: number, timeZone?: string) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone });
-
-/** Link tabs in the kit's segmented track: the current one is marked for screen readers as the current page. */
-function SegLinks({ label, value, items }: { label: string; value: string; items: { key: string; label: React.ReactNode; href: string }[] }) {
+/** Filter chips as links: the current one is marked for screen readers as the current page. */
+function ChipLinks({ label, value, items }: { label: string; value: string; items: { key: string; label: React.ReactNode; href: string }[] }) {
   return (
-    <nav aria-label={label} className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
-      <div className={SEG}>
-        {items.map((i) => (
-          <Link key={i.key} href={i.href} aria-current={i.key === value ? "page" : undefined} className={`${segTab(i.key === value)} pointer-coarse:min-h-11`}>
-            {i.label}
-          </Link>
-        ))}
-      </div>
+    <nav aria-label={label} className={CHIP_ROW}>
+      {items.map((i) => (
+        <Link key={i.key} href={i.href} aria-current={i.key === value ? "page" : undefined} className={chip(i.key === value)}>
+          {i.label}
+        </Link>
+      ))}
     </nav>
   );
 }
 
-/** A list row in a card: 44px or more, a hairline between rows. */
-const LI = "flex min-h-11 items-center gap-2.5 border-t border-line py-2 first:border-t-0";
+/** A list row: 62px or more, a hairline between rows. */
+const LI = "flex items-center border-b border-line last:border-b-0";
+/** Phones: the rows sit on the page. From 1024px: one card of rows. */
+const LIST_CARD = "lg:rounded-[16px] lg:border lg:border-line lg:bg-card lg:px-3.5";
 
 export default async function Contacts({ searchParams }: { searchParams: Promise<{ sort?: string; show?: string; q?: string; tab?: string; from?: string; n?: string }> }) {
   const user = await requireUser();
@@ -94,13 +95,13 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
        GROUP BY s.id, lm.text, lm.kind ORDER BY ${sort[2]} LIMIT ?`, user.id, user.id, user.id, ...(search ? [likeContains(search), likeContains(search)] : []), shown));
 
   const tab = sp.tab === "messages" ? "messages" : "people";
-  // The latest track from each sender on screen: shown beside the row from 768px up, where there's room.
+  // The latest track from each sender on screen, with what was decided: shown at the row's right from 1024px.
   const ids = rows.map((r) => r.id);
   const latest = ids.length
     ? await asMe(() =>
-        q.all<{ sender_id: number; title: string; collection: string | null; created_at: number }>(
-          `SELECT DISTINCT ON (t.sender_id) t.sender_id, t.title, c.name AS collection, t.created_at
-             FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
+        q.all<{ sender_id: number; title: string; decision: string | null; deleted_at: number | null }>(
+          `SELECT DISTINCT ON (t.sender_id) t.sender_id, t.title, t.decision, t.deleted_at
+             FROM tracks t
              WHERE t.user_id = ? AND t.sender_id IN (${ids.map(() => "?").join(",")}) ORDER BY t.sender_id, t.created_at DESC`,
           user.id,
           ...ids,
@@ -128,6 +129,8 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     engaged: Number(rows[0]?.total_engaged ?? 0),
   };
   const tz = user.tz || undefined;
+  // A desk nobody has sent to yet: no filter or search narrowed it, there is simply no one.
+  const emptyDesk = rows.length === 0 && !search && show[0] === "all";
 
   const href = (patch: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
@@ -135,147 +138,172 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     return `/dashboard/contacts${p.size ? `?${p}` : ""}`;
   };
 
+  const viewSwitch = (
+    <nav aria-label="Contacts view" className={QSEG}>
+      {(
+        [
+          ["people", "People", emptyDesk ? 0 : totals.people, href({ tab: undefined })],
+          ["messages", "Messages", messages.length, href({ tab: "messages" })],
+        ] as const
+      ).map(([k, label, count, to]) => (
+        <Link key={k} href={to} aria-current={tab === k ? "page" : undefined} className={qsegTab(tab === k)}>
+          {label} <span className="font-normal text-faint tnum">{count}</span>
+        </Link>
+      ))}
+    </nav>
+  );
+
+  const tools = (
+    <div className="flex min-w-0 gap-2">
+      <form action="/dashboard/contacts" role="search" className="flex min-w-0 flex-1">
+        {sp.show && <input type="hidden" name="show" value={sp.show} />}
+        {sp.sort && <input type="hidden" name="sort" value={sp.sort} />}
+        <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-well px-3 text-mute focus-within:border-line-2">
+          <Icon name="search" className="size-4" />
+          <span className="sr-only">Search contacts</span>
+          {/* 16px on phones so iOS doesn't zoom into the field; the desk's 13px from 640px up. */}
+          <input name="q" defaultValue={search} placeholder="Search names or emails" className="min-w-0 flex-1 bg-transparent text-base text-bone outline-none placeholder:text-mute sm:text-[13px]" />
+        </label>
+      </form>
+      <SortSheet current={sort[0]} options={SORTS.map(([k, label]) => ({ key: k, label, href: href({ sort: k === "recent" ? undefined : k }) }))} />
+    </div>
+  );
+
   return (
     <div className="page-gutter py-4 sm:py-7">
-      <div className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-4">
-        {/* One readout line instead of stat tiles, over the title: the numbers in bone, the words around them quiet. */}
-        <PageHead
-          title="Contacts"
-          label={
-            <span className="tnum">
-              <b className="font-semibold text-bone">{totals.sent}</b> {totals.sent === 1 ? "track" : "tracks"} from <b className="font-semibold text-bone">{totals.people}</b>{" "}
-              {totals.people === 1 ? "person" : "people"} · <b className="font-semibold text-bone">{totals.engaged}</b> kept or replied
-            </span>
-          }
-        />
-        <nav aria-label="Contacts view" className={`${SEG} flex`}>
-          {(
-            [
-              ["people", "People", totals.people, href({ tab: undefined })],
-              ["messages", "Messages", messages.length, href({ tab: "messages" })],
-            ] as const
-          ).map(([k, label, count, to]) => (
-            <Link key={k} href={to} aria-current={tab === k ? "page" : undefined} className={`${segTab(tab === k)} flex-1 gap-1.5 pointer-coarse:min-h-11`}>
-              {label} <span className="tnum">{count}</span>
-            </Link>
-          ))}
-        </nav>
+      <div className="mx-auto flex w-full max-w-[1040px] min-w-0 flex-col gap-3">
+        <header className="flex flex-col gap-1">
+          <h1 className="page-title">Contacts</h1>
+          {/* One readout line, the numbers in bone and the words around them quiet. */}
+          <p className="text-[13px] text-mute tnum">
+            {emptyDesk ? (
+              "No tracks yet"
+            ) : (
+              <>
+                <b className="font-semibold text-bone">{totals.sent}</b> {totals.sent === 1 ? "track" : "tracks"} from <b className="font-semibold text-bone">{totals.people}</b>{" "}
+                {totals.people === 1 ? "person" : "people"} · <b className="font-semibold text-bone">{totals.engaged}</b> kept or replied
+              </>
+            )}
+          </p>
+        </header>
+
+        {tab === "people" && !emptyDesk ? (
+          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+            {viewSwitch}
+            {tools}
+          </div>
+        ) : (
+          viewSwitch
+        )}
 
         {tab === "people" ? (
-          <>
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-              <form action="/dashboard/contacts" role="search" className="flex min-w-0 flex-1">
-                {sp.show && <input type="hidden" name="show" value={sp.show} />}
-                {sp.sort && <input type="hidden" name="sort" value={sp.sort} />}
-                <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-well px-3 text-mute focus-within:border-line-2">
-                  <Icon name="search" className="size-4" />
-                  <span className="sr-only">Search contacts</span>
-                  {/* 16px on phones so iOS doesn't zoom into the field; the desk's 13px from 640px up. */}
-                  <input name="q" defaultValue={search} placeholder="Search names or emails" className="min-w-0 flex-1 bg-transparent text-base text-bone outline-none placeholder:text-mute sm:text-[13px]" />
-                </label>
-              </form>
-              {/* Four filters can outgrow a phone: the track scrolls sideways inside the gutter, never the page. */}
-              <SegLinks label="Show" value={show[0]} items={SHOWS.map(([k, label]) => ({ key: k, label, href: href({ show: k === "all" ? undefined : k }) }))} />
-            </div>
-
-            <section aria-labelledby="people-h" className={`${CARD} flex flex-col gap-1 p-3`}>
-              <SectionHead id="people-h" icon="contacts" title="People" aside={<span>Sorted by {sort[1] === "A–Z" ? "name" : sort[1].toLowerCase()}</span>} />
-              {rows.length === 0 ? (
-                search ? (
-                  <EmptyState action={{ href: "/dashboard/contacts", label: "Clear the search" }}>
-                    No contacts match “{search}”. Try part of a name or an email address.
-                  </EmptyState>
+          emptyDesk ? (
+            <section aria-labelledby="empty-h" className="flex flex-col items-center gap-2.5 px-2 py-10 text-center">
+              <span aria-hidden className="mb-1 grid size-14 place-items-center rounded-full border border-line bg-well text-mute">
+                <Icon name="contacts" className="size-6" />
+              </span>
+              <h2 id="empty-h" className="text-[20px] font-semibold tracking-[-0.02em] text-bone">
+                No one has sent you a track yet
+              </h2>
+              <p className="max-w-[34ch] text-[13px] leading-[1.5] text-mute">Everyone who sends you a track shows up here, with what they sent and what you did with it.</p>
+              <div className="mt-2 flex w-full max-w-xs flex-col">
+                <StartCopy link={`${APP_URL}/${user.handle}`} />
+              </div>
+            </section>
+          ) : (
+            <>
+              <ChipLinks label="Show" value={show[0]} items={SHOWS.map(([k, label]) => ({ key: k, label, href: href({ show: k === "all" ? undefined : k }) }))} />
+              <section aria-labelledby="people-h" className={LIST_CARD}>
+                <h2 id="people-h" className="sr-only">
+                  People, sorted by {sort[1] === "A–Z" ? "name" : sort[1].toLowerCase()}
+                </h2>
+                {rows.length === 0 ? (
+                  search ? (
+                    <div className="flex flex-col items-center gap-1 px-1 py-7 text-center text-[13px]">
+                      <p className="font-semibold text-bone">No contacts match “{search}”.</p>
+                      <p className="text-mute">Try part of a name or an email address.</p>
+                      <Link href={href({ q: undefined })} className="tap-text mt-1 font-semibold text-bone underline underline-offset-2">
+                        Clear the search
+                      </Link>
+                    </div>
+                  ) : (
+                    <p className="py-7 text-center text-[13px] text-mute">No one here for {show[1].toLowerCase()}.</p>
+                  )
                 ) : (
-                  <EmptyState>Everyone who sends you a track shows up here, with what they sent and what you did with it.</EmptyState>
-                )
-              ) : (
-                <ul aria-label="People" className="flex flex-col">
-                  {rows.map((r) => {
-                    const last = latestBy.get(r.id);
-                    const kept = Number(r.kept);
-                    const downloaded = Number(r.downloaded);
-                    return (
-                      <li key={r.id} className={LI}>
-                        <Link href={`/dashboard/contacts/${r.id}`} className="-my-2 flex min-w-0 flex-1 items-center gap-2.5 self-stretch rounded-[10px] py-2 transition-colors duration-150 hover:bg-well motion-reduce:transition-none">
-                          <Cover text={initials(r.name)} />
-                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              <span className="truncate text-[13px] font-semibold text-bone">{r.name}</span>
-                              {r.blocked_at ? (
-                                <Chip tone="down">Blocked</Chip>
-                              ) : r.verified_at ? (
-                                <span className="flex text-lime">
-                                  <Icon name="check" className="size-3.5" />
-                                  <span className="sr-only">Verified</span>
-                                </span>
-                              ) : null}
+                  <ul aria-label="People" className="flex flex-col">
+                    {rows.map((r) => {
+                      const last = latestBy.get(r.id);
+                      const kept = Number(r.kept);
+                      const lastStatus = last ? statusOf(last) : null;
+                      const meta = [`${Number(r.sent)} sent`, kept > 0 ? `${kept} kept` : null, r.last_at ? dayLabel(r.last_at, tz) : null].filter(Boolean).join(" · ");
+                      return (
+                        <li key={r.id} className={LI}>
+                          <Link href={`/dashboard/contacts/${r.id}`} className="flex min-h-[62px] min-w-0 flex-1 items-center gap-3 py-2">
+                            <Cover text={initials(r.name)} size="size-10" />
+                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                              <span className="flex min-w-0 items-center gap-1.5">
+                                <span className="truncate text-[15px] font-semibold text-bone">{r.name}</span>
+                                {r.blocked_at ? (
+                                  <span className={`shrink-0 text-[12px] font-semibold ${DANGER_TEXT}`}>Blocked</span>
+                                ) : r.verified_at ? (
+                                  <span className="flex shrink-0 text-lime">
+                                    <Icon name="check" className="size-3.5" />
+                                    <span className="sr-only">Verified</span>
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span className="truncate text-[12px] text-mute tnum">{meta}</span>
                             </span>
-                            <span className="truncate text-[11.5px] text-mute tnum">
-                              {r.email}
-                              {r.last_at && (
-                                <>
-                                  {" · "}
-                                  <span className="hidden sm:inline">last sent </span>
-                                  {short(r.last_at, tz)}
-                                </>
-                              )}
-                            </span>
-                          </span>
-                          {last && (
-                            <span className="hidden w-52 shrink-0 flex-col gap-0.5 text-right lg:flex">
-                              <span className="truncate text-[12px] text-mute">{last.title}</span>
-                              <span className="truncate text-[11px] text-faint">{last.collection ?? "Unsorted"}</span>
-                            </span>
-                          )}
-                          <span className="flex shrink-0 items-center gap-1 tnum">
-                            <Chip>{Number(r.sent)} sent</Chip>
-                            {kept > 0 && <Chip tone="up">{kept} kept</Chip>}
-                            {downloaded > 0 && (
-                              <span className="hidden md:inline-flex">
-                                <Chip>{downloaded} downloaded</Chip>
+                            {last && (
+                              <span className="hidden w-[220px] shrink-0 flex-col items-end gap-0.5 text-right lg:flex">
+                                <span className="max-w-full truncate text-[12.5px] text-mute">{last.title}</span>
+                                {lastStatus && lastStatus !== "Not for me" && <Status status={lastStatus} />}
                               </span>
                             )}
-                          </span>
-                        </Link>
-                        <ContactMenu id={r.id} name={r.name} email={r.email} />
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              {totals.people > rows.length && (
-                <Link
-                  href={`${href({ tab: undefined, n: String(shown + PAGE) })}#people-h`}
-                  className="mt-1 flex min-h-11 items-center justify-center rounded-[10px] border-t border-line text-[12.5px] font-semibold text-mute transition-colors duration-150 hover:bg-well hover:text-bone motion-reduce:transition-none"
-                >
-                  Show more ({rows.length} of {totals.people})
-                </Link>
-              )}
-            </section>
-          </>
+                            <Icon name="chev" className="size-4 text-faint lg:hidden" />
+                          </Link>
+                          <ContactMenu id={r.id} name={r.name} email={r.email} />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {totals.people > rows.length && (
+                  <Link
+                    href={`${href({ tab: undefined, n: String(shown + PAGE) })}#people-h`}
+                    className="flex min-h-11 items-center justify-center border-t border-line text-[13px] font-semibold text-mute hover:text-bone"
+                  >
+                    Show more ({rows.length} of {totals.people})
+                  </Link>
+                )}
+              </section>
+            </>
+          )
         ) : (
           <>
-            <SegLinks label="Messages from" value={from} items={FROMS.map(([k, label]) => ({ key: k, label, href: href({ tab: "messages", from: k === "all" ? undefined : k }) }))} />
-            <section aria-labelledby="messages-h" className={`${CARD} flex flex-col gap-1 p-3`}>
-              <SectionHead id="messages-h" icon="mail" title="Messages" aside="Newest first" />
+            <ChipLinks label="Messages from" value={from} items={FROMS.map(([k, label]) => ({ key: k, label, href: href({ tab: "messages", from: k === "all" ? undefined : k }) }))} />
+            <section aria-labelledby="messages-h" className={LIST_CARD}>
+              <h2 id="messages-h" className="sr-only">
+                Messages, newest first
+              </h2>
               {messages.length === 0 ? (
-                <p className="py-8 text-center text-[12px] text-mute">Messages from senders, and your replies, show up here.</p>
+                <p className="py-8 text-center text-[13px] text-mute">Messages from senders, and your replies, show up here.</p>
               ) : (
                 <ul aria-label="Messages" className="flex flex-col">
                   {messages.map((m, i) => (
-                    <li key={i} className="border-t border-line first:border-t-0">
-                      <Link href={`/dashboard/contacts/${m.sender_id}`} className="-mx-1.5 flex min-h-11 gap-2.5 rounded-[10px] px-1.5 py-2.5 transition-colors duration-150 hover:bg-well motion-reduce:transition-none">
-                        <Cover text={initials(m.name)} size="size-8" />
-                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <li key={i} className="border-b border-line last:border-b-0">
+                      <Link href={`/dashboard/contacts/${m.sender_id}`} className="flex min-h-11 gap-3 py-3">
+                        <Cover text={initials(m.name)} size="size-9" />
+                        <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                           <span className="flex items-center justify-between gap-3">
-                            <span className="truncate text-[13px] font-semibold text-bone">{m.kind === "reply" ? `You → ${m.name}` : m.name}</span>
-                            <span className="shrink-0 text-[11px] text-faint tnum">{ago(m.at)}</span>
+                            <span className="truncate text-[14px] font-semibold text-bone">{m.kind === "reply" ? `You → ${m.name}` : m.name}</span>
+                            <span className="shrink-0 text-[12px] text-faint tnum">{ago(m.at)}</span>
                           </span>
-                          <span className={`line-clamp-2 rounded-[11px] border px-2.5 py-1.5 text-[12px] leading-[1.45] text-bone ${m.kind === "reply" ? "border-transparent bg-lime/12" : "border-line bg-well"}`}>
-                            &ldquo;{m.text}&rdquo;
+                          <span className={`line-clamp-2 rounded-xl border px-3 py-2 text-[13px] leading-[1.45] text-bone ${m.kind === "reply" ? "border-transparent bg-lime/10" : "border-line bg-well"}`}>
+                            {m.text}
                           </span>
                           {m.title && (
-                            <span className="truncate text-[11px] text-faint">
+                            <span className="truncate text-[12px] text-faint">
                               About {m.title}
                               {m.collection ? ` · ${m.collection}` : ""}
                             </span>

@@ -150,7 +150,7 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await page.goto("/dashboard/contacts");
   await page.getByRole("link", { name: /Femi/ }).first().click();
   await page.getByRole("textbox", { name: /Message to/ }).fill(reply);
-  await page.getByRole("button", { name: "Send email" }).click();
+  await page.getByRole("button", { name: "Send reply" }).click();
   await expect(page.getByRole("status").filter({ hasText: /Waiting for approval/ })).toBeVisible();
   await page.goto("/dashboard/settings/team");
   await expect(page.getByRole("heading", { name: "Your replies waiting for approval" })).toBeVisible();

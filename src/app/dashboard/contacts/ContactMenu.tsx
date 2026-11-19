@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-/** A contact row's ··· menu: email them, or open their page (notes, replies, block). Escape or a click outside closes it. */
+/** A contact row's ··· menu, from 1024px: email them, or open their page (notes, replies, block). Escape or a click outside closes it. */
 export function ContactMenu({ id, name, email }: { id: number; name: string; email: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -28,7 +28,8 @@ export function ContactMenu({ id, name, email }: { id: number; name: string; ema
 
   const item = "flex min-h-11 items-center rounded-[10px] px-3 text-[13px] text-bone hover:bg-well focus-visible:bg-well";
   return (
-    <div ref={ref} className="relative shrink-0">
+    // From 1024px only: on phones the whole row opens the contact, where Email and More live.
+    <div ref={ref} className="relative hidden shrink-0 lg:block">
       <button
         ref={button}
         type="button"
