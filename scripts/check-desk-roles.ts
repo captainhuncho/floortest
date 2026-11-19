@@ -98,6 +98,7 @@ const ROUTES: Record<string, Record<string, "admin" | "callouts" | "member" | "p
   "collections/[id]/upload/complete": { POST: "admin" },
   "cover": { POST: "admin", DELETE: "admin" }, // part of the public page (updatePublicPage)
   "export": { GET: "member" },
+  "folder-art/[kind]/[id]": { GET: "member", POST: "admin", DELETE: "admin" }, // like renaming or deleting the project or folder
   "music/[id]/audio": { GET: "member" },
   "music/upload": { POST: "admin" },
   "music/upload/complete": { POST: "admin" },
