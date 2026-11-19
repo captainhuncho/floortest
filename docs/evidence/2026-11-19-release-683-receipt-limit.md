@@ -26,7 +26,7 @@ server-only.
 None (the #669 report, #685, is open).
 
 ## After the merge
-`main` merged into `mobile-next`, no conflicts.
+`main` merged into `mobile-next` as `713699a5`, no conflicts.
 
 ## Live versus unfinished
 Live: Change cover (#669) and the receipt limit. On `mobile-next` for the owner's try, Safety cleared, e2e passed: tap
