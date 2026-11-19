@@ -233,8 +233,9 @@ export function DecisionRail({ track, selfHref, next, prev, children }: Props) {
   const key = "rounded-[5px] border border-current px-1.5 font-mono text-[10px] font-semibold opacity-55 [@media(pointer:coarse)]:hidden";
   return (
     <div data-player-keys className="flex flex-col gap-2.5">
-      <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-        <div className="grid grid-cols-2 gap-2 md:flex" role="group" aria-label="Decision">
+      {/* Compact card (owner, 19 Nov): Keep, Not for me and More in one row on every size. */}
+      <div className="flex items-center gap-2">
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 md:flex md:flex-none" role="group" aria-label="Decision">
           <button
             onClick={() => decide("kept")}
             disabled={busy}
@@ -259,14 +260,15 @@ export function DecisionRail({ track, selfHref, next, prev, children }: Props) {
         {children}
       </div>
 
-      <p className="text-center text-[11.5px] text-mute md:text-left">
-        {next ? "Keep or Not for me moves to the next track." : "Last track in this view."}
-        {!swiped && <span className="[@media(pointer:fine)]:hidden"> Swipe left for the next track, right for the previous one.</span>}
-      </p>
+      {(!next || !swiped) && (
+        <p className={`text-center text-[11.5px] text-mute md:text-left ${next ? "[@media(pointer:fine)]:hidden" : ""}`}>
+          {next ? "Swipe left for the next track, right for the previous one." : "Last track in this view."}
+        </p>
+      )}
       {/* One faint line; the full list of shortcuts opens from it. */}
       <details className="hidden text-center text-[11px] text-faint md:text-left [@media(pointer:fine)]:block">
         <summary className="inline-flex min-h-8 w-fit cursor-pointer list-none items-center hover:text-mute [&::-webkit-details-marker]:hidden">
-          Space play · K keep · X not for me · R reply · more shortcuts
+          Shortcuts
         </summary>
         <p className="mt-1 text-mute">
           K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% · ←/→ 10s · ↑/↓ or J move · U undo · Shift+↑/↓ volume · M mute · media keys play, pause, next, previous

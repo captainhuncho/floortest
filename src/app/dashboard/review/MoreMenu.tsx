@@ -29,8 +29,8 @@ function goTo(card: ParentNode, selector: string) {
   requestAnimationFrame(() => around?.querySelector<HTMLElement>("input, textarea")?.focus({ preventScroll: true }));
 }
 
-/** `to`: the control on the open track's card this item goes to. Copy link has none. */
-type Item = { label: string; icon: IconName; to?: string };
+/** `to`: the control on the open track's card this item goes to. `run`: what it does itself (Reply, Download, Copy link). */
+type Item = { label: string; icon: IconName; to?: string; run?: () => void; danger?: boolean };
 
 const CALL = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[13px] border border-line bg-well px-3.5 text-[13px] font-semibold text-bone transition-colors hover:border-line-2";
 const ITEM = "flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-left text-[14px] font-medium text-bone hover:bg-well focus-visible:bg-well md:min-h-11 md:text-[13px]";
@@ -38,8 +38,8 @@ const ITEM = "flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-l
 function Items({ items, role, onPick }: { items: Item[]; role?: "menuitem"; onPick: (item: Item) => void }) {
   return items.map((item) => (
     <button key={item.label} type="button" role={role} tabIndex={role ? -1 : undefined} onClick={() => onPick(item)} className={ITEM}>
-      <Icon name={item.icon} className="size-[18px] shrink-0 text-mute" />
-      {item.label}
+      <Icon name={item.icon} className={`size-[18px] shrink-0 ${item.danger ? "text-danger" : "text-mute"}`} />
+      <span className={item.danger ? "text-danger" : undefined}>{item.label}</span>
     </button>
   ));
 }
@@ -52,7 +52,7 @@ function Items({ items, role, onPick }: { items: Item[]; role?: "menuitem"; onPi
  * menu for the keyboard too: it opens on its first item, the arrow keys, Home and End move through the items, and Tab
  * closes it.
  */
-export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
+export function MoreMenu({ trackId, href, onReply, download }: { trackId: number; href: string; onReply?: () => void; download?: string }) {
   // "sheet" on phones, "pop" from 768px; decided when it opens.
   const [open, setOpen] = useState<"sheet" | "pop" | null>(null);
   // The items whose control is on the card, read when the menu opens.
@@ -107,13 +107,19 @@ export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
     }
   };
 
+  // Compact card (owner, 19 Nov): only Keep and Not for me sit on the card; every other call is in here.
   const all: Item[] = [
+    ...(onReply ? [{ label: "Reply", icon: "reply" as const, run: onReply }] : []),
+    ...(download ? [{ label: "Download", icon: "dl" as const, run: () => window.location.assign(download) }] : []),
     { label: "Add a note", icon: "tag", to: "[data-more=note], #note-body" },
     { label: "Played out", icon: "head", to: "[data-more=played], [data-played-out]" },
+    { label: "Shortlist", icon: "star", to: "[data-more=shortlist]" },
+    { label: "Comment for the team", icon: "mail", to: `#comment-${trackId}` },
     { label: "Move", icon: "folder", to: `#move-${trackId}` },
-    { label: "Copy link", icon: "link" },
+    { label: "Copy link", icon: "link", run: () => void copy() },
     { label: "Details", icon: "music", to: "details[data-panel-details] summary" },
     { label: "Report", icon: "shield", to: "[data-more=report]" },
+    { label: "Delete", icon: "x", to: "[data-more=delete]", danger: true },
   ];
   /** The open track's card: the only place the menu looks for a control. */
   const card = () => wrap.current?.closest("#review-card") ?? null;
@@ -126,8 +132,8 @@ export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
   const pick = (item: Item) => {
     after.current = () => {
       const here = card();
-      if (!item.to) void copy();
-      else if (here) goTo(here, item.to);
+      if (item.run) item.run();
+      else if (here && item.to) goTo(here, item.to);
     };
     setOpen(null);
   };
@@ -153,17 +159,17 @@ export function MoreMenu({ trackId, href }: { trackId: number; href: string }) {
         onClick={toggle}
         aria-expanded={open === "pop"}
         aria-haspopup={open === "sheet" ? "dialog" : "menu"}
-        className={`${CALL} w-full`}
+        aria-label="More"
+        className={`${CALL} min-h-13 w-13 rounded-[15px] px-0! md:min-h-11 md:w-11 md:rounded-[13px]`}
       >
         <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden>
           <circle cx="5" cy="12" r="1.9" />
           <circle cx="12" cy="12" r="1.9" />
           <circle cx="19" cy="12" r="1.9" />
         </svg>
-        More
       </button>
       {open === "pop" && (
-        <div role="menu" aria-label="More" onKeyDown={onMenuKey} className="absolute left-0 top-full z-30 mt-1.5 w-56 rounded-[13px] border border-line bg-card p-1 shadow-pop">
+        <div role="menu" aria-label="More" onKeyDown={onMenuKey} className="absolute right-0 top-full z-30 mt-1.5 w-60 rounded-[13px] border border-line bg-card p-1 shadow-pop">
           <Items items={items} role="menuitem" onPick={pick} />
         </div>
       )}
