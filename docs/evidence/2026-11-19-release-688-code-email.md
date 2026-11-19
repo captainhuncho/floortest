@@ -36,6 +36,6 @@ The receipt check is capped per link and per connection, in each server's memory
 
 ## Live versus unfinished
 Live: Change cover (#669), the receipt limit (#683) and code emails. On `mobile-next` for the owner's try: the
-Projects redesign (#675), folder drag and drop (#686), tap to play and Folder rename (#680), the compact review card
-(#681). Waiting for the owner's "good to go": the Collections redesign drawings (option 66). With Safety: clearer
-player buttons (#687, after volume reveal #684).
+Projects redesign (#675), folder drag and drop (#686), tap to play and the New folder wording (#680), the compact review card
+(#681). Waiting for the owner's "good to go": the Collections redesign drawings (option 66). Safety cleared, waiting for the owner's try:
+volume reveal (#684), then clearer player buttons (#687, stacked on #684).
