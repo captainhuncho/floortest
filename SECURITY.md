@@ -67,7 +67,7 @@ Assume that public visitors, anonymous senders, uploaded files, filenames, metad
 - **Redirects** taken from a request go through one of two checks in `src/lib/next-path.ts`: `safeNext` (after sign-in, only `/c/a.<id>` or `/join/<invite>`) and `localPath` (a same-site path; refuses `//`, `/\` and control characters). Evidence: `tests/local-path.test.ts` (`localPath`) and `tests/safe-next.test.ts` (`safeNext` against `//`, `/\`, `\\`, other schemes including `javascript:` and `data:`, encoded `%2F%2F` and `%5C`, look-alikes with extra paths, queries or fragments, whitespace and control characters, and ordinary pages such as `/desk`).
 - **Cross-site requests:** export and download routes that record a Downloaded signal refuse requests started on another site (`src/lib/same-site.ts`, `tests/same-site.test.ts`). Server actions are same-origin by Next.js.
 - **Framing:** `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` on every route, production and development (`next.config.ts`; `tests/framing-headers.test.ts`, `e2e/framing.spec.ts`). HSTS, `nosniff`, `Referrer-Policy` and `Permissions-Policy` are set there too; the full CSP is production-only.
-- **Bots and floods:** Turnstile on public forms (section 2), database-backed rate limits (`src/lib/ratelimit.ts`) and the Vercel Firewall rules (`docs/operations.md`, Security).
+- **Bots and floods:** Turnstile on public forms (section 2), database-backed rate limits (`src/lib/ratelimit.ts`; the public receipt check alone is capped in server memory, per instance, and the count resets when an instance restarts, so polling it writes nothing: `src/lib/memory-limit.ts`, 19 Nov) and the Vercel Firewall rules (`docs/operations.md`, Security).
 
 ### Public and capability-based routes
 
