@@ -22,7 +22,7 @@ is not wired: the checkout is a card form that says payments are not connected.
 ## Checks
 | Check | Commit | Result |
 |---|---|---|
-| CI: checks, Analyze, CodeQL, Vercel (dependency-review skipped, docs only) | `86baab81` | passed |
+| CI: Vercel, Vercel Preview Comments, dependency-review | `86baab81` | passed (checks, Analyze and CodeQL don't run on a docs-only change) |
 | Safety review | `86baab81` | cleared; citations match `907ae88e`; one file, docs only |
 | Merge with `main` | `907ae88e` | GitHub CLEAN; merged without conflicts |
 | Health `/api/health`, `/`, `/login`, `/signup` | production | 200, 200, 200, 200 |
