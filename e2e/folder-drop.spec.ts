@@ -1,15 +1,17 @@
 import { expect, hydrated, logIn, test, wav } from "./fixtures";
 
 /**
- * Dropping files on Projects (laptop and desktop; phones keep Upload audio): the upload opens with the WAV ready to add,
+ * Dropping files on Projects (laptop and desktop; phones use + Add > Import): the upload opens with the WAV ready to add,
  * and a music-software project file dropped with it is named as skipped. A synthetic drop has no folder entries, so this
  * covers the loose-files path; folder walking is covered in tests/dropped-files.test.ts.
  */
 test("files dropped on Projects open the upload, and a music-software project file is skipped and named", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/projects");
-  // The drop listener starts once the page is interactive; a drop before that goes to the browser.
-  await hydrated(page.getByRole("button", { name: "Upload audio" }).first());
+  await page.waitForURL(/\?tab=projects$/);
+  // The drop listener starts once the page is interactive; a drop before that goes to the browser. Projects has
+  // no Upload audio button since option 66 (+ Add > Import opens it), so wait on + Add.
+  await hydrated(page.getByRole("button", { name: "Add", exact: true }));
 
   const audio = wav(2).toString("base64");
   const dt = await page.evaluateHandle((b64) => {

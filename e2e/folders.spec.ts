@@ -1,24 +1,28 @@
 import { expect, logIn, test } from "./fixtures";
 
 /**
- * Folders on Collections (owner, 16 Nov; one "New folder" sheet since option 43, 17 Nov): New folder offers a callout
- * and a group of callouts; the same sheet on a right-click on empty space or Shift+F10; a callout moves into a group
- * from its ··· menu and shows on the group's tile; renaming works; deleting the group puts the callout back in the list.
+ * Folders on Collections (owner, 16 Nov; + Add since option 66, 20 Nov): + Add on Callouts offers Callout and Folder;
+ * the same menu on a right-click on empty space; a callout moves into a folder from its ··· menu and shows on the
+ * folder's tile; renaming works; deleting the folder puts the callout back in the list.
  */
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** A callout's row, by its spoken name ("Open Night set, callout, receiving, 12 tracks"). */
 const calloutLink = (page: import("@playwright/test").Page, name: string) => page.getByRole("link", { name: new RegExp(`^Open ${escape(name)}, callout,`) });
 
-test("a callout folder: create from New folder, file a callout, rename, delete, and the right-click sheet", async ({ page }) => {
+test("a callout folder: create from + Add, file a callout, rename, delete, and the right-click menu", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/collections");
 
-  // The "New folder" sheet.
-  await page.getByRole("button", { name: "New folder", exact: true }).click();
+  // + Add: Callout and Folder, focus on the first item; Folder opens the name sheet.
+  const add = page.getByRole("button", { name: "Add", exact: true });
+  await add.click();
+  const menu = page.getByRole("menu", { name: "Add to Callouts" });
+  await expect(menu.getByRole("menuitem")).toHaveText([/^Callout/, /^Folder/]);
+  await expect(menu.getByRole("menuitem", { name: /^Callout/ })).toBeFocused();
+  await expect(menu.getByRole("menuitem", { name: /Record/ })).toHaveCount(0);
+  await menu.getByRole("menuitem", { name: /^Folder/ }).click();
   const create = page.getByRole("dialog", { name: "New folder" });
-  await expect(create.getByRole("radio", { name: /^Callout/ })).toBeVisible();
   await create.getByLabel("Name").fill("E2E crate");
-  await create.getByRole("radio", { name: /^Folder\s*Holds callouts/ }).check();
   await create.getByRole("button", { name: "Create folder" }).click();
   const tile = page.locator("[data-card]").filter({ hasText: "E2E crate" });
   await expect(tile.getByText("0 callouts")).toBeVisible();
@@ -34,20 +38,25 @@ test("a callout folder: create from New folder, file a callout, rename, delete, 
 
   // Open the folder: the callout is in it.
   await tile.getByRole("link", { name: "Open E2E crate, folder, 1 callout", exact: true }).click();
-  await page.waitForURL(/\?folder=\d+/);
+  await page.waitForURL(/[?&]folder=\d+/);
   await expect(calloutLink(page, name)).toBeVisible();
+  // Inside a callouts folder + Add stays with Callout only (no folders in folders; option 66 v147).
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("menu", { name: "Add to Callouts" }).getByRole("menuitem")).toHaveText([/^Callout/]);
+  await page.keyboard.press("Escape");
   await page.getByRole("link", { name: "All callouts" }).click();
-  await page.waitForURL(/\/dashboard\/collections$/);
+  await page.waitForURL(/\/dashboard\/collections\?tab=callouts$/);
 
-  // Right-click on empty space opens the same sheet; on a card, the card's own options.
-  const list = page.getByRole("list", { name: "Folders" });
+  // Right-click on empty space opens + Add's menu; Escape closes it and focus goes back to the button. On a card, its own options.
+  const list = page.getByRole("list", { name: "Callouts" });
   // The grid's empty last column (a folder and one callout fill the first two at 1440px).
   await page.setViewportSize({ width: 1440, height: 900 });
   const grid = (await list.boundingBox())!;
   await page.mouse.click(grid.x + grid.width - 12, grid.y + 12, { button: "right" });
-  await expect(page.getByRole("dialog", { name: "New folder" })).toBeVisible();
+  await expect(menu).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "New folder" })).toHaveCount(0);
+  await expect(menu).toHaveCount(0);
+  await expect(add).toBeFocused();
   await tile.click({ button: "right" });
   await expect(page.getByRole("menu", { name: "E2E crate" })).toBeVisible();
   await page.keyboard.press("Escape");
@@ -67,24 +76,29 @@ test("a callout folder: create from New folder, file a callout, rename, delete, 
   await expect(calloutLink(page, name)).toBeVisible();
 });
 
-/** Projects: Upload audio beside New folder, which offers a project and a group of projects; the old explainer box is gone. */
-test("Projects offers Upload audio, and New folder makes a project or a group of projects", async ({ page }) => {
+/** Projects (option 66): /dashboard/projects is a tab now; + Add offers Import, Project and Folder; a new project opens its page. */
+test("Projects is a tab, its + Add offers Import, Project and Folder, and a new project opens its page", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/projects");
-  await expect(page.getByText("Add your own tracks")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Upload audio" }).first()).toBeVisible();
-  await page.getByRole("button", { name: "New folder", exact: true }).click();
-  const create = page.getByRole("dialog", { name: "New folder" });
-  for (const item of [/^Project/, /^Folder\s*Holds projects/]) await expect(create.getByRole("radio", { name: item })).toBeVisible();
-  // A callout isn't made from Projects.
-  await expect(create.getByRole("radio", { name: /^Callout/ })).toHaveCount(0);
+  await page.waitForURL(/\/dashboard\/collections\?tab=projects$/);
+  await expect(page.getByRole("tab", { name: "Projects", selected: true })).toBeVisible();
+  // Old ?kind=callouts links still land on Callouts.
+  await page.goto("/dashboard/collections?kind=callouts");
+  await expect(page.getByRole("tab", { name: "Callouts", selected: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Projects" }).click();
+  await page.waitForURL(/\?tab=projects$/);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  const menu = page.getByRole("menu", { name: "Add to Projects" });
+  await expect(menu.getByRole("menuitem")).toHaveText([/^Import/, /^Project/, /^Folder/]);
+  // A tap outside closes it.
+  await page.getByRole("heading", { name: "Collections", level: 1 }).click();
+  await expect(menu).toHaveCount(0);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await menu.getByRole("menuitem", { name: /^Project/ }).click();
+  const create = page.getByRole("dialog", { name: "New project" });
   await create.getByLabel("Name").fill("E2E project");
-  await create.getByRole("radio", { name: /^Project/ }).check();
-  await create.getByRole("button", { name: "Create folder" }).click();
-  await expect(page.getByRole("link", { name: "Open E2E project, project, 0 tracks", exact: true })).toBeVisible();
-  // It opens as a folder page with the one wide button.
-  await page.getByRole("link", { name: "Open E2E project, project, 0 tracks", exact: true }).click();
-  // The first open compiles the page in the dev server; give that room on a busy machine.
+  await create.getByRole("button", { name: "Create project" }).click();
+  // Creating a project opens its page. The first open compiles the page in the dev server; give that room on a busy machine.
   await page.waitForURL(/\/dashboard\/projects\/\d+$/, { timeout: 60_000 });
   await expect(page.getByRole("heading", { level: 1, name: "E2E project" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add tracks" })).toBeVisible();
