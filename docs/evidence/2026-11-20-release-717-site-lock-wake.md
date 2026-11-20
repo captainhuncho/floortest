@@ -19,7 +19,7 @@ Changed: `src/lib/site-gate.ts` and `tests/site-lock.test.ts`, +28 −4. No migr
 | Check | Commit | Result |
 |---|---|---|
 | CI: checks (runs `audit:prod`), Analyze, dependency-review, Vercel | `a2349ad7` | passed |
-| CI: CodeQL results check | `a2349ad7` | still queued at merge; its Analyze run had passed. Merged before it finished, against Safety's ask to wait |
+| CI: CodeQL results check | `a2349ad7` | still queued at merge; its Analyze run had passed. Merged before it finished. Safety had asked to wait; that note arrived after the merge |
 | CodeQL after merge | `30c207e8` | results check still pending, no analysis yet; newest analysis on `main` is `c24661b9` (16 Nov), 15 open alerts, same baseline. `main` has no push CI; CodeQL on `main` runs weekly, so the PR's results check is the only one to wait for |
 | Merge verified (Safety) | `30c207e8` | tree equals merge-tree result; diff matches cleared head (2 files, +28 −4); live headers XFO DENY, frame-ancestors 'none', HSTS, no X-Powered-By |
 | Unit (Backend session) | `a2349ad7` | 1089 of 1089 passed |
