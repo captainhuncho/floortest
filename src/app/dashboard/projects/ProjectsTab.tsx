@@ -60,7 +60,7 @@ export async function ProjectsTab({ folderParam }: { /** `?folder=`, as typed in
           {nothing && <ProjectsEmpty canEdit={canEdit} />}
           {/* One file picker for Import in + Add; it stays in this place in both layouts, so an upload
               in progress isn't lost when the first track turns the empty page into the list. */}
-          {canEdit && <OwnerUpload api="/api/music/upload" heading="Upload audio" fromMenu />}
+          {canEdit && <OwnerUpload api="/api/music/upload" heading="Upload audio" fromMenu pageDrop="project" />}
           {!nothing && (
             <>
               {folder && <FolderCrumb kind="project" name={folder.name} />}
