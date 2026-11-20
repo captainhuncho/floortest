@@ -74,12 +74,11 @@ export function MusicList({ tracks, canEdit, folders, here, empty, numbered = fa
                 </div>
               ) : (
                 <div className="flex min-h-[60px] items-center gap-2 py-1.5">
-                  {/* No play button (owner, 19 Nov, #680): tapping the track plays it; pausing is the player's. */}
                   <button
                     type="button"
-                    onClick={() => (!on ? play(toPlayer(t), queue) : !playing && toggle())}
+                    onClick={() => (on ? toggle() : play(toPlayer(t), queue))}
                     className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-[12px] text-left"
-                    aria-label={`Play ${t.title}`}
+                    aria-label={on && playing ? `Pause ${t.title}` : `Play ${t.title}`}
                   >
                     {numbered ? (
                       <span aria-hidden className="grid w-6 shrink-0 place-items-center text-[13px] text-mute tnum">
