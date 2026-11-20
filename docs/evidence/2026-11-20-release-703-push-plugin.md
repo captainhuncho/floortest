@@ -38,6 +38,7 @@ The owner said yes to the package in the Desk on 20 Nov; shipped on the owner's 
 Live: as in the #687 report, plus the push plugin (not yet used). Ready for the owner: the compact review card (#681, on
 `mobile-next`), desk folders admin-only writes (#695, lane:owner, migration 0158, draft), the RevenueCat plugin (#706;
 it edits the same `mobile/` files, so `main` goes into it and its checks run again first), the StoreKit test setup
-(#705, draft). Waiting for the owner's try: hiding the web checkout in the phone app (#702). Being fixed: PostHog
+(#705, draft). Waiting for the owner's try: hiding the web checkout in the phone app (#702; needs `main` merged in first). Being fixed: PostHog
 analytics (#704, last round; parked if Safety fails it). Open with the owner: Cookie Policy and privacy policy lines for
-PostHog and RevenueCat (board #67). Conflicting with `main`: review card option 1 (#691).
+PostHog and RevenueCat (board #67). Conflicting with `main`: review card option 1 (#691) and hiding the web checkout in the phone app (#702,
+`docs/app-store-review.md`, since this release).
