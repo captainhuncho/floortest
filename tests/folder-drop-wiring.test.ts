@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
 test("only editors get the drop: Projects and a project render the upload, with its drop, behind canEdit", () => {
-  const projects = read("src/app/dashboard/projects/page.tsx");
+  const projects = read("src/app/dashboard/projects/ProjectsTab.tsx");
   assert.match(projects, /\{canEdit && <OwnerUpload [^>]*pageDrop="project"/);
   const project = read("src/app/dashboard/projects/[id]/page.tsx");
   const at = project.indexOf('pageDrop="here"');
