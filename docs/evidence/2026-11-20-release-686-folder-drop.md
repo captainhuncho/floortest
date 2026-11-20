@@ -39,4 +39,4 @@ Live: Floor (#596), Analytics (#599), Prepare (#606), the sign-in screens (#617)
 play with pause (#680), the Projects page (#675) and folder drag and drop. On `mobile-next` for the owner's try: the
 compact review card (#681), the volume reveal (#684), the clearer player buttons (#687). Ready for the owner's try:
 review card option 1 (#691, e2e 12/12, Safety cleared at `3b429cb9`; merges after #681). Being built: Collections step 1
-(#693, option 66; Safety cleared at `d15d8f7e`, e2e not run yet).
+(#693, option 66; Safety cleared at `d8eba5a5`; needs `main` merged in after #686, e2e not run yet).
