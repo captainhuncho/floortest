@@ -38,7 +38,8 @@ on the owner's "ship it #693" typed in the Desk (lane:standard), after it was on
 ## Live versus unfinished
 Live: as in the #684 report, plus the iPhone goal and Collections step 1. Ready for the owner: the RevenueCat plugin
 (#706) and the push notifications plugin (#703), which touch the same `mobile/` files, so the second needs `main` merged
-in; the StoreKit test setup (#705, draft). On `mobile-next` for the owner's try: the clearer player buttons (#687, full
-e2e next), the compact review card (#681) and review card option 1 (#691), both conflicting with `main`. Waiting for the
+in; the StoreKit test setup (#705, draft). On `mobile-next` for the owner's try: the clearer player buttons (#687, player
+specs 6/6 on `54305c60`, full e2e next), the compact review card (#681, updated with `main`, waiting for e2e) and
+review card option 1 (#691, conflicting with `main`). Waiting for the
 owner's try: hiding the web checkout in the phone app (#702). Blocked: PostHog analytics (#704), which failed blind
 review. Waiting for e2e: desk folders admin-only writes (#695).
