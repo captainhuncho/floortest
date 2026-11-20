@@ -9,21 +9,60 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await page.goto("/dashboard/review?view=queue");
   const card = page.locator("#review-card");
   const list = page.getByRole("table", { name: "Up next" });
-  await expect(card.getByText(/^Now reviewing · 1 of \d+$/)).toBeVisible();
+  await expect(card.getByText(/^1 of \d+$/).locator("visible=true")).toBeVisible();
   await expect(card.getByRole("slider")).toHaveCount(0);
   await expect(card.locator("[data-card-play]")).toBeHidden();
 
-  // Keep is first and the only filled button; Reply, Download and More sit beside the decision.
+  // Review card option 1 (owner, 20 Nov): Keep is first and the only filled button; Info and More sit beside the
+  // decision. There is no fold, and nothing on the card itself moves, reports or deletes.
   const decision = card.getByRole("group", { name: "Decision" }).getByRole("button");
   await expect(decision.first()).toHaveText(/Keep/);
   await expect(decision.nth(1)).toHaveText(/Not for me/);
-  await expect(card.getByRole("link", { name: "Download", exact: true })).toHaveAttribute("href", /^\/api\/tracks\/\d+\/download$/);
+  await expect(card.getByRole("button", { name: "Reply", exact: true })).toHaveCount(0);
+  await expect(card.getByRole("link", { name: "Download", exact: true })).toHaveCount(0);
+  await expect(card.locator("details[data-panel-details]")).toHaveCount(0);
+  for (const name of ["Move", "Report", "Delete"]) await expect(card.getByRole("button", { name, exact: true })).toHaveCount(0);
+  // The sender is one grey line of words; the signals carry no pill boxes.
+  await expect(card.locator("[data-sender-line]")).toHaveText(/^From .+, (verified|Unverified email)/);
 
-  // Reply is a layer: the button opens the panel with the cursor in the box. Letter keys typed there are text, never
-  // a decision; Escape closes it, keeps the text and puts focus back on Reply.
+  // Info opens a drawer beside the card, not a modal: no dialog is open, and R still opens Reply from the page.
+  const info = card.getByRole("button", { name: "Track and sender info" });
+  const drawer = card.getByRole("complementary", { name: "Track and sender info" });
+  await hydrated(info);
+  await expect(info).toHaveAttribute("aria-expanded", "false");
+  await info.click();
+  await expect(info).toHaveAttribute("aria-expanded", "true");
+  await expect(drawer.getByRole("tab", { name: "Track" })).toHaveAttribute("aria-selected", "true");
+  for (const row of ["Format", "Received", "Listened", "Downloaded", "Kept until"]) await expect(drawer.getByText(row, { exact: true })).toBeVisible();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  // The arrow keys move between the tabs; the Sender tab holds the sender's record.
+  await drawer.getByRole("tab", { name: "Track" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(drawer.getByRole("tab", { name: "Sender" })).toBeFocused();
+  await expect(drawer.getByRole("tab", { name: "Sender" })).toHaveAttribute("aria-selected", "true");
+  await expect(drawer.getByText("Full history →")).toBeVisible();
+  await expect(drawer.getByText("Sent before", { exact: true })).toBeVisible();
+  await page.keyboard.press("r");
+  await expect(page.getByRole("dialog", { name: /^Reply to / })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: /^Reply to / })).toBeHidden();
+  // The drawer remembers open or closed and its last tab on this device.
+  await page.reload();
+  await expect(drawer.getByRole("tab", { name: "Sender" })).toHaveAttribute("aria-selected", "true");
+  await hydrated(info);
+  await info.click();
+  await expect(drawer).toBeHidden();
+  await expect(info).toHaveAttribute("aria-expanded", "false");
+
+  // Reply is a layer, opened from More: the panel opens with the cursor in the box. Letter keys typed there are text,
+  // never a decision; Escape closes it, keeps the text and puts focus back on More.
   const title = await card.getByRole("heading", { level: 2 }).innerText();
-  const replyButton = card.getByRole("button", { name: "Reply", exact: true });
-  await replyButton.click();
+  const replyButton = card.getByRole("button", { name: "More", exact: true });
+  const openReply = async () => {
+    await replyButton.click();
+    await page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: "Reply" }).click();
+  };
+  await openReply();
   const panel = page.getByRole("dialog", { name: /^Reply to / });
   const box = panel.getByRole("textbox", { name: /^Your reply to / });
   await expect(box).toBeFocused();
@@ -35,7 +74,7 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await expect(card.getByRole("heading", { level: 2 })).toHaveText(title);
   await expect(card.getByRole("button", { name: /Keep/ })).toHaveAttribute("aria-pressed", "false");
   // With focus on a button in the panel (not in the box), K and X still belong to the panel: nothing is decided.
-  await replyButton.click();
+  await openReply();
   await panel.getByRole("button", { name: "Cancel" }).focus();
   await page.keyboard.press("k");
   await page.keyboard.press("x");
@@ -65,7 +104,10 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await more.click();
   const menu = page.getByRole("menu", { name: "More" });
   const items = menu.getByRole("menuitem");
-  await expect(items).toHaveText(["Add a note", "Move", "Copy link", "Details", "Report"]);
+  await expect(items).toHaveText(["Reply", "Download", "Add a note", "Move to callout…", "Copy link", "Report", "Delete"]);
+  // Report and Delete sit last, under the one divider.
+  await expect(menu.getByRole("separator")).toHaveCount(1);
+  expect(await menu.locator('[role="separator"] + [role="menuitem"]').innerText()).toBe("Report");
   // It opens on its first item; the arrows wrap, Home and End jump to the ends.
   await expect(items.first()).toBeFocused();
   await page.keyboard.press("ArrowDown");
@@ -85,21 +127,35 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await page.keyboard.press("Escape");
   await expect(menu).toBeHidden();
   await expect(more).toBeFocused();
-  // Its items go to what the page already has: the private note opens in the Sender card (owner, 18 Nov) with the
-  // cursor in it, and Report opens Details.
+  // Add a note opens Info on the Sender tab with the cursor in the private note.
   await more.click();
   await menu.getByRole("menuitem", { name: "Add a note" }).click();
+  await expect(drawer.getByRole("tab", { name: "Sender" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Private note, never sent to the sender")).toBeFocused();
+  await info.click();
+  await expect(drawer).toBeHidden();
+  // Report, Move to callout and Delete each open their own layer; closing one puts focus back on More.
   await more.click();
   await menu.getByRole("menuitem", { name: "Report" }).click();
-  await expect(page.getByRole("group", { name: "Report this track" })).toBeVisible();
-  // Details and Move go to the card's own controls. Tab closes the menu.
+  const report = page.getByRole("dialog", { name: "Report" });
+  await expect(report.getByRole("group", { name: "Report this track" })).toBeVisible();
+  await report.getByRole("button", { name: "Cancel" }).click();
+  await expect(report).toBeHidden();
+  await expect(more).toBeFocused();
   await more.click();
-  await menu.getByRole("menuitem", { name: "Details" }).click();
-  await expect(card.locator("details[data-panel-details] summary")).toBeFocused();
+  await menu.getByRole("menuitem", { name: "Move to callout…" }).click();
+  const move = page.getByRole("dialog", { name: "Move to callout" });
+  await expect(move.getByRole("combobox", { name: "Callout" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(move).toBeHidden();
+  await expect(more).toBeFocused();
   await more.click();
-  await menu.getByRole("menuitem", { name: "Move" }).click();
-  await expect(card.locator('[id^="move-"]')).toBeFocused();
+  await menu.getByRole("menuitem", { name: "Delete" }).click();
+  const del = page.getByRole("dialog", { name: "Delete this file now?" });
+  await expect(del.getByRole("button", { name: "Delete file" })).toBeVisible();
+  await del.getByRole("button", { name: "Cancel" }).click();
+  await expect(del).toBeHidden();
+  // Tab closes the menu.
   await more.click();
   await expect(items.first()).toBeFocused();
   await page.keyboard.press("Tab");
@@ -140,13 +196,13 @@ test("laptop: Now reviewing has no wave or play button, the playlist plays and s
   await expect(page.locator("[data-player-bar]").getByRole("button", { name: /^Pause / })).toBeVisible();
 });
 
-test("phone: story bars, cover taps step between tracks clear of the decision, and the card starts playback", async ({ page }) => {
+test("phone: story bars, Info and More are sheets, the transport steps between tracks, and the card starts playback", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 375, height: 812 });
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/review?view=queue");
   const card = page.locator("#review-card");
-  await expect(card.getByText(/^1 of \d+$/)).toBeVisible();
+  await expect(card.getByText(/^1 of \d+$/).locator("visible=true")).toBeVisible();
   await expect(card.getByRole("slider")).toHaveCount(0);
 
   // Every control on the card is at least 44px.
@@ -155,17 +211,34 @@ test("phone: story bars, cover taps step between tracks clear of the decision, a
     expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(44);
   }
 
-  // The tap zones sit on the cover only: neither reaches Keep or Not for me.
-  const nextZone = (await card.locator('[data-cover-step="next"]').boundingBox())!;
-  const keep = (await card.getByRole("button", { name: /Keep/ }).boundingBox())!;
-  expect(nextZone.y + nextZone.height).toBeLessThanOrEqual(keep.y);
+  // Info and More are 44px or more too, and sit on the decision's row.
+  const info = card.getByRole("button", { name: "Track and sender info" });
+  for (const b of [info, card.getByRole("button", { name: "More", exact: true })]) {
+    const box = (await b.boundingBox())!;
+    expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(44);
+  }
 
+  // The 64px cover has no tap zones (option 1; owner, 20 Nov): the transport's own buttons step between tracks.
+  const playback = card.getByRole("group", { name: "Playback" });
   const first = await card.getByRole("heading", { level: 2 }).innerText();
-  await card.locator('[data-cover-step="next"]').click();
+  await hydrated(playback.getByRole("button", { name: "Next track" }));
+  await playback.getByRole("button", { name: "Next track" }).click();
   await expect(card.getByRole("heading", { level: 2 })).not.toHaveText(first);
-  await expect(card.getByText(/^2 of \d+$/)).toBeVisible();
-  await card.locator('[data-cover-step="prev"]').click();
+  await expect(card.getByText(/^2 of \d+$/).locator("visible=true")).toBeVisible();
+  await playback.getByRole("button", { name: "Previous track" }).click();
   await expect(card.getByRole("heading", { level: 2 })).toHaveText(first);
+
+  // Info is a bottom sheet here: it opens on Track, Sender is its second tab, Escape closes it and focus goes back.
+  await info.click();
+  const infoSheet = page.getByRole("dialog", { name: "Track and sender info" });
+  await expect(infoSheet.getByRole("tab", { name: "Track" })).toHaveAttribute("aria-selected", "true");
+  await expect(infoSheet.getByText("Format", { exact: true })).toBeVisible();
+  for (const t of await infoSheet.getByRole("tab").all()) expect((await t.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await infoSheet.getByRole("tab", { name: "Sender" }).click();
+  await expect(infoSheet.getByText("Full history →")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(infoSheet).toBeHidden();
+  await expect(info).toBeFocused();
 
   // On a phone More and Reply are sheets, every row 44px or more, and closing one puts focus back on its button.
   const more = card.getByRole("button", { name: "More", exact: true });
@@ -176,12 +249,17 @@ test("phone: story bars, cover taps step between tracks clear of the decision, a
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
   await expect(more).toBeFocused();
-  // An item picked from the sheet keeps focus where it sent it: the sheet closing doesn't pull it back to More.
+  // An item picked from the sheet keeps focus where it sent it: Add a note opens Info on Sender with the cursor in the
+  // note, and the More sheet closing doesn't pull it back.
   await more.click();
   await sheet.getByRole("button", { name: "Add a note" }).click();
   await expect(sheet).toBeHidden();
+  await expect(infoSheet.getByRole("tab", { name: "Sender" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Private note, never sent to the sender")).toBeFocused();
-  await card.getByRole("button", { name: "Reply", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(infoSheet).toBeHidden();
+  await more.click();
+  await sheet.getByRole("button", { name: "Reply" }).click();
   const reply = page.getByRole("dialog", { name: /^Reply to / });
   await expect(reply.getByRole("textbox", { name: /^Your reply to / })).toBeFocused();
   await expect(reply.getByRole("button", { name: "Send reply" })).toBeVisible();

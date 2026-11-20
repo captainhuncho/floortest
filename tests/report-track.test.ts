@@ -26,10 +26,24 @@ test("blocking in the same step is for admins and owners only", () => {
 });
 
 test("every role on the desk sees Report; the block box only shows to admins and owners", () => {
-  assert.match(panel, /<ReportTrack action=\{reportTrack\.bind\(null, t\.id\)\}/);
-  assert.match(panel, /canBlock=\{!!desk && atLeast\(desk\.role, "admin"\) && !sender\.blocked_at\}/);
-  // Report sits outside the members-can't-delete guard.
-  const report = panel.indexOf("<ReportTrack");
-  const guard = panel.indexOf('{desk?.role !== "member" && (', panel.indexOf("Download original"));
-  assert.ok(report > 0 && guard > report);
+  // Report is an item in the review card's More menu (option 1; owner, 20 Nov), given to every role.
+  assert.match(panel, /report=\{\{ action: reportTrack\.bind\(null, t\.id\), senderName: sender\.name, canBlock: !!desk && atLeast\(desk\.role, "admin"\) && !sender\.blocked_at \}\}/);
+  // Delete is the only item behind the members-can't-delete guard.
+  assert.match(panel, /onDelete=\{desk\?\.role !== "member" \? deleteTrack\.bind\(null, t\.id, next\?\.href \?\? "\/dashboard\/review"\) : undefined\}/);
+  const menu = fs.readFileSync(new URL("../src/app/dashboard/review/MoreMenu.tsx", import.meta.url), "utf8");
+  assert.match(menu, /\.\.\.\(report \? \[\{ label: "Report"/);
+  assert.match(menu, /\.\.\.\(onDelete \? \[\{ label: "Delete"/);
+  // Nothing on the card itself moves, reports or deletes: the old fold and its buttons are gone.
+  assert.doesNotMatch(panel, /<ReportTrack|<ConfirmButton|data-panel-details/);
+});
+
+test("the review card's More menu ends with Report, then Delete in red under one divider, and has no Details", () => {
+  const menu = fs.readFileSync(new URL("../src/app/dashboard/review/MoreMenu.tsx", import.meta.url), "utf8");
+  const order = ["Move to callout…", "Move to a project…", "Copy link", '"Report"', '"Delete"'].map((label) => menu.indexOf(`label: ${label.startsWith('"') ? label : `"${label}"`}`));
+  assert.ok(order.every((at) => at > 0), "every item is in the menu");
+  assert.deepEqual(order, order.toSorted((a, b) => a - b));
+  assert.match(menu, /label: "Delete", icon: "x" as const, run: \(\) => setPanel\("delete"\), danger: true/);
+  assert.doesNotMatch(menu, /label: "Details"|label: "Move",/);
+  // Move to a project is offered only when the card passes the control, which it does for the desk's own uploads.
+  assert.match(panel, /project=\{ownUpload \? <MoveToProjects /);
 });

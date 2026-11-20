@@ -13,11 +13,10 @@ import { ago, fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
 import { addNote, decideRelease, deleteTrack, moveTrack, replyToSender } from "./actions/review";
-import { ConfirmButton, NoteForm } from "./ClientBits";
+import { NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
 import { PlayedOut } from "./PlayedOut";
 import { StemsBox } from "./StemsBox";
-import { ReportTrack } from "./ReportTrack";
 import { reportTrack } from "./actions/report";
 import { atLeast } from "@/lib/account-members";
 import { PrepBox } from "./PrepBox";
@@ -28,10 +27,11 @@ import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
 import { TrackStepper } from "./review/TrackStepper";
 import type { Step } from "./review/QueueState";
-import { CardControls, CoverSteps, PanelCalls, StoryBars } from "./review/NowReviewing";
+import { CardControls, PanelCalls, StoryBars } from "./review/NowReviewing";
+import { ReviewInfo } from "./review/ReviewInfo";
 import { MoveToProjects } from "./projects/MoveToProjects";
 import { listFolders } from "@/lib/library";
-import { CARD, Chip, Icon, IconBox, initials } from "@/components/Kit";
+import { CARD, Icon, initials } from "@/components/Kit";
 
 export async function ReviewPanel({
   track: t,
@@ -146,29 +146,23 @@ export async function ReviewPanel({
 
   // What the decision needs, in one line: tempo, key, length, genre, mix.
   const length = t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : null;
-  // One line: genre, tempo, the key only when the sender typed one, length, mix, who sent it and how long it has waited.
+  // One line: genre, tempo, the key only when the sender typed one, length, mix and how long it has waited.
   const info = [
     t.genre,
     t.bpm && `${Math.round(t.bpm)} BPM`,
     t.musical_key,
     length,
     t.mix_status && MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS],
-    `sent by ${sender.name}${collectionName ? ` via ${collectionName}` : ""}`,
     t.decision ? `arrived ${ago(t.created_at)}` : `waiting ${ago(t.created_at).replace(/ ago$/, "")}`,
   ]
     .filter(Boolean)
     .join(" · ");
-  // Up to two short facts, only from what this desk's own records say about the sender.
+  // What this desk's own records say about the sender: how many came before this one, and how many of those were kept.
   const before = stats.sent - 1;
   const keptBefore = stats.kept - (t.decision === "kept" ? 1 : 0);
-  const facts = [
-    before > 0 && `${sender.name} has sent ${before} before`,
-    keptBefore > 0 && `You kept ${keptBefore} of them`,
-  ].filter((f): f is string => !!f);
   const [at, total] = position ? position.split(" of ").map(Number) : [0, 0];
   // The auto-delete date matters at decision time only when it's close.
   const soon = removal && removal - now() < 7 * 86_400_000 ? Math.max(0, Math.ceil((removal - now()) / 86_400_000)) : null;
-  // Signals that change the decision stay visible: may it be played out, is it out already, made with AI, a duplicate, going soon.
   // Account teams: who made the call, when it wasn't the account itself (and that a member can't change it).
   const caller =
     t.decision && t.decided_by && t.decided_by !== t.user_id
@@ -176,250 +170,233 @@ export async function ReviewPanel({
       : t.decision && desk && desk.actor_id !== desk.id && t.decided_role === "owner"
         ? desk.name
         : null;
-  // Small chips (redesign, 30 Oct): flat for facts, green for good news, amber for what needs attention before deciding,
-  // red for a likely mistake.
-  const tags = (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {caller && (
-        <Chip>
-          {t.decision === "kept" ? "Kept" : "Not for me"} by {caller}
-          {desk && decisionLocked(desk, t) ? " · only the owner or an A&R / Admin can change it" : ""}
-        </Chip>
-      )}
-      {t.sets_ok ? <Chip tone="up">OK to play</Chip> : <Chip tone="warn">Evaluation only: ask before playing it out</Chip>}
-      {shortlist && (
-        <Chip tone="acc">
-          <Icon name="star" className="size-3" /> Shortlisted
-        </Chip>
-      )}
-      {t.release_status && <Chip>{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</Chip>}
-      {t.ai_use && t.ai_use !== "none" && <Chip>{AI_USE[t.ai_use]}</Chip>}
-      {soon !== null && <Chip tone="warn">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</Chip>}
+  // Signals that change the decision, as one quiet line of words with no boxes (option 1; owner, 20 Nov). Colour only
+  // where something needs attention: red for a likely duplicate, amber for evaluation only and a file about to go. Good
+  // news and plain facts are grey.
+  const signals = (
+    <>
       {t.duplicate_of && (
-        <Chip tone="down">
+        <span className="text-danger">
+          <span aria-hidden className="mr-1.5 inline-block size-1.5 rounded-full bg-current align-[1px]" />
           Possible duplicate ·{" "}
           <Link href={`/dashboard/review?view=queue&s=all&t=${t.duplicate_of}`} className="underline underline-offset-2">
             Compare
           </Link>
-        </Chip>
+        </span>
       )}
-    </div>
+      {t.sets_ok ? <span>OK to play</span> : <span className={AMBER}>Evaluation only</span>}
+      {soon !== null && <span className={AMBER}>{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`}</span>}
+      {caller && (
+        <span>
+          {t.decision === "kept" ? "Kept" : "Not for me"} by {caller}
+          {desk && decisionLocked(desk, t) ? " · only the owner or an A&R / Admin can change it" : ""}
+        </span>
+      )}
+      {shortlist && <span>Shortlisted</span>}
+      {t.release_status && <span>{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
+      {t.ai_use && t.ai_use !== "none" && <span>{AI_USE[t.ai_use]}</span>}
+    </>
+  );
+  // The sender in one grey line: "From max1max, verified · kept 3 of 8". Only an unchecked email takes colour.
+  const senderLine = (
+    <span data-sender-line>
+      From {sender.name}
+      {collectionName ? ` via ${collectionName}` : ""}, {sender.verified_at ? "verified" : <span className={AMBER}>Unverified email</span>}
+      {before > 0 && ` · kept ${keptBefore} of ${before}`}
+    </span>
   );
 
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
-  const senderLink = (
-    <Link href={`/dashboard/contacts/${sender.id}`} className="text-bone underline-offset-4 hover:underline">
-      {sender.name}
-    </Link>
-  );
   const card = `${CARD} p-3.5 sm:p-4`;
+  const commentCount = comments.length;
+  const links = readLinks(sender.links);
+  const lastListened = events.find((e) => e.type === "played");
+
+  // Info, Track: the file's facts, then the signals as plain sentences.
+  const trackInfo = (
+    <div className="text-[12.5px]">
+      <dl className="divide-y divide-line border-b border-line">
+        <Fact label="Format">{`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`}</Fact>
+        <Fact label="Received">{fmtDate(t.created_at)}</Fact>
+        <Fact label="Listened">{t.played_at ? fmtDate(t.played_at) : "Not yet"}</Fact>
+        <Fact label="Downloaded">{t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"}</Fact>
+        <Fact label="Kept until">{removal ? fmtDay(removal) : "You delete it"}</Fact>
+        {t.isrc && <Fact label="ISRC">{t.isrc}</Fact>}
+        {t.release_status && <Fact label="Release">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</Fact>}
+        {t.ai_use && t.ai_use !== "none" && <Fact label="AI use">{AI_USE[t.ai_use]}</Fact>}
+      </dl>
+      <p className="mt-3 leading-relaxed text-mute">
+        {t.sets_ok ? "OK to play." : "Evaluation only: ask before playing it out."}
+        {removal ? ` Deleted on ${fmtDay(removal)} unless you keep it.` : ""}
+      </p>
+    </div>
+  );
+
+  // Info, Sender: who sent it and what this desk did with them before.
+  const senderInfo = (
+    <section aria-labelledby={`sender-h-${t.id}`} className="text-[12.5px]">
+      <div className="flex items-center justify-between gap-2">
+        <h3 id={`sender-h-${t.id}`} className="truncate text-[14px] font-semibold text-bone">
+          {sender.name}
+        </h3>
+        <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-11 shrink-0 items-center text-[12.5px] text-mute underline-offset-4 hover:text-bone hover:underline">
+          Full history →
+        </Link>
+      </div>
+      <p className="break-all text-mute">
+        {sender.email} · {sender.verified_at ? "verified" : <span className={AMBER}>Unverified email</span>}
+      </p>
+      {senderAccount && (
+        <p className="flex flex-wrap items-center gap-x-1.5 text-mute">
+          FloorTest user
+          <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center font-mono underline-offset-4 hover:text-bone hover:underline">
+            /{senderAccount.handle}
+          </a>
+          {senderAccount.identity_status === "verified" && <span className="inline-flex items-center gap-1 text-bone"><CuePoint size={16} /> Verified</span>}
+        </p>
+      )}
+      <dl className="mt-2 divide-y divide-line border-y border-line">
+        <Fact label="Sent before">{before}</Fact>
+        <Fact label="You kept">{keptBefore}</Fact>
+        {lastListened && (
+          <Fact label="Last listened">
+            {lastListened.track_title ? `${lastListened.track_title}, ` : ""}
+            {fmtDay(lastListened.created_at)}
+          </Fact>
+        )}
+      </dl>
+      {links.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <ProfileLinks links={links} size={18} />
+          <span className="text-mute">Links not verified</span>
+        </div>
+      )}
+      <NoteForm onNote={addNote.bind(null, sender.id, t.id)} />
+      <div className="mt-4 text-[13px]">
+        <History events={events} currentTrackId={t.id} />
+      </div>
+    </section>
+  );
+
+  // More, Move to callout: the track's callout, changed in its own layer.
+  const moveForm = (
+    <form action={moveTrack.bind(null, t.id)} className="flex flex-col gap-3">
+      <label className="label block" htmlFor={`move-${t.id}`}>
+        Callout
+      </label>
+      <select id={`move-${t.id}`} name="collection" defaultValue={t.collection_id ?? ""} data-autofocus className="input min-h-11 max-sm:text-base">
+        {t.collection_id == null && <option value="">Unsorted</option>}
+        {collections.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      <button className="btn-ghost min-h-11 self-start">
+        <Icon name="folder" className="size-4" />
+        Move
+      </button>
+    </form>
+  );
 
   return (
-    // Redesign (owner, 30 Oct): the open track is a stack of cards. The player card holds what the decision needs
-    // (rendered with the page, so the buttons are there before any JavaScript runs); under it the sender's note and
-    // the reply on one side and the folded Details on the other, side by side when there's room.
-    <div className="flex flex-col gap-4">
-      <section aria-labelledby={`track-h-${t.id}`} className={`${card} flex flex-col gap-3.5 md:flex-row md:items-start md:gap-5`}>
-        <div className="mx-auto w-full max-w-[200px] shrink-0 md:mx-0 md:max-[1179px]:w-28 min-[1180px]:w-[168px]">
+    // Review card option 1 (owner, 20 Nov: "go with option 1 for the review card"): one card holds what the decision
+    // needs, the sender's note included, and never grows. Keep, Not for me, Info and More sit on it. Info opens the
+    // track's facts and the sender's record (a sheet under 1024px, a drawer beside the card from there); Move, Report
+    // and Delete are only in More. A team desk's Review together stays folded under the card.
+    <ReviewInfo track={trackInfo} sender={senderInfo}>
+      <div className="flex flex-col gap-3">
+        <section aria-labelledby={`track-h-${t.id}`} className={`${card} flex flex-col gap-3`}>
           {at && total > 1 && <StoryBars at={at} total={total} />}
-          <div className="relative">
+          <div className="flex items-center gap-3 lg:items-start lg:gap-4">
             {art ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={art} alt={`Artwork for ${t.title}`} className="aspect-square w-full rounded-[14px] border border-line object-cover" />
+              <img src={art} alt={`Artwork for ${t.title}`} width={96} height={96} className="size-16 shrink-0 rounded-[11px] border border-line object-cover lg:size-24 lg:rounded-[13px]" />
             ) : (
-              <div aria-hidden className="grid aspect-square w-full place-items-center rounded-[14px] border border-line bg-well text-[28px] font-semibold tracking-[-0.02em] text-mute">
+              <div aria-hidden className="grid size-16 shrink-0 place-items-center rounded-[11px] border border-line bg-well text-[20px] font-semibold tracking-[-0.02em] text-mute lg:size-24 lg:rounded-[13px] lg:text-[28px]">
                 {initials(t.title)}
               </div>
             )}
-            <CoverSteps fromId={t.id} prev={prev} next={next} />
+            <div className="min-w-0 flex-1">
+              <h2 id={`track-h-${t.id}`} className="line-clamp-2 text-[17px] font-semibold leading-tight tracking-[-0.02em] text-bone lg:text-[22px]">
+                {t.title}
+              </h2>
+              <p className="mt-0.5 truncate text-[13px] text-mute">{t.artist}</p>
+              <p className="mt-1.5 hidden text-[12px] text-mute tnum lg:block">{info}</p>
+            </div>
+            <div className="hidden shrink-0 items-center gap-2 self-start md:flex">
+              {position && <p className="text-[11.5px] text-mute tnum">{position}</p>}
+              <TrackStepper fromId={t.id} prev={prev} next={next} position={null} />
+            </div>
           </div>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div className="hidden items-center justify-between gap-3 md:flex">
-            <p className="text-[11.5px] font-semibold text-mute tnum">Now reviewing{position ? ` · ${position}` : ""}</p>
-            <TrackStepper fromId={t.id} prev={prev} next={next} position={null} />
-          </div>
-          <div className="min-w-0 max-md:text-center">
-            <h2 id={`track-h-${t.id}`} className="line-clamp-2 text-[20px] font-semibold leading-tight tracking-[-0.02em] text-bone">
-              {t.title}
-            </h2>
-            <p className="mt-0.5 truncate text-[13px] text-mute">{t.artist}</p>
-            <p className="mt-1.5 text-[11.5px] text-mute tnum">{info}</p>
-          </div>
-          {facts.length > 0 && (
-            <ul className="flex flex-col gap-0.5 text-[12px] text-mute max-md:items-center">
-              {facts.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
+          <p className="-mt-1 text-[12px] text-mute tnum lg:hidden">{info}</p>
+          {/* One line of words: the signals, then the sender. They share a line when they fit. */}
+          <p className="-mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-mute lg:mt-0">
+            {signals}
+            <span className="max-lg:w-full">{senderLine}</span>
+          </p>
+          {t.message && (
+            <blockquote aria-label={`${sender.name}'s note`} className="border-l-2 border-line-2 py-px pl-3 text-[13px] leading-relaxed whitespace-pre-wrap text-bone">
+              {t.message}
+            </blockquote>
           )}
-          {tags}
           {releaseBlock}
           <CardControls track={player} prev={prev} next={next} />
           <DecisionRail track={{ ...player, decision: t.decision }} senderName={sender.name} selfHref={selfHref} next={next} prev={prev}>
-            <PanelCalls trackId={t.id} href={selfHref} senderName={sender.name} onReply={replyToSender.bind(null, sender.id, t.id)} />
+            <PanelCalls
+              trackId={t.id}
+              href={selfHref}
+              senderName={sender.name}
+              onReply={replyToSender.bind(null, sender.id, t.id)}
+              move={moveForm}
+              project={ownUpload ? <MoveToProjects trackId={t.id} title={t.title} folders={projects.map((f) => ({ id: f.id, name: f.name }))} after={next?.href ?? "/dashboard/projects"} /> : undefined}
+              report={{ action: reportTrack.bind(null, t.id), senderName: sender.name, canBlock: !!desk && atLeast(desk.role, "admin") && !sender.blocked_at }}
+              onDelete={desk?.role !== "member" ? deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review") : undefined}
+            />
           </DecisionRail>
-        </div>
-      </section>
+        </section>
 
-      <div className="grid min-w-0 gap-4 md:grid-cols-2 md:items-start">
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* The sender's note, a quote with a hairline edge, under a head that says who sent it and whether their email is checked. */}
-          <section aria-labelledby={`from-h-${t.id}`} className={`${card} flex flex-col gap-2.5`}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <IconBox name="mail" small />
-                <h3 id={`from-h-${t.id}`} className="truncate text-[15px] font-semibold tracking-[-0.015em] text-bone">
-                  From {senderLink}
-                </h3>
-              </div>
-              {sender.verified_at ? (
-                <Chip tone="up">
-                  <Icon name="check" className="size-3" /> Verified email
-                </Chip>
-              ) : (
-                <Chip tone="warn">Unverified email</Chip>
-              )}
-            </div>
-            {t.message ? (
-              <blockquote className="border-l-2 border-line-2 py-px pl-3 text-[13px] leading-relaxed whitespace-pre-wrap text-bone">{t.message}</blockquote>
-            ) : (
-              <p className="text-[12px] text-mute">No message with this track.</p>
-            )}
-          </section>
-
-          {t.decision === "kept" && (
-            <>
-              {desk && canMarkPlayedOut(desk) && (
-                <div className={card}>
-                  <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
-                </div>
-              )}
-              <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
-            </>
-          )}
-
-          {team > 0 && <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
-
-          {stemsOn && <StemsBox track={t} senderName={sender.name} />}
-
-          <section className={card} aria-labelledby="sender-h">
-            <div className="flex items-center justify-between gap-2">
-              <h3 id="sender-h" className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em] text-bone">
-                <IconBox name="user" small />
-                Sender
-              </h3>
-              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline">
-                Full history →
-              </Link>
-            </div>
-            <p className="mt-1 text-[12px] break-all text-mute">{sender.email}</p>
-            {readLinks(sender.links).length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <ProfileLinks links={readLinks(sender.links)} size={18} />
-                <span title="Anyone can paste a profile link. FloorTest hasn't checked these belong to the sender.">
-                  <Chip>Links not verified</Chip>
-                </span>
+        {t.decision === "kept" && (
+          <>
+            {desk && canMarkPlayedOut(desk) && (
+              <div className={card}>
+                <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
               </div>
             )}
-            {senderAccount && (
-              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
-                <Chip tone="acc">FloorTest user</Chip>
-                <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
-                  /{senderAccount.handle}
-                </a>
-                {senderAccount.identity_status === "verified" && <span className="inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
-              </p>
-            )}
-            <NoteForm onNote={addNote.bind(null, sender.id, t.id)} />
-            <div className="mt-3 text-[13px]">
-              <History events={events} currentTrackId={t.id} />
-            </div>
-          </section>
-        </div>
+            <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
+          </>
+        )}
 
-        <PanelDetails
-          summary={
-            <span className="flex items-center gap-2">
-              <IconBox name="music" small />
-              <span className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Details</span>
-            </span>
-          }
-        >
-          {/* Compact facts (owner, 18 Nov): one plain line each. The collection shows in the Move picker below. */}
-          <dl className="divide-y divide-line text-[12px]">
-            <Fact label="Format">{`${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`}</Fact>
-            <Fact label="Received">{fmtDate(t.created_at)}</Fact>
-            <Fact label="Listened">{t.played_at ? fmtDate(t.played_at) : "Not yet"}</Fact>
-            <Fact label="Downloaded">{t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"}</Fact>
-            <Fact label="Kept until" hint={removal ? "Then deleted unless you keep it" : undefined}>
-              {removal ? fmtDay(removal) : "You delete it"}
-            </Fact>
-            {t.isrc && <Fact label="ISRC">{t.isrc}</Fact>}
-          </dl>
+        {stemsOn && <StemsBox track={t} senderName={sender.name} />}
 
-          <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
-            <a
-              href={`/api/tracks/${t.id}/download`}
-              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2"
-            >
-              <Icon name="dl" className="size-4" />
-              Download original
-            </a>
-            <form action={moveTrack.bind(null, t.id)} className="flex min-h-11 min-w-0">
-              <label className="sr-only" htmlFor={`move-${t.id}`}>
-                Collection
-              </label>
-              <select
-                id={`move-${t.id}`}
-                name="collection"
-                defaultValue={t.collection_id ?? ""}
-                className="min-w-0 flex-1 rounded-l-xl border border-line bg-well px-2.5 text-[13px] text-bone max-sm:text-base"
-              >
-                {t.collection_id == null && <option value="">Unsorted</option>}
-                {collections.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <button className="inline-flex items-center gap-1.5 rounded-r-xl border border-l-0 border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2">
-                <Icon name="folder" className="size-4" />
-                Move
-              </button>
-            </form>
-            {ownUpload && <MoveToProjects trackId={t.id} title={t.title} folders={projects.map((f) => ({ id: f.id, name: f.name }))} after={next?.href ?? "/dashboard/projects"} />}
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-start justify-between gap-x-2">
-            <ReportTrack action={reportTrack.bind(null, t.id)} senderName={sender.name} canBlock={!!desk && atLeast(desk.role, "admin") && !sender.blocked_at} />
-            {desk?.role !== "member" && (
-              <ConfirmButton
-                action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
-                message="Delete this file now? It's removed for good and its slot comes back. The sender's history stays on this desk."
-                confirmLabel="Delete file"
-                className="btn btn-sm text-danger hover:bg-danger/10"
-              >
-                Delete
-              </ConfirmButton>
-            )}
-          </div>
-
-        </PanelDetails>
+        {/* Team desks: Review together stays where #681 had it, folded under the card (no Team tab yet). */}
+        {team > 0 && (
+          <PanelDetails
+            summary={
+              <span className="flex min-w-0 items-center justify-between gap-3">
+                <span className="text-[14px] font-semibold tracking-[-0.015em] text-bone">Review together</span>
+                <span className="truncate text-[12px] text-mute tnum">{commentCount ? `${commentCount} comment${commentCount === 1 ? "" : "s"}` : "No comments yet"}</span>
+              </span>
+            }
+          >
+            <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />
+          </PanelDetails>
+        )}
       </div>
-    </div>
+    </ReviewInfo>
   );
 }
 
-/** One fact in Details: label on the left, value on the right, an optional quiet line under the value. */
-function Fact({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+/** Amber words: evaluation only, a file about to be deleted, an email that isn't checked. */
+const AMBER = "text-[#d98a2b]";
+
+/** One fact in Info: label on the left, value on the right. */
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1.5">
+    <div className="flex items-baseline justify-between gap-3 py-2">
       <dt className="shrink-0 text-mute">{label}</dt>
-      <dd className="min-w-0 text-right">
-        <span className="block truncate font-semibold text-bone tnum">{children}</span>
-        {hint && <span className="block text-[11px] text-mute">{hint}</span>}
-      </dd>
+      <dd className="min-w-0 truncate text-right font-semibold text-bone tnum">{children}</dd>
     </div>
   );
 }
