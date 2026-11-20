@@ -104,8 +104,9 @@ type Make = "callout" | "project" | "callout-group" | "project-group";
 const MAKE: Record<Make, { title: string; hint: string }> = {
   callout: { title: "Callout", hint: "People send tracks to it through your link" },
   project: { title: "Project", hint: "You add your own tracks, for a set or a release" },
-  "callout-group": { title: "Group of callouts", hint: "Holds callouts you already have, like Club nights" },
-  "project-group": { title: "Group of projects", hint: "Holds projects you already have" },
+  // Called a folder, like its tile (owner, 19 Nov: "just call it a folder"); the hint says what it holds.
+  "callout-group": { title: "Folder", hint: "Holds callouts you already have, like Club nights" },
+  "project-group": { title: "Folder", hint: "Holds projects you already have" },
 };
 
 /** "New folder": a name, then what goes in it. One lime button. A callout or a project is a folder; a group holds them. */
