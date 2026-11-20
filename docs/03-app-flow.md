@@ -84,7 +84,8 @@ Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · N
 Floor ─► Collections (folders with covers; search · All / Callouts / Projects) ─► New folder (name · Callout / Project / a group of either ─► Create folder; Callout and Edit collection: owner, A&R / Admin, or a ticked Member; Project and groups: owner and A&R / Admin; owner 16 Nov) / open a folder
    A callout's folder ─► shuffle · play ─► Review N new (the Queue, that callout) ─► tracks, numbered, with their status ─► link button (while it receives) · ··· (Send new tracks here · Edit collection · Download) ─► share links · details · delete
    A project's folder ─► shuffle · play ─► Add tracks (owner and A&R / Admins: choose WAV/MP3s, edit titles, rights tick, upload) ─► tracks, numbered ─► ··· (Rename · Delete project)
-   Projects filter ─► Upload audio ─► Not in a project (tracks in none)
+   Projects filter ─► bar: filter · "N of M tracks in Projects" · New folder · Upload audio (owner and A&R / Admins) ─► tiles ─► Not in a project (rows: tap plays · length · ···)
+   Projects, nothing yet ─► one sentence ─► Upload audio (lime) · New folder (Members: the sentence only)
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send (option 58 A) ─► Who's it for? (type a link name, or tap someone in Sent to before) ─► who it is (card, "Add tracks for <name>")
    ─► slim header (Change ─► back to the field) + the link page's form ─► upload ─► Sent to <name> ─► Open your receipt → /receipt/<token>
