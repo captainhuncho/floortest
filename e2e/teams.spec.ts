@@ -139,6 +139,8 @@ test("a member switches to the team's desk, can't open owner settings, and their
 
   // Review Together is part of the team desk: comment on a track for the team.
   await page.goto("/dashboard/review");
+  // Review together sits in the folded Details under the compact card (owner, 19 Nov).
+  await page.locator("details[data-panel-details]").first().evaluate((d) => ((d as HTMLDetailsElement).open = true));
   const together = page.getByRole("region", { name: "Review together" }).first();
   await together.getByRole("textbox", { name: "Comment for the team" }).fill("Strong groove, check the mixdown");
   await together.getByRole("button", { name: "Comment" }).click();
@@ -178,6 +180,8 @@ test("the owner approves the held reply from the Team page", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Waiting for approval (0)" })).toBeVisible();
   // The member's comment is on the owner's desk, signed by them.
   await page.goto("/dashboard/review");
+  // Review together sits in the folded Details under the compact card (owner, 19 Nov).
+  await page.locator("details[data-panel-details]").first().evaluate((d) => ((d as HTMLDetailsElement).open = true));
   await expect(page.getByRole("region", { name: "Review together" }).first().getByText("Lena Listener").first()).toBeVisible();
   // The account log names who did each thing: the held reply was the member's.
   await page.goto("/dashboard/activity");

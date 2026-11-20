@@ -4,7 +4,6 @@ import { FormError } from "@/components/Feedback";
 import { useActionState, useEffect, useRef, useTransition } from "react";
 import { fmtDate } from "@/lib/format";
 import { commentOnTrack, deleteComment, shortlistTrack } from "./actions/team";
-import { CARD } from "@/components/Kit";
 
 type Comment = { id: number; user_id: number; name: string; body: string; created_at: number };
 
@@ -40,11 +39,12 @@ export function ReviewTogether({
   }, [comments.length]);
 
   return (
-    <section aria-label="Review together" className={`${CARD} p-3.5 sm:p-4`}>
+    <section aria-label="Review together" className="border-t border-line pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Review together</h2>
         <button
           type="button"
+          data-more="shortlist"
           disabled={busy}
           aria-pressed={!!shortlistedBy}
           onClick={() => start(() => shortlistTrack(trackId))}
