@@ -6,6 +6,7 @@ import { capacity } from "@/lib/desk";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { allPlans, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
+import { inApp } from "@/lib/in-app";
 import { BillingSwitch } from "./BillingSwitch";
 import { PlanCards } from "./PlanCards";
 import { PlanCompare } from "./PlanCompare";
@@ -89,7 +90,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </p>
       </section>
 
-      <PlanCards note={false} requests={await switchOn("plan_requests", user)} teams={live.teams} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
+      <PlanCards note={false} requests={await switchOn("plan_requests", user)} teams={live.teams} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} inApp={await inApp()} />
 
       <PlanCompare plans={plans} billing={billing} prices live={live} userPlan={user.plan} note={billing ? undefined : "Prices apply after the beta."} />
 

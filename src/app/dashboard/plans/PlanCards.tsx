@@ -17,6 +17,8 @@ const NOTE = "grid min-h-11 place-items-center rounded-[13px] border border-dash
  *
  * In `preview` the buttons look real but do nothing and nobody is "on" a plan. With `publicCta` (the pricing page)
  * every card links to sign-up or the desk; with `freeInBeta` it shows "Free" instead of prices while billing is off.
+ * With `inApp` (the iPhone and Android apps) no card links to the website's checkout: App Review 3.1.1 allows plans
+ * to be bought in the app only through the store, which comes later; until then upgrades there say so.
  */
 export function PlanCards({
   plans,
@@ -33,6 +35,7 @@ export function PlanCards({
   publicCta,
   freeInBeta = false,
   note = true,
+  inApp = false,
 }: {
   plans: Plan[];
   billing: boolean;
@@ -55,6 +58,8 @@ export function PlanCards({
   freeInBeta?: boolean;
   /** The "Free during beta" line above the cards (pages that say it in their own intro turn it off). */
   note?: boolean;
+  /** Inside the phone app: never link to the website's checkout (App Review 3.1.1). */
+  inApp?: boolean;
 }) {
   const live = { sharing, teams };
   const sameTools = plans.every((p) => !extrasOf(p, live).length);
@@ -177,6 +182,8 @@ export function PlanCards({
                   <Link href={`/dashboard/plans/request?plan=${id}`} className={`${SLOT} border-lime/40 bg-lime/10 text-lime`}>
                     Requested, in review
                   </Link>
+                ) : upgrade && billing && inApp ? (
+                  <p className={NOTE}>Upgrades aren&apos;t in the app yet</p>
                 ) : upgrade ? (
                   <Link href={billing ? `/dashboard/checkout?plan=${id}` : `/dashboard/plans/request?plan=${id}`} className={`${SLOT} ${lifted ? LIME : QUIET}`}>
                     {action}
