@@ -21,7 +21,7 @@ the Desk, 20 Nov), `src/lib/posthog-client.ts`, `src/lib/product-analytics.ts`, 
 | Check | Commit | Result |
 |---|---|---|
 | CI: checks, Analyze, dependency-review, Vercel, Vercel Preview Comments | `8921f234` | passed |
-| CI: CodeQL | `8921f234` | failed; findings not yet read |
+| CI: CodeQL | `8921f234` | failed: 1 new alert (CodeQL high), js/incomplete-url-substring-sanitization in the e2e test `e2e/product-analytics-consent.spec.ts:75` (route filter `hostname.endsWith("posthog.com")`); test-only, no runtime risk; fixed in the follow-up |
 | Typecheck, lint, unit (1092/0), check:perms, audit (Build session) | `8921f234` | all passed |
 | e2e: `product-analytics-consent.spec.ts` | `8921f234` | 13 passed, twice; the second run started at load 20.0, just over the gate |
 | e2e: full suite | | not run |
@@ -42,6 +42,11 @@ the Desk, 20 Nov), `src/lib/posthog-client.ts`, `src/lib/product-analytics.ts`, 
 ## Rule until fixed
 No PostHog key in production or preview until Safety clears a fix of the findings above and the owner's Cookie Policy,
 privacy policy and banner wording is done (board #35, #67). The key and that wording are the owner's.
+
+## Owner's decision after the merge
+On 20 Nov the owner typed "roll back posthog" in the Desk and chose option 1: undo PostHog in the code through a revert
+PR (Safety, the owner's try, then "ship it"), not an instant Vercel rollback. Production stays on deploy 7946904992
+until that PR ships; the code stays inert because there is no key.
 
 ## Other releases since the last code report
 - #707, #708 and #709 (reports for #693, #687 and #703): not merged yet.
