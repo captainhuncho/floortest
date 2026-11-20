@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import type { PostHog } from "posthog-js/dist/module.full.no-external";
 import { readConsent } from "./consent";
 import { clearPosthogStorage, POSTHOG_HOST, POSTHOG_UI_HOST, recordingAllowed, redactAnalyticsUrl, redactEventUrls, SECRET_QUERY_KEYS } from "./product-analytics";
@@ -11,8 +12,14 @@ const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
  */
 const LOCAL_SETTINGS = { sessionRecording: { endpoint: "/s/" }, hasFeatureFlags: false, capturePerformance: false };
 
+/** Tells this site's other tabs that consent was withdrawn here, so their PostHog stops too. */
+const CHANNEL = "ft-posthog-consent";
+const WITHDRAWN = "withdrawn";
+
 let loading: Promise<PostHog | null> | null = null;
 let live: PostHog | null = null;
+let withdrawing = false;
+let channel: BroadcastChannel | null = null;
 
 /**
  * Every optional feature is set here, in the code, so the PostHog project's own settings can't switch one on: no
@@ -70,40 +77,129 @@ function load(): Promise<PostHog | null> {
       before_send: (event) => {
         // The visitor's current choice is checked on every event, whatever PostHog itself thinks: nothing leaves after
         // "Not now" or "Cookie settings", from any path (page views, replay flushes, beacons).
-        if (!event || readConsent() !== "accepted") return null;
+        if (!event) return null;
+        if (readConsent() !== "accepted") {
+          // Consent changed somewhere this page wasn't told (another tab): stop this copy too.
+          queueMicrotask(() => withdraw(false));
+          return null;
+        }
         // Recording frames from a page that may not be recorded never leave the browser, even mid-navigation.
         if (event.event === "$snapshot" && !recordingAllowed(location.pathname, document)) return null;
         return redactEventUrls(event);
       },
     });
     live = posthog;
+    watchConsentElsewhere();
+    // e2e (next dev only, gone from production builds): whether the recorder is running right now.
+    if (process.env.NODE_ENV === "development") {
+      (window as unknown as { __ftRecording?: () => boolean }).__ftRecording = () => !!posthog.sessionRecording?.started;
+    }
     return posthog;
+  }).catch((error: unknown) => {
+    // A failed download or start: try again on the next page, and tell Sentry (which runs only after Accept too).
+    loading = null;
+    Sentry.captureException(error);
+    return null;
   });
   return loading;
 }
 
-/** Accepted: load (once) and record only where allowed. */
-export function startForPage(path: string) {
-  if (!KEY) return;
-  load().then((posthog) => {
-    if (!posthog) return;
-    if (recordingAllowed(path, document)) posthog.startSessionRecording();
-    else posthog.stopSessionRecording();
-  });
+/**
+ * The cookie-banner event reaches only this tab. Another tab's "Not now" or "Cookie settings" arrives here by a
+ * BroadcastChannel message, and the cookie is checked again whenever this page comes back into view (another tab,
+ * the back-forward cache, the window regaining focus).
+ */
+function watchConsentElsewhere() {
+  const recheck = () => {
+    if (live && readConsent() !== "accepted") withdraw(false);
+  };
+  window.addEventListener("pageshow", recheck);
+  window.addEventListener("focus", recheck);
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && recheck());
+  if (typeof BroadcastChannel === "undefined") return;
+  channel = new BroadcastChannel(CHANNEL);
+  channel.onmessage = (message) => message.data === WITHDRAWN && withdraw(false);
 }
 
 /**
- * Consent left "accepted" ("Not now" or "Cookie settings"). Where PostHog is live: opt out first (so nothing flushed
- * while stopping is sent), stop recording, keep nothing more, clear the browser except PostHog's opt-out record, then
- * reload. The reload is what ends PostHog's retry queue, which would otherwise resend an event that failed earlier, and
- * the banner asks again on the fresh page. Where PostHog never started, everything of PostHog's is removed, the
- * opt-out record included.
+ * Frames PostHog parked before the page changed (a server redirect from a recorded page to sign-in, say) are thrown
+ * away on a page that may not be recorded, so they never leave later from another page.
  */
-export function withdraw() {
+function dropPendingFrames() {
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      for (const key of Object.keys(store)) if (key.startsWith("ph_replay_pending_buffer_")) store.removeItem(key);
+    } catch {
+      // Storage blocked: nothing parked.
+    }
+  }
+}
+
+type RetryQueueInternals = {
+  _queue?: unknown[];
+  _poller?: ReturnType<typeof setTimeout>;
+  _isPolling?: boolean;
+  _onlineListener?: () => void;
+  _offlineListener?: () => void;
+  _enqueue?: unknown;
+  _flush?: unknown;
+  retriableRequest?: unknown;
+};
+
+/**
+ * PostHog's retry queue resends failed events without asking before_send. On withdrawal it is emptied and switched
+ * off before the reload: the queue, its timer and its online listener go, and any send still in flight can't put
+ * itself back. These are posthog-js 1.453.0's private names (pinned exactly in package.json; a unit test checks the
+ * bundle still has them). Its own unload() is not used: that sends what is queued as a beacon.
+ */
+function stopRetries(posthog: PostHog) {
+  const queue = (posthog as unknown as { _retryQueue?: RetryQueueInternals })._retryQueue;
+  if (!queue) return;
+  const nothing = () => {};
+  queue._queue = [];
+  queue._enqueue = nothing;
+  queue._flush = nothing;
+  queue.retriableRequest = nothing;
+  if (queue._poller) clearTimeout(queue._poller);
+  queue._poller = undefined;
+  queue._isPolling = false;
+  if (queue._onlineListener) window.removeEventListener("online", queue._onlineListener);
+  if (queue._offlineListener) window.removeEventListener("offline", queue._offlineListener);
+  queue._onlineListener = undefined;
+  queue._offlineListener = undefined;
+}
+
+/** Accepted: load (once) and record only where allowed. */
+export function startForPage() {
+  if (!KEY) return;
+  load()
+    .then((posthog) => {
+      if (!posthog || withdrawing) return;
+      // The page as it is now, not when loading began: the visitor may have moved on while PostHog downloaded.
+      if (recordingAllowed(location.pathname, document)) posthog.startSessionRecording();
+      else {
+        posthog.stopSessionRecording();
+        dropPendingFrames();
+      }
+    })
+    .catch((error: unknown) => Sentry.captureException(error));
+}
+
+/**
+ * Consent left "accepted" ("Not now" or "Cookie settings", here or in another tab). Where PostHog is live: opt out
+ * first (so nothing flushed while stopping is sent), stop recording, empty and switch off the retry queue, keep nothing
+ * more, clear the browser except PostHog's opt-out record, tell the other tabs, then reload. The reload ends anything
+ * PostHog still holds, and the banner asks again on the fresh page. Where PostHog never started, everything of
+ * PostHog's is removed, the opt-out record included.
+ */
+export function withdraw(tellOtherTabs = true) {
+  if (withdrawing) return;
   const wasLive = live !== null;
   if (live) {
+    withdrawing = true;
     live.opt_out_capturing();
     live.stopSessionRecording();
+    stopRetries(live);
     live.set_config({ disable_persistence: true });
   }
   try {
@@ -111,7 +207,9 @@ export function withdraw() {
   } catch {
     // Storage blocked: nothing to clear.
   }
-  if (wasLive) location.reload();
+  if (!wasLive) return;
+  if (tellOtherTabs) channel?.postMessage(WITHDRAWN);
+  location.reload();
 }
 
 /** Called as a client navigation starts (src/instrumentation-client.ts), so a page that may not be recorded never is. */

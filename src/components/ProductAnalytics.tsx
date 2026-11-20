@@ -19,7 +19,7 @@ export function ProductAnalytics() {
   useEffect(() => {
     if (consent === "pending") return;
     if (consent === "accepted") {
-      if (path) startForPage(path);
+      if (path) startForPage();
       return;
     }
     withdraw();

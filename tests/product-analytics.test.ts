@@ -47,6 +47,27 @@ test("campaign and ad-click properties are dropped, also as initial values", () 
   assert.deepEqual(event.$set_once, { $initial_pathname: "/" });
 });
 
+test("campaign and ad-click properties are dropped as session-entry values too, with every click id PostHog knows", () => {
+  const event = redactEventUrls({
+    event: "$pageview",
+    properties: {
+      $session_entry_utm_content: "secret",
+      $session_entry_utm_term: "secret",
+      $session_entry_gclid: "g",
+      $session_entry_gad_source: "1",
+      $session_entry_mc_cid: "c",
+      $session_entry_ph_keyword: "k",
+      $session_entry_oppref: "o",
+      $session_entry_bfcid: "b",
+      oppref: "o",
+      bfcid: "b",
+      $initial_bfcid: "b",
+      $session_entry_host: "floortest.app",
+    },
+  });
+  assert.deepEqual(event.properties, { $session_entry_host: "floortest.app" });
+});
+
 test("every URL-like property loses keys and searches, including session entry, initial and top-level $set_once, and the title is dropped", () => {
   const event = redactEventUrls({
     event: "$pageview",

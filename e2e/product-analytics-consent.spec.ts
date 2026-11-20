@@ -68,6 +68,19 @@ async function signedInAccepted(page: Page, baseURL: string | undefined) {
   await logIn(page, "demo@floortest.test");
 }
 
+/** Holds back full page loads (documents) while armed, like a reload on a slow phone connection. */
+async function slowDocuments(page: Page, ms: number) {
+  const state = { armed: false };
+  await page.route(
+    (url) => !url.hostname.endsWith("posthog.com"),
+    async (route) => {
+      if (state.armed && route.request().resourceType() === "document") await new Promise((done) => setTimeout(done, ms));
+      return route.fallback();
+    },
+  );
+  return state;
+}
+
 // Withdrawing while PostHog is live reloads the page (that ends PostHog's retry queue); the banner asks again after it.
 async function acceptThenOpenSettings(page: Page, sent: { url: string }[]) {
   await page.goto("/");
@@ -142,14 +155,77 @@ test("Accept, then Cookie settings and Not now: nothing leaves across the reload
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("__ph")))).toEqual([]);
 });
 
-test("after the footer's Cookie settings, a click and a client navigation send nothing", async ({ page }) => {
+test("between Cookie settings and the reload landing, a click and a client navigation send nothing", async ({ page }) => {
   const { sent } = await watch(page);
-  await acceptThenOpenSettings(page, sent);
+  const slow = await slowDocuments(page, 6000);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Accept" }).click();
+  await expect.poll(() => sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  await page.waitForTimeout(1000);
   const before = sent.length;
-  await page.getByRole("heading").first().click();
-  await page.evaluate(() => history.pushState({}, "", "/pricing?view=after"));
+  slow.armed = true;
+  // The old page stays on screen and alive until the slowed reload commits: PostHog is still loaded on it.
+  await page.evaluate(() => {
+    location.hash = "cookie-settings";
+  });
+  await page.waitForTimeout(300);
+  await page.mouse.click(5, 5).catch(() => {});
+  await page.evaluate(() => history.pushState({}, "", "/pricing?view=after")).catch(() => {});
+  await page.waitForLoadState("load", { timeout: 20_000 });
+  await page.waitForTimeout(2000);
+  expect(sent.slice(before)).toEqual([]);
+});
+
+test("a session that starts on an address with campaign values never sends them, also as session-entry properties", async ({ page, baseURL }) => {
+  const { sent } = await watch(page);
+  await page.context().addCookies([{ name: "ft_consent", value: "accepted", url: baseURL ?? "http://localhost:3000" }]);
+  await page.goto(`/?utm_term=${SECRET}&utm_content=${SECRET}&gclid=${SECRET}&gad_source=${SECRET}&bfcid=${SECRET}`);
+  await expect.poll(() => sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  await page.goto("/pricing");
   await page.waitForTimeout(2500);
-  expect(sent.length).toBe(before);
+  const all = allText(sent);
+  // The bodies carry PostHog's session-entry properties, so the check below is real.
+  expect(all).toContain("$session_entry_");
+  expect(all).not.toContain(SECRET);
+});
+
+test("Cookie settings in one tab stops PostHog in another open tab, and its storage stays gone", async ({ context }) => {
+  const a = await context.newPage();
+  const b = await context.newPage();
+  const watchA = await watch(a);
+  const watchB = await watch(b);
+  await a.goto("/");
+  await a.getByRole("button", { name: "Accept" }).click();
+  await expect.poll(() => watchA.sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  await b.goto("/pricing");
+  await expect.poll(() => watchB.sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  await expect.poll(() => phStorage(b).then((k) => k.length), { timeout: 10_000 }).toBeGreaterThan(0);
+  await a.bringToFront();
+  await Promise.all([a.waitForEvent("load"), a.getByRole("link", { name: "Cookie settings" }).first().click()]);
+  // Tab B is told and reloads: the banner asks again there, with nothing of PostHog's kept.
+  await expect(b.getByRole("button", { name: "Accept" })).toBeVisible({ timeout: 15_000 });
+  const beforeB = watchB.sent.length;
+  await b.mouse.move(200, 200);
+  await b.waitForTimeout(3000);
+  expect(watchB.sent.slice(beforeB)).toEqual([]);
+  expect(await phStorage(b)).toEqual([]);
+  expect(await phStorage(a)).toEqual([]);
+});
+
+test("a tab that missed the withdrawal stops when it comes back into view", async ({ page, context, baseURL }) => {
+  const { sent } = await watch(page);
+  await context.addCookies([{ name: "ft_consent", value: "accepted", url: baseURL ?? "http://localhost:3000" }]);
+  await page.goto("/pricing");
+  await expect.poll(() => sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  await expect.poll(() => phStorage(page).then((k) => k.length), { timeout: 10_000 }).toBeGreaterThan(0);
+  // Consent withdrawn elsewhere (a tab with no channel, a page restored from the back-forward cache): only the cookie changed.
+  await context.clearCookies({ name: "ft_consent" });
+  const before = sent.length;
+  await Promise.all([page.waitForEvent("load"), page.evaluate(() => window.dispatchEvent(new Event("focus")))]);
+  await expect(page.getByRole("button", { name: "Accept" })).toBeVisible();
+  await page.waitForTimeout(2000);
+  expect(sent.slice(before)).toEqual([]);
+  expect(await phStorage(page)).toEqual([]);
 });
 
 /** Replay bodies with PostHog's compressed frame fields (gzip in a latin1 string) unpacked, as one searchable text. */
@@ -203,8 +279,9 @@ test("signed in, replay runs on an allowed page and hides searches, typed text, 
     const link = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="/dashboard/"]')].map((a) => a.getAttribute("href") ?? "").find((h) => !h.startsWith("/dashboard/review")) ?? "";
     return { heading, label, link };
   });
-  const field = page.locator('input[type="search"], input[type="text"]').first();
-  if (await field.count()) await field.pressSequentially(`${SECRET}typed`);
+  const field = page.locator("#q");
+  await expect(field).toBeVisible();
+  await field.pressSequentially("zq9typedtext");
   await interact(page);
   await page.evaluate((secret) => history.pushState({}, "", `/dashboard/review?q=${secret}2`), SECRET);
   await expect.poll(() => replayText(sent), { timeout: 30_000 }).toContain("/dashboard/review");
@@ -214,6 +291,7 @@ test("signed in, replay runs on an allowed page and hides searches, typed text, 
   const frames = replayText(sent);
   expect(frames).toContain("/dashboard/review");
   expect(`${events}\n${frames}`).not.toContain(SECRET);
+  expect(frames).not.toContain("zq9typedtext");
   expect(facts.heading.length).toBeGreaterThan(3);
   expect(frames).not.toContain(facts.heading);
   expect(facts.label).not.toBe("");
@@ -246,21 +324,40 @@ test("moving from a recorded page to one that may not be recorded sends no frame
     ),
   );
   expect(target).toBeTruthy();
+  const recording = () => page.evaluate(() => (window as unknown as { __ftRecording?: () => boolean }).__ftRecording?.() ?? null);
+  expect(await recording()).toBe(true);
   await page.locator(`a[href="${target}"]:visible`).first().click();
   await page.waitForURL(`**${target}`);
+  // The recorder itself stopped with the move, not only the frames being dropped on the way out.
+  expect(await recording()).toBe(false);
   const framesBefore = replay(sent).length;
   await interact(page);
   await page.waitForTimeout(5000);
   expect(allText(sent)).toContain(target!);
   expect(replayText(replay(sent).slice(framesBefore))).not.toContain(target!);
+  // Back to the recorded page and forward again: recording resumes there and stops again here.
+  await page.goBack();
+  await page.waitForURL("**/dashboard/floor");
+  await expect.poll(recording, { timeout: 10_000 }).toBe(true);
+  await page.goForward();
+  await page.waitForURL(`**${target}`);
+  await expect.poll(recording, { timeout: 5_000 }).toBe(false);
+  await interact(page);
+  // A pushState to the unrecorded page from a recorded one: frames from it are still never sent.
+  await page.goBack();
+  await page.waitForURL("**/dashboard/floor");
+  await page.evaluate((t) => history.pushState({}, "", t), target!);
+  await interact(page);
+  await page.waitForTimeout(5000);
   // No frame anywhere carries the unrecorded page as its address (rrweb Meta href or a custom page event).
   expect(replayText(sent)).not.toContain(`${new URL(page.url()).origin}${target}`);
 });
 
-test("an event that failed before Cookie settings is never resent after it", async ({ page }) => {
+test("an event that failed before Cookie settings is never resent, even while a slow reload is still loading", async ({ page }) => {
   const { sent } = await watch(page);
+  const slow = await slowDocuments(page, 9000);
   let failed = false;
-  // The first event send fails (a server error), so PostHog keeps it in its retry queue.
+  // The first event send fails (a server error), so PostHog keeps it in its retry queue (first retry due within ~4 s).
   await page.route(/^https:\/\/eu\.i\.posthog\.com\/e\//, (route) => {
     if (failed) return route.fallback();
     failed = true;
@@ -270,9 +367,14 @@ test("an event that failed before Cookie settings is never resent after it", asy
   await page.goto("/");
   await page.getByRole("button", { name: "Accept" }).click();
   await expect.poll(() => failed, { timeout: 20_000 }).toBe(true);
-  await Promise.all([page.waitForEvent("load"), page.getByRole("link", { name: "Cookie settings" }).first().click()]);
   const before = sent.length;
-  await page.waitForTimeout(10_000);
+  slow.armed = true;
+  // The reload takes 9 s to land, so the retry falls due while the old page (with PostHog) is still alive.
+  await page.evaluate(() => {
+    location.hash = "cookie-settings";
+  });
+  await page.waitForLoadState("load", { timeout: 25_000 });
+  await page.waitForTimeout(4000);
   expect(sent.slice(before)).toEqual([]);
 });
 

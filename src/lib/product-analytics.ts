@@ -80,10 +80,12 @@ const URL_KEY = /(url|pathname|referrer|href)$/i;
 const DROPPED = new Set(["title", "$title"]);
 /**
  * Campaign and ad-click properties PostHog builds from the address (utm_*, gad_source, mc_cid, gclid, fbclid, msclkid
- * and the like, and ph_keyword), also as $initial_… in $set_once: dropped, whatever they carry.
+ * and the other click ids in posthog-js 1.453.0's list, and ph_keyword): dropped, whatever they carry. Also with
+ * PostHog's two prefixes: $initial_… (in $set_once) and $session_entry_… (added to every event from the address the
+ * session started on).
  */
 const CAMPAIGN_KEY =
-  /^(\$initial_)?(utm_[a-z_]+|gad_source|mc_cid|gclid|gclsrc|dclid|gbraid|wbraid|fbclid|msclkid|twclid|li_fat_id|igshid|ttclid|rdt_cid|epik|qclid|sccid|irclid|_kx|ph_keyword)$/i;
+  /^(\$initial_|\$session_entry_)?(utm_[a-z_]+|gad_source|mc_cid|gclid|gclsrc|dclid|gbraid|wbraid|fbclid|msclkid|twclid|li_fat_id|igshid|ttclid|rdt_cid|epik|qclid|sccid|oppref|bfcid|irclid|_kx|ph_keyword)$/i;
 const NESTED = new Set(["$set", "$set_once"]);
 const RRWEB_META = 4;
 const RRWEB_CUSTOM = 5;

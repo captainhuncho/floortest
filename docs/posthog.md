@@ -7,17 +7,25 @@ Owner's yes in the Desk, 20 Nov 2026: posthog-js 1.453.0, EU region, installed a
   PostHog and stores nothing of its own.
 - Every new event is checked against the visitor's current choice before it is sent (`before_send` reads the consent
   cookie): after "Not now" or "Cookie settings" no new event is sent (page views on client navigation, replay flushes),
-  whatever PostHog's own state. An event that failed to send earlier can wait in PostHog's retry queue, which has no
-  consent check; the reload below ends it.
+  whatever PostHog's own state, and an event caught this way also starts the withdrawal below on that page. PostHog's
+  retry queue resends failed events without asking `before_send`, so withdrawal empties and switches it off first
+  (below).
 - If the choice changes while PostHog's file is still downloading, PostHog never starts and stores nothing.
 - When consent leaves "accepted" while PostHog is live: capture is opted out first (so nothing flushed while stopping
-  is sent), recording stops, persistence is switched off, every PostHog entry (and the toolbar's
+  is sent), recording stops, the retry queue is emptied and switched off (its queue, timer and online listener; a send
+  still in flight can't put itself back), persistence is switched off, every PostHog entry (and the toolbar's
   `_postHogToolbarParams`) is removed from localStorage, sessionStorage and cookies except PostHog's opt-out record,
-  and the page reloads. The reload ends PostHog's retry queue; the banner asks again on the fresh page, where PostHog
-  never starts and the opt-out record goes too. "Cookie settings" therefore reloads the page for a visitor who had
-  accepted.
+  the site's other open tabs are told (a BroadcastChannel), and the page reloads. The banner asks again on the fresh
+  page, where PostHog never starts and the opt-out record goes too. "Cookie settings" therefore reloads the page for a
+  visitor who had accepted, and any other open tab of the site reloads with it.
+- The retry queue is switched off through posthog-js 1.453.0's private names (`_retryQueue`, `_queue`, `_poller`,
+  `_onlineListener`). The version is pinned exactly in `package.json`, and `tests/posthog-sdk-internals.test.ts` fails
+  if an upgrade renames them: re-check `stopRetries` in `src/lib/posthog-client.ts` before any upgrade.
+- Other tabs and returning pages: a tab that misses the message (opened before, or a page restored from the
+  back-forward cache) checks the consent cookie again whenever it comes back into view (`pageshow`, `visibilitychange`,
+  `focus`) and withdraws the same way.
 - Events are sent one by one (`request_batching: false`), not batched, and page-leave events are off. An event
-  captured while consent was still "accepted" is sent then; if that send fails it is never retried after withdrawal.
+  captured while consent was still "accepted" is sent then; if that send fails, its retry is dropped at withdrawal.
 - Never on the ops host (no banner there), and off entirely while `NEXT_PUBLIC_POSTHOG_KEY` is unset.
 - The code: `src/components/ProductAnalytics.tsx` (mounted in the root layout) watches consent and the page;
   `src/lib/posthog-client.ts` loads PostHog and holds every setting; `src/lib/product-analytics.ts` has the rules (pages
@@ -28,7 +36,8 @@ Owner's yes in the Desk, 20 Nov 2026: posthog-js 1.453.0, EU region, installed a
   be ignored anyway). The project's remote settings host (`eu-assets.i.posthog.com`) is not allowed, since remote
   settings are never fetched.
 - Storage after Accept: PostHog's `ph_…` entries in localStorage (persistence is set to localStorage) and its
-  per-tab entries in sessionStorage (window id, session entry, replay buffer). All of them go on withdrawal.
+  per-tab entries in sessionStorage (window id, session entry, replay buffer). On withdrawal all of them go, in this
+  tab and in the other open tabs, except PostHog's opt-out record, which stays until the reload and then goes too.
 
 ## Privacy settings in the code
 Every optional feature is set in the code, so the PostHog project's own settings can't switch one on.
@@ -42,14 +51,16 @@ Every optional feature is set in the code, so the PostHog project's own settings
   `$set` and `$set_once` at the top of the event, and the page address in replay frames) loses private-link keys
   (`src/lib/redact-url.ts`), any `#fragment`, and every query key except `p`, `view`, `tab` and `folder` (and those
   only with a short plain value, `^[a-z0-9_-]{1,32}$`). Campaign and ad-click properties PostHog builds from the
-  address (`utm_*`, `gad_source`, `mc_cid`, `gclid`, `fbclid`, `msclkid` and the like, `ph_keyword`, also as
-  `$initial_…`) are dropped. Searches
+  address (`utm_*`, `gad_source`, `mc_cid`, and every click id in posthog-js 1.453.0's list: `gclid`, `fbclid`,
+  `msclkid`, `oppref`, `bfcid` and the rest; `ph_keyword`), plain, as `$initial_…` and as `$session_entry_…` (PostHog
+  adds those to every event from the address the session started on), are dropped. Searches
   (`q`, `sender`, `genre`, `handle`, `ref`, `to`), invite codes, tokens and emails never leave the browser. PostHog's
   own personal-data masking is also on for `invite`, `team`, `token`, `email`, `code` and `next`. The page title is
   dropped (contact pages carry a sender's name).
 - Replay masks every input, all text and all element attributes (links, labels), and blocks audio, video, images and
   canvas (covers, waveforms, file previews), plus anything marked `data-private`. Network entries keep only a redacted
-  URL.
+  URL. Masking every attribute also masks `class` and `style`, so recordings will likely play back unstyled; useful
+  styled replays would need an allow-list of safe attributes (owner's call).
 - **Replay is on, masked** (owner, typed in the Desk, 20 Nov: "On, masked (recommended). Starts only after Accept.
   Typed text and addresses are hidden, and it never runs on sign-in, admin or payment pages."). PostHog starts a
   recording only when its project settings say replay is on; those settings are never fetched from PostHog
@@ -61,25 +72,31 @@ Every optional feature is set in the code, so the PostHog project's own settings
   Prepare, Projects, Played out, Analytics, How it works) and the home page. Never on sign-in, sign-up, account,
   settings, contacts, private links, sender uploads, admin, pricing, plans or checkout. Never in an admin view (the
   dashboard layout marks it with `data-recording-off`). Recording stops when a client navigation to another page
-  starts (`src/instrumentation-client.ts`), and recording frames are dropped if the current page may not be recorded.
+  starts (`src/instrumentation-client.ts`), recording frames are dropped if the current page may not be recorded, and
+  frames PostHog parked from an earlier page (a server redirect from a recorded page to sign-in) are thrown away when a
+  page that may not be recorded opens. If PostHog fails to download or start, the error goes to Sentry (itself only
+  after Accept) and the next page tries again.
 - Speed measurement stays in-house (`TapSpeed`).
 
 ## Tests
 - `tests/product-analytics.test.ts`: the allow-list, admin view, query allow-list and private-link redaction across
   every URL property (top-level `$set`/`$set_once` and replay frames included), title dropped, both storages and
   cookies cleared (toolbar key included), the opt-out record kept only while PostHog is live, campaign and ad-click
-  properties dropped, kept query values limited.
+  properties dropped (plain, `$initial_…` and `$session_entry_…`), kept query values limited.
+- `tests/posthog-sdk-internals.test.ts`: posthog-js is exactly 1.453.0 and its bundle still has the retry-queue names
+  `stopRetries` uses.
 - `e2e/product-analytics-consent.spec.ts`: zero PostHog requests and storage before a choice and after "Not now";
   after Accept, requests go to PostHog's EU hosts only, and the decoded request bodies after visiting a receipt, a
   collection link and invite sign-ups carry no key, code or title; no CSP block; "Cookie settings" stops sending and
   clears every storage at once; Accept then "Not now" sends nothing across the reload (beacons included) and leaves no
-  PostHog storage; an event whose send failed before Cookie settings is not resent in the 10 s after it; withdrawing while
-  PostHog's file is still downloading leaves no request and no storage; after the footer's Cookie settings a click and a client navigation send nothing; signed in, a search
+  PostHog storage; an event whose send failed before Cookie settings is not resent, even while a slowed (9 s) reload is still loading; withdrawing while
+  PostHog's file is still downloading leaves no request and no storage; between Cookie settings and a slowed reload landing, a click and a client navigation send nothing; a session that starts on an address with `utm_term`, `gclid` and other campaign values never sends them (session-entry properties included); Cookie settings in one tab stops PostHog in another open tab and its storage stays gone; a tab that missed the withdrawal stops when it comes back into view; signed in, a search
   in the address (`?q=`, `sender=`) never reaches an event, including on a move from a
   recordable page to one that may not be recorded; signed in on an allowed page, replay frames are sent, and the decoded
   frames (compressed fields unpacked) carry the page address without its search, and none of the search secret,
   typed text, a heading's text, an aria-label or a link address; no replay on sign-in, sign-up or pricing; after a client
-  navigation from an allowed page to one that may not be recorded, no frame carries that page. In e2e every PostHog request is answered locally (`e2e/fixtures.ts`) and the key is
+  navigation from an allowed page to one that may not be recorded, the recorder itself has stopped (a dev-only probe,
+  `__ftRecording`, absent from production builds), and across back, forward and a pushState no frame carries that page. In e2e every PostHog request is answered locally (`e2e/fixtures.ts`) and the key is
   made up.
 
 ## Install note
