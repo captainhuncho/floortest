@@ -3,18 +3,19 @@
 import { stored, useDeviceState } from "@/components/useBrowserValue";
 import { CARD, Icon } from "@/components/Kit";
 
-const KEY = "ft:review-details";
+const KEY = "ft:review-team";
 
 /**
- * The review panel's "Details": file info, dates, download/move/delete and the sender's record, folded away so the
- * decision (play, Keep, Not for me) has the screen. A native <details>, so it works with keyboards, screen readers and
+ * A team desk's Review together (comments, votes, shortlist), folded under the review card so the decision (play, Keep,
+ * Not for me) has the screen. The track's facts and the sender's record moved to Info and Move, Report and Delete to
+ * More (review card option 1; owner, 20 Nov). A native <details>, so it works with keyboards, screen readers and
  * find-in-page; open or closed is remembered on this device.
  */
 export function PanelDetails({ summary, children }: { summary: React.ReactNode; children: React.ReactNode }) {
   const [open, setOpen] = useDeviceState(() => stored(KEY) === "1", false);
   return (
     <details
-      data-panel-details
+      data-panel-team
       open={open}
       onToggle={(e) => {
         const now = e.currentTarget.open;
