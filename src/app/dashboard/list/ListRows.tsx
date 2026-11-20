@@ -179,7 +179,11 @@ export function ListRows({
         player.play(toPlayer(r), queue);
       } else if (k === "k") decide(r, "kept", true);
       else if (k === "x") decide(r, "passed", true);
-      else if (k === "r" || e.key === "Enter") setExpanded((x) => (x === r.id && e.key === "Enter" ? null : r.id));
+      else if (k === "r" || e.key === "Enter") {
+        // Enter on a focused button or link presses it (a row's play, Keep, a menu), like Space above.
+        if (e.key === "Enter" && e.target instanceof HTMLElement && e.target.closest("button, a, [role=slider]")) return;
+        setExpanded((x) => (x === r.id && e.key === "Enter" ? null : r.id));
+      }
       else if (k in JUMPS) {
         // 1–4: jump to 25 / 50 / 75 / 90% of the selected track (starts it if needed).
         if (player.current?.id === r.id) player.seek(JUMPS[k]);
@@ -247,12 +251,21 @@ export function ListRows({
           const waiting = !decision;
           const ticked = picked.has(r.id);
           const sub = [r.artist, ...r.meta].join(" · ");
+          // The current row's number turns into pause (playing) or play (paused); other rows keep their number.
           const no = numbered && (
-            <span aria-hidden className="w-5 shrink-0 text-center text-[12px] text-mute tnum">
-              {i + 1}
+            <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[12px] text-mute tnum">
+              {isCurrent ? <PlayIcon playing={playing} className="size-3.5 text-lime" /> : i + 1}
             </span>
           );
-          const play = (
+          // A folder's page (numbered): no play button. Tapping a track plays it; tapping the current track pauses or
+          // resumes, like the review queue (owner, 20 Nov).
+          const tapPlay = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            setSelected(r.id);
+            if (isCurrent) player.toggle();
+            else player.play(toPlayer(r), queue);
+          };
+          const play = !numbered && (
             <button
               type="button"
               onClick={(e) => {
@@ -266,9 +279,11 @@ export function ListRows({
               <PlayIcon playing={playing} className="size-3.5" />
             </button>
           );
+          // The button's label replaces what it holds for screen readers, so it carries the status too (Safety P3, 19 Nov).
+          const playLabel = `${playing ? "Pause" : "Play"} ${r.title}${waiting ? ", needs review" : ""}${r.duplicateOf ? ", possible duplicate" : ""}`;
           const name = (
             <>
-              <span className={`truncate text-[13px] ${waiting ? "font-semibold text-bone" : "font-medium text-mute"}`}>
+              <span className={`truncate text-[13px] ${waiting ?"font-semibold text-bone" : "font-medium text-mute"}`}>
                 {waiting && <span className="sr-only">Needs review: </span>}
                 {r.title}
                 {r.duplicateOf && <span className="ml-2 text-[11.5px] font-normal text-danger">· Possible duplicate</span>}
@@ -304,9 +319,15 @@ export function ListRows({
                     {play}
                   </>
                 )}
-                <Link href={queueHref(r.id)} className="flex min-w-0 flex-1 flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
-                  {name}
-                </Link>
+                {numbered ? (
+                  <button type="button" onClick={tapPlay} aria-label={playLabel} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5 text-left">
+                    {name}
+                  </button>
+                ) : (
+                  <Link href={queueHref(r.id)} className="flex min-w-0 flex-1 flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    {name}
+                  </Link>
+                )}
                 <span className="shrink-0">{tag(r, decision)}</span>
               </div>
 
@@ -324,18 +345,24 @@ export function ListRows({
                 )}
                 {no}
                 {play}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelected(r.id);
-                    setExpanded((x) => (x === r.id ? null : r.id));
-                  }}
-                  aria-expanded={open}
-                  className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
-                >
-                  {name}
-                </button>
+                {numbered ? (
+                  <button type="button" onClick={tapPlay} aria-label={playLabel} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5 text-left">
+                    {name}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected(r.id);
+                      setExpanded((x) => (x === r.id ? null : r.id));
+                    }}
+                    aria-expanded={open}
+                    className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+                  >
+                    {name}
+                  </button>
+                )}
                 <div className="hidden w-[min(28%,240px)] min-w-0 @4xl:block" onClick={(e) => e.stopPropagation()}>
                   <PlayerWaveform
                     on={isCurrent}
