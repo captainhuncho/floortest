@@ -2526,4 +2526,20 @@ create trigger library_folders_art_gone after update of art_key or delete on lib
 drop trigger if exists desk_folders_art_gone on desk_folders;
 create trigger desk_folders_art_gone after update of art_key or delete on desk_folders for each row execute function ft_queue_folder_art();`,
   },
+  {
+    // Owner, 20 Nov (board #25): folders are the owner's and A&R / Admins' to change, as the app already says; a Member
+    // reads them. 0151 let anyone on the desk write them as the person. Brings the 16 Nov 0153 narrowing (branch
+    // backend/folder-art, never on main) under a new id. Every name is dropped first, so it runs the same on a database
+    // that already has 0153's policies (the shared preview) and on one that has only 0151's.
+    id: "0158_desk_folders_admin_writes",
+    sql: `drop policy if exists person_desk_folders on desk_folders;
+drop policy if exists person_desk_folders_read on desk_folders;
+drop policy if exists person_desk_folders_insert on desk_folders;
+drop policy if exists person_desk_folders_update on desk_folders;
+drop policy if exists person_desk_folders_delete on desk_folders;
+create policy person_desk_folders_read on desk_folders for select to ft_person using (ft_desk(user_id));
+create policy person_desk_folders_insert on desk_folders for insert to ft_person with check (ft_desk_admin(user_id));
+create policy person_desk_folders_update on desk_folders for update to ft_person using (ft_desk_admin(user_id)) with check (ft_desk_admin(user_id));
+create policy person_desk_folders_delete on desk_folders for delete to ft_person using (ft_desk_admin(user_id));`,
+  },
 ];
