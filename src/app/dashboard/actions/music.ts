@@ -20,6 +20,7 @@ async function attempt(run: () => Promise<boolean>, gone: string): Promise<Music
     throw e;
   }
   revalidatePath("/dashboard/projects", "layout");
+  revalidatePath("/dashboard/collections");
   return { ok: true };
 }
 
@@ -55,6 +56,7 @@ export async function createProject(name: string): Promise<{ ok: true; id: numbe
   try {
     const id = await createFolder(u, String(name ?? ""));
     revalidatePath("/dashboard/projects", "layout");
+    revalidatePath("/dashboard/collections");
     return { ok: true, id };
   } catch (e) {
     if (e instanceof IntakeError) return { ok: false, error: e.message };

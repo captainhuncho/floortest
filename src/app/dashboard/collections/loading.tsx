@@ -1,20 +1,18 @@
 import { SkBlock, SkeletonFrame, SkLine } from "@/components/Skeleton";
 
 /**
- * Collections while they load (page.tsx): the page head and New folder, search and the All / Callouts / Projects
- * filter, then the folders: rows with a small cover on phones, a grid of covers from md.
+ * Collections while they load (page.tsx): the heading, the tab header (the two tabs, + Add on the right from md),
+ * search, then the folders: rows with a small cover on phones, a grid of covers from md.
  */
 export default function Loading() {
   return (
     <SkeletonFrame outer="page-gutter py-4 sm:py-7" className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
+      <SkBlock className="h-[26px] w-36 rounded-[8px]" />
       <div className="flex items-center justify-between gap-3">
-        <SkBlock className="h-[26px] w-36 rounded-[8px]" />
-        <SkBlock className="size-11 rounded-full md:w-32 md:rounded-[12px]" />
+        <SkBlock className="h-[54px] w-full rounded-[14px] md:w-[260px]" />
+        <SkBlock className="hidden h-11 w-24 rounded-[13px] md:block" />
       </div>
-      <div className="flex flex-col gap-2 md:flex-row-reverse md:items-center md:justify-between">
-        <SkBlock className="h-11 rounded-[12px] md:w-64" />
-        <SkBlock className="h-11 w-56 rounded-[12px]" />
-      </div>
+      <SkBlock className="h-11 rounded-[12px] md:w-64" />
       <div className="flex flex-col md:grid md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] md:gap-x-4 md:gap-y-6">
         {["w-1/3", "w-1/2", "w-2/5", "w-1/4"].map((w) => (
           <div key={w} className="flex items-center gap-3 border-t border-line py-2 first:border-t-0 md:flex-col md:items-stretch md:gap-2 md:border-t-0 md:py-0">
