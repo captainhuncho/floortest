@@ -26,11 +26,12 @@ needs a new migration.
 | CI: checks (runs `audit:prod`), Analyze, CodeQL, dependency-review, Vercel, Vercel Preview Comments | `697ea041` | passed (6/6) |
 | Typecheck, lint, unit (1083/1083), check:perms, `audit:prod` (Backend session) | `697ea041` | all passed |
 | Permission test: Member and stranger refused, admin and owner allowed, cover upload 403/200, `art_key` update denied | `697ea041` | passed; fails without 0158 |
-| e2e: full suite | `697ea041` | passed earlier on 20 Nov (Safety) |
+| e2e: full suite | `697ea041` | passed earlier on 20 Nov (Backend) |
 | e2e: folders and folder-drop specs on the merge result | | not run (optional per Safety; e2e signs in as owner or admin, whom 0158 still allows) |
 | Safety review | `697ea041` | cleared, re-checked against `3d5ff51d` |
 | Merge with `main` | `3d5ff51d` | GitHub CLEAN; merged without conflicts |
 | Health `/api/health`, `/`, `/login`, `/signup` | production | 200, 200, 200, 200 |
+| 0158 on the production DB: in `schema_migrations`; read `ft_desk`, insert/update/delete `ft_desk_admin` (Safety, read-only) | production | confirmed |
 
 ## Other releases since the last code report
 - None besides #706, which has its own report (#714, not merged yet).
