@@ -30,6 +30,7 @@ Last updated 13 Oct 2026.
 | **UptimeRobot** | Checks the site every 5 minutes and emails if it's down. | Monitors `https://floortest.app/api/health`, which replies `"ok": true` when the site and database are working. |
 | **Sentry** | Crash and error reports from the site, sent through the app's own `/api/monitoring` route; private link keys are removed first. | Free Developer plan; `NEXT_PUBLIC_SENTRY_DSN` |
 | **Vercel Analytics** | Page views. | On the Vercel project |
+| **PostHog** (EU) | Product analytics and masked session replay, only after Accept on the cookie banner; never on the ops host ([posthog.md](posthog.md)). | Owner's account and key; `NEXT_PUBLIC_POSTHOG_KEY` (unset = off) |
 | **FloorTest ops** | In-app monitoring: incidents (errors), email log, metrics, storage checks, weekly admin digest email. | `ops.floortest.app`, its own sign-in with two-factor every time; needs an address in `ADMIN_EMAILS`. |
 
 ## Code
