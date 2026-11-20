@@ -70,11 +70,14 @@ async function signedInAccepted(page: Page, baseURL: string | undefined) {
 
 /** Holds back full page loads (documents) while armed, like a reload on a slow phone connection. */
 async function slowDocuments(page: Page, ms: number) {
-  const state = { armed: false };
+  const state = { armed: false, held: 0 };
   await page.route(
     (url) => !url.hostname.endsWith("posthog.com"),
     async (route) => {
-      if (state.armed && route.request().resourceType() === "document") await new Promise((done) => setTimeout(done, ms));
+      if (state.armed && route.request().resourceType() === "document") {
+        state.held += 1;
+        await new Promise((done) => setTimeout(done, ms));
+      }
       return route.fallback();
     },
   );
@@ -165,13 +168,17 @@ test("between Cookie settings and the reload landing, a click and a client navig
   const before = sent.length;
   slow.armed = true;
   // The old page stays on screen and alive until the slowed reload commits: PostHog is still loaded on it.
+  const landed = page.waitForEvent("load", { timeout: 20_000 });
+  const started = Date.now();
   await page.evaluate(() => {
     location.hash = "cookie-settings";
   });
-  await page.waitForTimeout(300);
+  await expect.poll(() => slow.held, { timeout: 5_000 }).toBeGreaterThan(0);
   await page.mouse.click(5, 5).catch(() => {});
   await page.evaluate(() => history.pushState({}, "", "/pricing?view=after")).catch(() => {});
-  await page.waitForLoadState("load", { timeout: 20_000 });
+  await landed;
+  // The reload really was held back, so the click and navigation happened on the old, still-live page.
+  expect(Date.now() - started).toBeGreaterThan(5000);
   await page.waitForTimeout(2000);
   expect(sent.slice(before)).toEqual([]);
 });
@@ -370,10 +377,15 @@ test("an event that failed before Cookie settings is never resent, even while a 
   const before = sent.length;
   slow.armed = true;
   // The reload takes 9 s to land, so the retry falls due while the old page (with PostHog) is still alive.
+  const landed = page.waitForEvent("load", { timeout: 25_000 });
+  const started = Date.now();
   await page.evaluate(() => {
     location.hash = "cookie-settings";
   });
-  await page.waitForLoadState("load", { timeout: 25_000 });
+  await expect.poll(() => slow.held, { timeout: 5_000 }).toBeGreaterThan(0);
+  await landed;
+  // The old page stayed alive for the whole held reload, past the first retry's due time.
+  expect(Date.now() - started).toBeGreaterThan(8000);
   await page.waitForTimeout(4000);
   expect(sent.slice(before)).toEqual([]);
 });
