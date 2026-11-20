@@ -136,7 +136,7 @@ function ProjectOptions({ p, onClose, onRename, onMove, onCover, onRemoveCover, 
     const r = await deleteProject(p.id);
     if (!r.ok) return toast.show({ message: r.error, tone: "error" });
     toast.show({ message: `Deleted ${p.name}` });
-    router.push("/dashboard/projects");
+    router.push("/dashboard/collections?tab=projects");
   };
   return (
     <>

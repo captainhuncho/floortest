@@ -13,7 +13,8 @@ import { removeCollection } from "@/lib/deletion";
 import { sendReopenAlerts } from "@/lib/reopen";
 import { done, ownCollection } from "./common";
 
-export async function createCollection(form: FormData) {
+/** Makes a callout; returns its id so + Add can file it into the folder it was made in. */
+export async function createCollection(form: FormData): Promise<number | undefined> {
   const u = await requireCallouts();
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
@@ -27,6 +28,7 @@ export async function createCollection(form: FormData) {
     revalidatePath(`/${u.handle}`);
   }
   done();
+  return id;
 }
 
 export async function setActiveCollection(id: number) {

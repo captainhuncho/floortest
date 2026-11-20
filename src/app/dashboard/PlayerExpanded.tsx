@@ -6,7 +6,7 @@ import { useModalDialog } from "@/components/Dialog";
 import { BufferRing, PlayerClock, type PlayerTrack, PlayerWaveform, PlayIcon, usePlayer } from "@/components/Player";
 import { useToastHost } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
-import { CONTROL, Cover, KeepHeart, SkipIcon, trackHref } from "./PlayerBars";
+import { CONTROL, Cover, KeepHeart, SkipIcon, TRANSPORT, trackHref } from "./PlayerBars";
 import { PlayerActions } from "./PlayerExpandedActions";
 import { playerExpanded, setPlayerExpanded, subscribePlayerExpanded } from "./playerExpandedStore";
 
@@ -25,11 +25,11 @@ const bucket = (t: PlayerTrack) => (t.decision === "kept" ? "kept" : t.decision 
 function JumpIcon({ back = false }: { back?: boolean }) {
   return (
     <span className="relative grid place-items-center">
-      <svg viewBox="0 0 24 24" className={`size-7 ${back ? "-scale-x-100" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <svg viewBox="0 0 24 24" className={`size-[30px] ${back ? "-scale-x-100" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M20 12a8 8 0 1 1-2.6-5.9" />
         <path d="M20 4v4h-4" />
       </svg>
-      <span aria-hidden className="absolute text-[8.5px] font-bold tnum">
+      <span aria-hidden className="absolute text-[10.5px] font-bold leading-none tnum">
         {JUMP}
       </span>
     </span>
@@ -40,7 +40,7 @@ function JumpIcon({ back = false }: { back?: boolean }) {
 function JumpButton({ back = false, className = "" }: { back?: boolean; className?: string }) {
   const { seekBy } = usePlayer();
   return (
-    <button type="button" onClick={() => seekBy(back ? -JUMP : JUMP)} aria-label={`${back ? "Back" : "Forward"} ${JUMP} seconds`} className={`${CONTROL} ${className}`}>
+    <button type="button" onClick={() => seekBy(back ? -JUMP : JUMP)} aria-label={`${back ? "Back" : "Forward"} ${JUMP} seconds`} className={`${TRANSPORT} ${className}`}>
       <JumpIcon back={back} />
     </button>
   );
@@ -128,8 +128,12 @@ export function PlayerExpanded() {
         <div className="flex h-full max-h-[inherit] flex-col">
           <div className="grid shrink-0 grid-cols-[2.75rem_1fr_2.75rem] items-center px-2 pt-[max(0.625rem,env(safe-area-inset-top))]">
             <button type="button" onClick={close} aria-label="Close player" className={CONTROL}>
-              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {/* Phones: the sheet slides down, so a down arrow. Laptops: a card in the middle of the screen, so a cross. */}
+              <svg viewBox="0 0 24 24" className="size-5 min-[1024px]:hidden" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m6 9 6 6 6-6" />
+              </svg>
+              <svg viewBox="0 0 24 24" className="hidden size-5 min-[1024px]:block" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M6 6l12 12M18 6 6 18" />
               </svg>
             </button>
             <p className="truncate text-center text-[12px] font-semibold text-mute">{sourceLabel(current)}</p>
@@ -163,13 +167,13 @@ export function PlayerExpanded() {
               {/* Phones: Previous, Back 15, play or pause, Forward 15, Next (Design's pick 22). Laptops: the essentials close
                   together, Previous, play or pause, Next (owner, 18 Nov: "controls are too wide apart"). */}
               <div role="group" aria-label="Playback" className="flex items-center justify-center gap-3 min-[390px]:gap-5 min-[1024px]:gap-6">
-                <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={CONTROL}>
+                <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={TRANSPORT}>
                   <SkipIcon back />
                 </button>
                 <JumpButton back className="min-[1024px]:hidden" />
                 <PlayPause />
                 <JumpButton className="min-[1024px]:hidden" />
-                <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={CONTROL}>
+                <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={TRANSPORT}>
                   <SkipIcon />
                 </button>
               </div>

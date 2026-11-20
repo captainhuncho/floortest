@@ -3,7 +3,6 @@ import { canRunCallouts } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { listDeskFolders } from "@/lib/desk-folders";
 import { calloutCovers, collectionArtUrl } from "@/lib/covers";
-import { listFolders } from "@/lib/library";
 import { recordId } from "@/lib/ids";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
@@ -16,25 +15,28 @@ import { APP_URL } from "@/lib/mail";
 import { CollectionTile } from "./CollectionForms";
 import { FolderArea, FolderCrumb, FolderTile } from "./Folders";
 import { FolderList } from "./FolderList";
-import { ProjectTile } from "../projects/ProjectsUI";
+import { ProjectsTab } from "../projects/ProjectsTab";
+import { AddMenu } from "./AddMenu";
+import { addItems, tabFrom } from "./add-items";
 import { shareCardTarget } from "./callout-card";
 import { sharedLinksFor } from "@/lib/share-links";
 import { CARD, SectionHead } from "@/components/Kit";
-import { CollectionsTabs } from "./CollectionsTabs";
+import { CollectionsBar } from "./CollectionsTabs";
 import { Notice } from "../settings/ui";
 
 export const metadata = { title: "Collections — FloorTest" };
 
 /**
- * Collections as folders (owner, 17 Nov: option 43, "collection and projects can just be folders"). One list: the
- * folders you made yourself first, then every callout and every project as a folder with a cover, its name and one
- * line. All / Callouts / Projects filters it (Projects keeps its own address, /dashboard/projects, where the tracks in
- * no project also live). Tracks show only inside a folder; the whole row opens it. Then collections shared with you.
+ * Collections (owner, 17 Nov: option 43, "collection and projects can just be folders"; two tabs since option 66,
+ * 20 Nov). Callouts: the callout folders you made first, then every callout with a cover, its name and one line; tracks
+ * show only inside it. Projects (?tab=projects, ProjectsTab): your own tracks. Each tab has one + Add. Then collections
+ * shared with you.
  */
-export default async function Collections({ searchParams }: { searchParams: Promise<{ folder?: string; kind?: string; denied?: string }> }) {
+export default async function Collections({ searchParams }: { searchParams: Promise<{ tab?: string; folder?: string; kind?: string; denied?: string }> }) {
   const user = await requireUser();
   await trackUse(user.id, "collections");
   const params = await searchParams;
+  if (tabFrom(params) === "projects") return <ProjectsTab folderParam={params.folder} />;
   const canManage = user.role !== "member";
   // Making and editing callouts: owner, A&R / Admin, or a Member an admin ticked (owner, 16 Nov). The actions check too.
   const callouts = await canRunCallouts(user);
@@ -42,9 +44,6 @@ export default async function Collections({ searchParams }: { searchParams: Prom
   // Inside a folder (?folder=), only its callouts; at the top, the folders and then what is in none.
   const folderId = recordId(params.folder);
   const folder = folderId === null ? null : (folders.find((f) => f.id === folderId) ?? null);
-  const view = folder || params.kind === "callouts" ? "callouts" : "all";
-  // "All" also lists the desk's projects and their folders (everyone on the desk may listen to them).
-  const [projects, projectFolders] = view === "all" ? await Promise.all([listFolders(user), listDeskFolders(user, "project")]) : [[], []];
   const inFolder = (c: (typeof collections)[number]) => (c as { desk_folder_id?: number | null }).desk_folder_id ?? null;
   const receiving = collections.find((c) => c.id === user.active_collection_id && !isClosed(c));
   const card = receiving
@@ -52,8 +51,7 @@ export default async function Collections({ searchParams }: { searchParams: Prom
     : undefined;
   const host = APP_URL.replace(/^https?:\/\//, "");
   const calloutFolders = folders.map((f) => ({ id: f.id, name: f.name }));
-  const projectFolderList = projectFolders.map((f) => ({ id: f.id, name: f.name }));
-  // The receiving callout first, then open callouts and projects (newest first), then closed callouts (newest first).
+  // The receiving callout first, then open callouts (newest first), then closed callouts (newest first).
   const entries = [
     ...collections
       .filter((c) => inFolder(c) === (folder?.id ?? null))
@@ -79,37 +77,28 @@ export default async function Collections({ searchParams }: { searchParams: Prom
           ),
         };
       }),
-    ...projects
-      .filter((p) => p.desk_folder_id === null)
-      .map((p) => ({
-        key: `p${p.id}`,
-        name: p.name,
-        rank: 1,
-        at: p.created_at,
-        node: <ProjectTile p={{ id: p.id, name: p.name, count: p.count, duration: p.duration, art: p.art }} canEdit={canManage} folders={canManage ? projectFolderList : undefined} folderId={p.desk_folder_id} />,
-      })),
   ].sort((a, b) => a.rank - b.rank || b.at - a.at);
+  const canAdd = addItems({ tab: "callouts", inFolder: !!folder, canEdit: canManage, canCreate: callouts }).length > 0;
   const items = [
     ...(folder ? [] : folders.map((f) => ({ key: `cf${f.id}`, name: f.name, node: <FolderTile kind="callout" f={f} canEdit={canManage} /> }))),
-    ...projectFolders.map((f) => ({ key: `pf${f.id}`, name: f.name, node: <FolderTile kind="project" f={f} canEdit={canManage} /> })),
     ...entries.map(({ key, name, node }) => ({ key, name, node })),
   ];
   return (
-    <div className="page-gutter py-4 sm:py-7">
+    <div className="page-gutter pb-20 pt-4 sm:pt-7 md:pb-7">
       <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-5 sm:gap-6">
-        {/* "New folder" and right-click: a callout, a project, or a group of them. Your own folders first. */}
         {params.denied === "callouts" && (
           <Notice tone="error" next="Ask the owner or an A&R / Admin to tick Runs callouts for you in Settings → Team.">
             Making and editing callouts is for people the owner or an A&amp;R / Admin has let run them.
           </Notice>
         )}
-        <FolderArea view={view} folder={folder?.id ?? null} canEdit={canManage} canCreate={callouts}>
+        {/* Right-click on the page: the + Add menu; on a callout or folder: its ··· menu (FolderArea). */}
+        <FolderArea canAdd={canAdd}>
+          <CollectionsBar on="callouts" add={canAdd ? <AddMenu tab="callouts" folder={folder?.id ?? null} canEdit={canManage} canCreate={callouts} /> : null} />
           {folder && <FolderCrumb kind="callout" name={folder.name} />}
           <FolderList
             items={items}
-            label={folder ? folder.name : view === "all" ? "Folders" : "Callouts"}
-            filter={<CollectionsTabs on={view} />}
-            empty={folder ? "Nothing in this folder yet. Move a callout here from its ··· menu." : "No folders yet."}
+            label={folder ? folder.name : "Callouts"}
+            empty={folder ? (canAdd ? "Nothing in this folder yet. Make a callout with + Add, or move one here from its ··· menu." : "Nothing in this folder yet. Move a callout here from its ··· menu.") : canAdd ? "No callouts yet. Use + Add to make one." : "No callouts yet."}
           />
           <p className="text-[12px] leading-snug text-mute">
             Your link <span className="break-all font-mono text-bone">{host}/{user.handle}</span>{" "}

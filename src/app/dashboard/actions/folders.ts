@@ -10,7 +10,7 @@ import { IntakeError } from "@/lib/intake";
 export type FolderResult = { ok: true; id?: number } | { ok: false; error: string };
 
 const GONE = "That folder isn't there any more.";
-const PATHS: Record<FolderKind, string> = { callout: "/dashboard/collections", project: "/dashboard/projects" };
+const PATHS: Record<FolderKind, string> = { callout: "/dashboard/collections", project: "/dashboard/collections" };
 
 async function attempt(kind: FolderKind, run: () => Promise<boolean | number>, gone = GONE): Promise<FolderResult> {
   try {
