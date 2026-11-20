@@ -8,8 +8,9 @@
  * attributes); frame-ancestors 'none' is the owner's no-clickjacking rule (23 Oct).
  */
 const TURNSTILE = "https://challenges.cloudflare.com";
-/** Product analytics (PostHog, EU), only after Accept on the banner; events only, no scripts from there. */
-const POSTHOG = "https://eu.i.posthog.com";
+/** Product analytics (PostHog, EU), only after Accept on the banner: events, and the project settings read from the
+ * assets host. Fetched only; script-src never lists PostHog, so no script runs from there. */
+const POSTHOG = "https://eu.i.posthog.com https://eu-assets.i.posthog.com";
 
 /** Audio, covers and uploads go straight to the storage bucket via signed URLs. */
 function storageSources(endpoint = process.env.S3_ENDPOINT) {
