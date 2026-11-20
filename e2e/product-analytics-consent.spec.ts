@@ -9,11 +9,16 @@ import { POSTHOG_REQUESTS } from "./fixtures";
  */
 const SECRET = "e2esecret7788";
 
+// PostHog drops events from browsers that look automated (a "HeadlessChrome" user agent or brand, navigator.webdriver), so the
+// test browser presents as a visitor's desktop Chrome here.
+test.use({ userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" });
+
 function bodyText(url: string, body: Buffer | null): string {
   if (!body) return "";
   const compression = new URL(url).searchParams.get("compression");
   try {
-    if (compression === "gzip-js") return gunzipSync(body).toString("utf8");
+    // Gzip is marked in the query by some versions and only by its magic bytes in others.
+    if (compression === "gzip-js" || (body[0] === 0x1f && body[1] === 0x8b)) return gunzipSync(body).toString("utf8");
     if (compression === "base64") {
       const data = new URLSearchParams(body.toString("utf8")).get("data") ?? "";
       return Buffer.from(data, "base64").toString("utf8");
@@ -27,6 +32,8 @@ function bodyText(url: string, body: Buffer | null): string {
 async function watch(page: Page) {
   const sent: { url: string; body: string }[] = [];
   await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, "webdriver", { get: () => false });
+    Object.defineProperty(Navigator.prototype, "userAgentData", { get: () => undefined });
     document.addEventListener("securitypolicyviolation", (e) => {
       (window as unknown as { __csp: string[] }).__csp = [...((window as unknown as { __csp?: string[] }).__csp ?? []), e.blockedURI];
     });
@@ -72,6 +79,9 @@ test("after Accept, events go to PostHog's EU host only, without keys, codes or 
   await page.waitForTimeout(3000);
   for (const { url } of sent) expect(["eu.i.posthog.com", "eu-assets.i.posthog.com"]).toContain(new URL(url).host);
   const all = sent.map((s) => `${s.url}\n${s.body}`).join("\n");
+  // The bodies were read (decoded page views are in them), so the checks below are real.
+  expect(all).toContain("$pageview");
+  expect(all).toContain("/receipt/");
   expect(all).not.toContain(SECRET);
   expect(all).not.toMatch(/"(\$)?title"\s*:/);
   expect((await cspBlocks()).filter((u) => u.includes("posthog"))).toEqual([]);
