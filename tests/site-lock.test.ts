@@ -17,7 +17,7 @@ const SITE = "https://floortest.app";
 
 async function gate() {
   // Open the throwaway database first: its first read builds every table (seconds on a busy machine), and the gate
-  // counts any read over 1.5 s as unreadable. Production reads an open database, so only the test needs this.
+  // counts any read over LOCK_READ_TIMEOUT_MS as unreadable. Production reads an open database, so only the test needs this.
   const { q } = await import("../src/lib/db");
   await q.get("SELECT 1 AS warm");
   const g = await import("../src/lib/site-gate");
@@ -127,6 +127,25 @@ test("a slow read times out and keeps the site locked", async () => {
     q.get = real;
     console.error = quiet;
     g.forgetGateLock();
+  }
+});
+
+test("a database waking from sleep (a 3 s read) still answers, so an open site isn't shown as locked", async () => {
+  // 20 Nov: production logged 76 "site_lock read timed out" in a day, mostly fresh servers meeting a sleeping database;
+  // with no earlier read to fall back on, each visitor got the coming-soon page.
+  const g = await gate();
+  await flip(false);
+  const { q } = await import("../src/lib/db");
+  const real = q.get;
+  try {
+    q.get = ((...args: Parameters<typeof real>) =>
+      new Promise((r) => setTimeout(() => r(real(...args)), 3_000))) as typeof q.get;
+    g.forgetGateLock();
+    assert.equal(await g.gateLock(), null, "open once the database answers");
+  } finally {
+    q.get = real;
+    g.forgetGateLock();
+    await flip(true);
   }
 });
 

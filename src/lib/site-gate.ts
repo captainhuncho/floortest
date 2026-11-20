@@ -29,10 +29,15 @@ export function gateToken(password = gatePassword(), gen = "") {
 export type GateLock = { password: string; gen: string };
 type LockRead = { on: boolean; gen: string };
 
-/** How long the proxy trusts a read of the switch, and how long one read may take before it counts as failed. */
+/**
+ * How long the proxy trusts a read of the switch, and how long one read may take before it counts as failed. The read
+ * waits long enough for the database to wake from sleep (Neon sleeps after 5 idle minutes): at 1.5 s a fresh server
+ * meeting a sleeping database showed visitors the coming-soon page, 76 times on 20 Nov. The page behind the gate needs
+ * the same database, so the wait costs nothing it wouldn't anyway.
+ */
 export const LOCK_CACHE_MS = 5_000;
-export const LOCK_READ_TIMEOUT_MS = 1_500;
-/** A failed read is remembered this long, so an outage costs one wait every 1.5 s, not one per request. */
+export const LOCK_READ_TIMEOUT_MS = 6_000;
+/** A failed read is remembered this long, so an outage costs one wait at a time, not one per request. */
 export const LOCK_FAIL_CACHE_MS = 1_500;
 /**
  * When a read fails (database waking, pool busy, outage), the last good read is used if it is at most this old, so a
