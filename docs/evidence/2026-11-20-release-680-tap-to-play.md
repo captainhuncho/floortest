@@ -27,7 +27,7 @@ owner asked for pause on the current track in the Desk and the change was on `mo
 | Health `/api/health`, `/`, `/login`, `/signup` | production | 200, 200, 200, 200 |
 
 ## Other releases since the last code report
-None.
+- #689, report for #688: merge `525c8b92`, deploy 7924949532.
 
 ## After the merge
 `main` merged into `mobile-next` as `b4c4e015`, no conflicts.
