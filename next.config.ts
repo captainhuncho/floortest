@@ -60,6 +60,8 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/home", destination: "/dashboard/floor", permanent: true },
       // Profile, account and settings are one page now (option 47).
       { source: "/dashboard/account", destination: "/dashboard/settings", permanent: true },
+      // Projects is a tab of Collections (option 66, 20 Nov). Not permanent, in case the tab moves again; ?folder= passes through.
+      { source: "/dashboard/projects", destination: "/dashboard/collections?tab=projects", permanent: false },
       // Preserve links shared from the pre-beta prototype. Authenticated destinations
       // still pass through the normal session checks, so these aliases do not bypass access control.
       { source: "/dj", destination: "/dashboard/floor", permanent: true },

@@ -33,6 +33,7 @@
     "music-metadata": "^12.0.0",
     "next": "^16.4.6",
     "postgres": "^3.4.9",
+    "posthog-js": "1.453.0",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
