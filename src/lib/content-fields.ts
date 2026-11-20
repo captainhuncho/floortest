@@ -16,16 +16,18 @@ const sizes = () => f("Text sizes", "", { hint: "Easiest to change on the page i
 
 /** Home page sections that can be reordered or hidden (the header, hero and footer always stay put). */
 export const HOME_SECTIONS = {
-  deck: "Cued up like a deck",
-  log: "One track's week",
-  desk: "Two sides of the desk",
+  week: "One track's week (Sun to Fri)",
+  booth: "Saturday: you play it",
+  receipt: "The sender finds out",
+  fair: "Fair to the people sending",
   preview: "Product preview",
   how: "How it works",
   journey: "Receipts",
   private: "Privacy",
   plans: "Plans",
-  waitlist: "Waitlist",
   faq: "Questions",
+  end: "Your link is waiting",
+  waitlist: "Waitlist",
 } as const;
 export type HomeSection = keyof typeof HOME_SECTIONS;
 const SECTION_IDS = Object.keys(HOME_SECTIONS) as HomeSection[];
@@ -53,31 +55,61 @@ export const SITE_PAGES = {
     label: "Home",
     path: "/",
     fields: {
-      sections: f("Section order", "deck,log,desk,private,plans,waitlist,faq,-journey,-how,-preview", { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
-      eyebrow: f("Line above the headline", "The receiving desk for people who live on new music."),
+      sections: f("Section order", "week,booth,receipt,fair,plans,faq,end,waitlist,-private,-journey,-how,-preview", { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
+      nav_how: f("Header: link to the week", "How it works"),
+      nav_plans: f("Header: link to the plans", "Plans"),
       headline: f("Headline", "From the studio"),
       headline_italic: f("Headline, second line (italic)", "to the floor."),
-      intro: text("Intro", "One link for every track you're sent. Play it, keep it, answer the sender. No more DMs."),
-      hero_example: f("Hero: example link", "See an example"),
-      hero_beta: f("Hero: small line under the buttons", "Private beta"),
+      intro: text("Intro", "Every track people send you, in one place. Keep what fits your set, and the person who made it hears back."),
+      hero_beta: f("Hero: small line under the claim box", "Private beta"),
       hero_invite_link: f("Hero: invite link (invite-only)", "Have an invite? Claim your link"),
-      hero_your_link: f("Hero card: label (signed in)", "Your link"),
-      hero_route_label: f("Hero card: routing line", "Same link. You choose where it routes."),
-      deck_title: f("Cued up like a deck: title", "Cued up like a deck."),
-      deck_intro: text("Cued up like a deck: intro", "Play, keep, next. On your phone in the booth or at your desk."),
-      deck_readouts: text("Cued up like a deck: readouts", "Order\nOldest first\n\nListened\n30 s\n\nKeep\n→ crate", { kind: "pairs", hint: "Each readout: a label line, then its value. Leave a blank line between readouts. Three fit best." }),
-      log_title: f("One track's week: title", "Sent during the week. Played during the weekend."),
-      log_rows: text(
-        "One track's week: rows",
-        "Tue 18:00 | Callout open | | Reads your brief\nWed 21:40 | Lands in Up next | | Delivered\nThu 00:12 | 30 seconds in | Real playback only | Listened\nThu 00:13 | Keep | |\nSat 19:30 | Into the crate | Rekordbox XML and M3U8 | Downloaded\nSun 01:12 | On the floor | | Played out",
-        { kind: "pairs", hint: "One row per line: time | what happens | small detail | what the sender sees. Leave a part empty to skip it. Each row keeps its picture by position (six pictures)." },
+      hero_your_link: f("Link card: label", "Your link"),
+      hero_route_label: f("Link card: routing line", "Same link. You choose where it routes."),
+      loop_messages: text(
+        "Hero picture: the messages",
+        "This transfer has expired\ndid you get my track? | m\n47 unread\npromos_FINAL_2\nnew_mix_v3_master.wav | m\nRe: Re: Fwd: demo\ncan you send it again?\nDownload limit reached | m\nvoice note · 0:42\ncheck your message requests\nwhich version was the final? | m",
+        { kind: "pairs", hint: "One message per line, shown one by one over the warehouse photo. Add \" | m\" after a message to set it in the mono type. Eleven fit; keep each one short. Screen readers skip them." },
       ),
-      log_private: f("One track's week: when the sender sees nothing", "Nothing. Your call stays private."),
-      desk_title: f("Two sides of the desk: title", "Two sides of one desk."),
-      desk_intro: text("Two sides of the desk: intro", "You decide. The sender knows what happened, and nothing more."),
-      desk_neon: f("Two sides of the desk: neon sign", "send me music", { hint: "The large faint sign behind the pictures. Screen readers skip it." }),
-      desk_caption_dj: f("Two sides of the desk: laptop caption", "The DJ's desk"),
-      desk_caption_sender: f("Two sides of the desk: phone caption", "The sender's receipt"),
+      sun_time: f("Sunday: time", "Sun 21:00"),
+      sun_title: f("Sunday: title", "One link. Point it anywhere."),
+      sun_body: text("Sunday: text", "It goes in your bio once and never changes. Yesterday it opened your Friday residency. Tonight it opens the radio show callout."),
+      route_rows: text("Sunday: where the link routes", "Yesterday | Friday residency\nToday | Radio show callout", { kind: "pairs", hint: "One row per line: when | where the link opens. Two rows; the second is the one it moves to." }),
+      mon_time: f("Monday: time", "Mon 09:12"),
+      mon_title: f("Monday: title", "It landed in one place."),
+      mon_body: text("Monday: text", "Tracks came in overnight through your link. Who sent it, the BPM and the length are already there. Nothing to download first."),
+      queue_title: f("Monday card: title", "Queue"),
+      queue_note: f("Monday card: small line", "5 new since last night"),
+      tue_time: f("Tuesday: time", "Tue 18:40 · on the bus"),
+      tue_title: f("Tuesday: title", "Play. Keep. Next."),
+      tue_body: text("Tuesday: text", "Keep what fits your set. Not for me for the rest, kindly. Either way, the sender sees you listened."),
+      review_hint: f("Tuesday card: line before a tap", "Try it: tap Keep or Not for me."),
+      review_kept: f("Tuesday card: after Keep", "Kept. It's in Friday's crate."),
+      review_unkept: f("Tuesday card: after taking Keep back", "Taken back out."),
+      review_next: f("Tuesday card: after Not for me", "Not for me. {name} still sees you listened. Next track.", { vars: ["name"] }),
+      fri_time: f("Friday: time", "Fri 23:00"),
+      fri_title: f("Friday: title", "The crate is ready."),
+      fri_body: text("Friday: text", "Every track you kept, ready to download with a Rekordbox playlist."),
+      crate_title: f("Friday card: title", "Prepare"),
+      crate_note: f("Friday card: small line", "12 kept this week"),
+      crate_button: f("Friday card: download label", "Download for Rekordbox"),
+      sat_time: f("Saturday: time", "Sat 02:14"),
+      sat_title: f("Saturday: title", "You play it."),
+      sat_body: text("Saturday: text", "After the set, tick what you played. That's all it takes for the people who made it to hear."),
+      ticks_title: f("Saturday card: title", "What did you play?"),
+      ticks_note: f("Saturday card: small line", "Sat 03:40"),
+      thanks_time: f("The sender finds out: time", "Sat · the next morning"),
+      thanks_title: f("The sender finds out: title", "And the person who made it finds out."),
+      thanks_body: text("The sender finds out: text", "Played out lands on their receipt. Months in the studio, and it reached a floor."),
+      receipt_title: f("Receipt card: title", "Receipt · Second Light"),
+      receipt_to: f("Receipt card: who it went to", "Sent to Kwame A."),
+      receipt_steps: text("Receipt card: steps", "Delivered | Mon 02:31\nListened | Tue 18:42\nDownloaded | Fri 23:04\nPlayed out | Sat 03:41", { kind: "pairs", hint: "One step per line: step | when. The last one fills in when the receipt comes into view." }),
+      fair_title: f("Fair to senders: title", "Fair to the people sending"),
+      fair_points: text(
+        "Fair to senders: points",
+        "No account to send\nThey open your link and upload the original file.\n\nAn honest receipt\nDelivered, Listened, Downloaded, Played out. Nothing bigger than the truth.\n\nTheir files stay theirs\nOriginals are never changed. Tracks nobody keeps are deleted after 90 days.",
+        { kind: "pairs", hint: "Each point: a title line, then its text. Leave a blank line between points. Three fit best." },
+      ),
+      end_title: f("Your link is waiting: title", "Your link is waiting."),
       preview_label: f("Product preview: label", "Live product preview"),
       preview_hint: f("Product preview: hint", "Click a track"),
       preview_image: f("Product preview image", "", { kind: "image", hint: "Replaces the clickable product preview below the receipts section. Leave empty to keep the clickable preview." }),
@@ -201,13 +233,16 @@ export const pairs = (s: string) =>
     .filter((l) => l[0])
     .map(([t, ...rest]) => [t.trim(), rest.join(" ").trim()] as const);
 
-/** "time | what | detail | sender" per line → rows; an empty part is null. Lines without a "what" are skipped. */
-export const rows = (s: string) =>
+/** "left | right" per line → [left, right]; lines without a left part are skipped, a missing right part is "". */
+export const cells = (s: string) =>
   s
     .split("\n")
     .map((l) => l.split("|").map((x) => x.trim()))
-    .filter((p) => p[1])
-    .map(([time, what, detail, sender]) => [time ?? "", what, detail || null, sender || null] as [string, string, string | null, string | null]);
+    .filter((p) => p[0])
+    .map(([a, b]) => [a, b ?? ""] as [string, string]);
+
+/** The home hero's messages: one per line; " | m" after a message sets it in the mono type. */
+export const messages = (s: string) => cells(s).map(([text, mark]) => ({ text, mono: mark.toLowerCase() === "m" }));
 
 /** Fields a size can be picked for: every text field of the page (not the section order, images or the sizes themselves). */
 export const sizeableKeys = (page: SitePage) =>

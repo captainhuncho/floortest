@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { checkHandle } from "./waitlist/actions";
+import { setClaimName, useClaim } from "./claimName";
 
 const clean = (s: string) => s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "").slice(0, 30);
 const HELP = {
@@ -15,19 +14,13 @@ const HELP = {
 /**
  * Type the link you want. In invite mode it carries the name to the waitlist (never reserved);
  * with open sign-up it goes straight to sign-up with the name filled in.
+ * The home page has two (hero and end): both show the same name (claimName.ts). `end` is the second one: it has its
+ * own field id and leaves the preview line and the spoken answer to the hero's box (one announcement, not two).
  */
-export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boolean }) {
-  const [name, setName] = useState("");
-  // The check's answer, kept with the name it was for: a newer name shows nothing until its own answer arrives.
-  const [answer, setAnswer] = useState<{ name: string; status: keyof typeof HELP | null } | null>(null);
-  const status = answer?.name === name ? answer.status : null;
+export function ClaimBox({ host, inviteOnly, end = false }: { host: string; inviteOnly: boolean; end?: boolean }) {
+  const { name, status } = useClaim();
   const router = useRouter();
-
-  useEffect(() => {
-    if (name.length < 2) return;
-    const t = setTimeout(async () => setAnswer({ name, status: await checkHandle(name) }), 400);
-    return () => clearTimeout(t);
-  }, [name]);
+  const id = end ? "claim-name-end" : "claim-name";
 
   function claim(e: React.FormEvent) {
     e.preventDefault();
@@ -42,33 +35,34 @@ export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boole
   const display = name.split(/[-_]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
   const possessive = display.endsWith("s") ? `${display}’` : `${display}’s`;
   return (
-    <form onSubmit={claim}>
-      <label htmlFor="claim-name" className="home-label">
+    <form onSubmit={claim} data-claim={end ? "end" : "hero"} className={`w-full ${end ? "min-[900px]:mx-auto min-[900px]:max-w-[520px]" : "min-[900px]:max-w-[520px]"}`}>
+      <label htmlFor={id} className="sr-only">
         Your link
       </label>
-      <div className="mt-3 flex items-stretch rounded-[11px] border border-field bg-well focus-within:border-lime/70">
-        <span className="min-w-0 max-w-[60%] shrink self-center truncate pl-3 text-sm text-dim sm:text-base">{host}/</span>
-        <input
-          id="claim-name"
-          value={name}
-          onChange={(e) => setName(clean(e.target.value))}
-          placeholder="yourname"
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          // The whole field row shows focus instead (the global outline would box just the name).
-          style={{ outline: "none" }}
-          className="min-w-[6rem] flex-1 bg-transparent py-3 pr-2 text-sm text-lime outline-none placeholder:text-faint sm:text-base"
-        />
+      <div className="flex flex-col gap-2.5 min-[900px]:flex-row">
+        <div className="flex min-h-[52px] min-w-0 flex-1 items-center rounded-[14px] border border-field bg-ink-3 px-3.5 focus-within:border-bone focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-bone">
+          <span className="min-w-0 max-w-[60%] shrink truncate text-base text-mute">{host}/</span>
+          <input
+            id={id}
+            value={name}
+            onChange={(e) => setClaimName(clean(e.target.value))}
+            placeholder="yourname"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            maxLength={30}
+            // The whole field row shows focus instead (border and outline; the global outline would box just the name).
+            style={{ outline: "none" }}
+            // 16px on every size: a smaller field makes iPhones zoom the page on focus.
+            className="min-w-[6rem] flex-1 bg-transparent py-3 text-base font-semibold text-bone outline-none placeholder:font-normal placeholder:text-faint"
+          />
+        </div>
+        <button className="h1e-fill min-h-[52px] rounded-full px-5 text-base font-semibold">Claim your link</button>
       </div>
-      {/* Secondary (bone outline): the hero's own CTA is the one lime button. */}
-      <button className="mt-3 min-h-11 w-full rounded-[13px] border border-line-2 px-4 text-[13px] font-semibold text-bone hover:border-bone">
-        {inviteOnly ? "Check it's free →" : "Claim your link →"}
-      </button>
-      <p className="mt-3 min-h-5 text-xs text-mute" aria-live="polite">
+      <p className="mt-2.5 text-sm text-bone empty:mt-0" aria-live={end ? "off" : "polite"}>
         {status ? (inviteOnly || status !== "free" ? HELP[status] : "Free right now.") : ""}
       </p>
-      {display && (
+      {display && !end && (
         <p className="mt-1 font-[family-name:var(--font-serif)] text-lg italic text-bone">
           {possessive} desk · tracks for your next set
         </p>
