@@ -38,7 +38,10 @@ export function Cover({ src, className, lazy = false, ...rest }: { src?: string 
 export const trackHref = (t: PlayerTrack) => (t.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${t.id}`);
 
 /** A control in a floating bar: a 44px target, quiet until pressed. */
-export const CONTROL = "grid size-11 shrink-0 place-items-center rounded-full text-mute transition-colors duration-100 hover:text-bone disabled:opacity-35 disabled:hover:text-mute";
+const CONTROL_BASE = "grid size-11 shrink-0 place-items-center rounded-full transition-colors duration-100 disabled:opacity-35";
+export const CONTROL = `${CONTROL_BASE} text-mute hover:text-bone disabled:hover:text-mute`;
+/** Previous, Next, Back 15 and Forward 15: in the main text colour while they work, so "off" (35%) reads as off and not as a bit dimmer. */
+export const TRANSPORT = `${CONTROL_BASE} text-bone`;
 
 export function SkipIcon({ back = false }: { back?: boolean }) {
   return (
@@ -177,8 +180,9 @@ export function CoverPlay() {
       data-buffering={buffering ? "" : undefined}
     >
       <Cover src={current.cover} className="absolute inset-0 size-full" />
-      <span className="relative grid size-7 place-items-center rounded-full bg-black/55 text-white">
-        <PlayIcon playing={playing} className="size-3.5" />
+      {/* A 32px disc with a thin light edge, so the mark reads on a dark cover too. */}
+      <span className="relative grid size-8 place-items-center rounded-full bg-black/60 text-white ring-1 ring-white/30">
+        <PlayIcon playing={playing} className="size-4" />
         <BufferRing className="-inset-[3px] text-white" />
       </span>
     </button>
@@ -221,7 +225,7 @@ export function MiniPlayer() {
       </div>
       <span className="flex shrink-0 items-center">
         {current.decision !== undefined && <KeepHeart track={current} />}
-        <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={CONTROL}>
+        <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={TRANSPORT}>
           <SkipIcon />
         </button>
       </span>
@@ -258,9 +262,10 @@ export function PlayerBar() {
           onClick={() => setPlayerExpanded(true)}
           aria-haspopup="dialog"
           aria-label={`Open the player: ${current.title}${current.artist ? `, ${current.artist}` : ""}`}
-          className="ml-1 flex h-11 w-[150px] min-w-0 shrink-0 flex-col justify-center text-left"
+          className="group/open ml-1 flex h-11 w-[150px] min-w-0 shrink-0 flex-col justify-center text-left"
         >
-          <span className="w-full truncate text-sm font-medium">{current.title}</span>
+          {/* The title is a button: it underlines under the pointer and for the keyboard, so it reads as one. */}
+          <span className="w-full truncate text-sm font-medium underline-offset-[3px] group-hover/open:underline group-focus-visible/open:underline">{current.title}</span>
           <span className="w-full truncate text-[13px] text-mute">{current.artist}</span>
         </button>
         <div className="hidden w-[220px] shrink-0 min-[1024px]:block">
@@ -270,10 +275,10 @@ export function PlayerBar() {
           <PlayerClock className="tnum" /> / <span className="tnum">{fmtTime(d)}</span>
         </span>
         <span className="flex shrink-0 items-center">
-          <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={CONTROL}>
+          <button type="button" onClick={() => skip(-1)} disabled={!hasPrev} aria-label="Previous track" className={TRANSPORT}>
             <SkipIcon back />
           </button>
-          <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={CONTROL}>
+          <button type="button" onClick={() => skip(1)} disabled={!hasNext} aria-label="Next track" className={TRANSPORT}>
             <SkipIcon />
           </button>
         </span>
@@ -283,7 +288,7 @@ export function PlayerBar() {
         <VolumeControl />
         <button type="button" onClick={() => setPlayerExpanded(true)} aria-haspopup="dialog" aria-label="Open the player" className={CONTROL}>
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="m6 15 6-6 6 6" />
+            <path d="M14 5h5v5M19 5l-6 6M10 19H5v-5M5 19l6-6" />
           </svg>
         </button>
       </section>
