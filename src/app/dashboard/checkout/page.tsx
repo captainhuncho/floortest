@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { afterDiscount, discountNow, offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
+import { inApp } from "@/lib/in-app";
 import { confirmBetaUpgrade } from "../actions/settings";
 import { CARD, Icon, PageHead, SectionHead } from "@/components/Kit";
 
@@ -15,6 +16,8 @@ export const metadata = { title: "Checkout — FloorTest" };
  */
 export default async function Checkout({ searchParams }: { searchParams: Promise<{ plan?: string; agree?: string }> }) {
   const user = await requireRole("owner");
+  // The phone apps never show the website's checkout (App Review 3.1.1): plans there are bought through the store.
+  if (await inApp()) redirect("/dashboard/plans");
   const sp = await searchParams;
   const p = await offeredPlan(String(sp.plan ?? ""));
   if (!p || p.price <= (await planOf(user.plan)).price) notFound();
