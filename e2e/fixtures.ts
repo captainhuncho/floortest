@@ -36,13 +36,9 @@ window.turnstile = {
  * banner choice and the fake bot check. Without the fake check, a sign-in that needs it (after the guards spec's wrong
  * tries) waits for Cloudflare's real script and never lands.
  */
-/** PostHog is answered locally in every test, so nothing ever reaches it (the e2e key is made up). */
-export const POSTHOG_REQUESTS = /^https:\/\/[^/]*posthog\.com\//;
-
 export async function preparePage(page: Page, baseURL?: string) {
   // A saved banner choice, so the cookie banner never covers what the tests click.
   await page.context().addCookies([{ name: "ft_consent", value: "rejected", url: baseURL ?? "http://localhost:3000" }]);
-  await page.route(POSTHOG_REQUESTS, (route) => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
   await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js*", (route) => route.fulfill({ contentType: "text/javascript", body: FAKE_TURNSTILE }));
 }
 

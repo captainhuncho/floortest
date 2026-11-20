@@ -26,9 +26,6 @@ const env = {
   GOOGLE_CLIENT_ID: "",
   GOOGLE_CLIENT_SECRET: "",
   NEXT_PUBLIC_SENTRY_DSN: "",
-  // A made-up PostHog key so the consent test can see it load after Accept; e2e/fixtures.ts answers every PostHog
-  // request locally, so nothing reaches PostHog.
-  NEXT_PUBLIC_POSTHOG_KEY: "phc_e2e_not_a_real_key",
   OPS_URL: "",
   // Sign-up is invite-only in the beta (switch open_signup; the invite rules are tests/invites.test.ts). The test copy
   // opens it so each test can make fresh accounts (scripts/seed.ts).

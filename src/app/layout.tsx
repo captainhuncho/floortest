@@ -4,7 +4,6 @@ import { NativeApp } from "@/components/NativeApp";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { NavProgress } from "@/components/NavProgress";
 import { PageViews } from "@/components/PageViews";
-import { ProductAnalytics } from "@/components/ProductAnalytics";
 import { ConsentBanner } from "@/components/ConsentBanner";
 import { mono, serif } from "./fonts";
 import type { Metadata, Viewport } from "next";
@@ -51,8 +50,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* In-house visit counts, after Accept on the banner like the page views: no cookie, id or IP kept, nothing sent to
             another company (owner, 5 Nov). */}
         {!ops && <Visits />}
-        {/* Product analytics and masked session replay (PostHog, EU), after Accept on the banner like the page views. */}
-        {!ops && <ProductAnalytics />}
         {!ops && <ConsentBanner />}
         {!isPreview && process.env.NODE_ENV === "production" && <TapSpeed />}
       </body>
