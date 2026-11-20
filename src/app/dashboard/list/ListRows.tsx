@@ -179,7 +179,11 @@ export function ListRows({
         player.play(toPlayer(r), queue);
       } else if (k === "k") decide(r, "kept", true);
       else if (k === "x") decide(r, "passed", true);
-      else if (k === "r" || e.key === "Enter") setExpanded((x) => (x === r.id && e.key === "Enter" ? null : r.id));
+      else if (k === "r" || e.key === "Enter") {
+        // Enter on a focused button or link presses it (a row's play, Keep, a menu), like Space above.
+        if (e.key === "Enter" && e.target instanceof HTMLElement && e.target.closest("button, a, [role=slider]")) return;
+        setExpanded((x) => (x === r.id && e.key === "Enter" ? null : r.id));
+      }
       else if (k in JUMPS) {
         // 1–4: jump to 25 / 50 / 75 / 90% of the selected track (starts it if needed).
         if (player.current?.id === r.id) player.seek(JUMPS[k]);
