@@ -104,8 +104,9 @@ type Make = "callout" | "project" | "callout-group" | "project-group";
 const MAKE: Record<Make, { title: string; hint: string }> = {
   callout: { title: "Callout", hint: "People send tracks to it through your link" },
   project: { title: "Project", hint: "You add your own tracks, for a set or a release" },
-  "callout-group": { title: "Group of callouts", hint: "Holds callouts you already have, like Club nights" },
-  "project-group": { title: "Group of projects", hint: "Holds projects you already have" },
+  // Called a folder, like its tile (owner, 19 Nov: "just call it a folder"); the hint says what it holds.
+  "callout-group": { title: "Folder", hint: "Holds callouts you already have, like Club nights" },
+  "project-group": { title: "Folder", hint: "Holds projects you already have" },
 };
 
 /** "New folder": a name, then what goes in it. One lime button. A callout or a project is a folder; a group holds them. */
@@ -206,6 +207,13 @@ export function FolderArea({ view, folder, canEdit, canCreate = canEdit, label, 
     e.preventDefault();
     setOpen(true);
   };
+  // Projects draws its own New folder buttons (ProjectsBar, option 63 A) and asks for this sheet by event.
+  useEffect(() => {
+    if (!can || view !== "projects") return;
+    const show = () => setOpen(true);
+    window.addEventListener("ft:new-folder", show);
+    return () => window.removeEventListener("ft:new-folder", show);
+  }, [can, view]);
   const onKeyDown = (e: React.KeyboardEvent) => {
     if ((!canEdit && !canCreate) || !(e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) return;
     e.preventDefault();
@@ -222,13 +230,7 @@ export function FolderArea({ view, folder, canEdit, canCreate = canEdit, label, 
           <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">Collections</h1>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {canEdit && view === "projects" && (
-            <button className={GHOST_TALL} onClick={() => window.dispatchEvent(new Event("ft:add-audio"))}>
-              <Icon name="up" className="size-4" />
-              Upload audio
-            </button>
-          )}
-          {can && (
+          {can && view !== "projects" && (
             <button className={`${GHOST_TALL} max-md:size-11 max-md:rounded-full max-md:px-0!`} aria-haspopup="dialog" aria-label="New folder" onClick={() => setOpen(true)}>
               <Icon name="plus" className="size-4" />
               <span className="max-md:hidden">New folder</span>
@@ -243,7 +245,7 @@ export function FolderArea({ view, folder, canEdit, canCreate = canEdit, label, 
 }
 
 /** One of your own folders in the list: the covers of what's inside (newest first), its name and how much is in it. The whole row opens it; ··· renames or deletes. */
-export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderView; canEdit: boolean }) {
+export function FolderTile({ kind, f, canEdit, tile = false }: { kind: FolderKind; f: FolderView; canEdit: boolean; /** A tile on phones too (Projects, option 63 A). */ tile?: boolean }) {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [rename, setRename] = useState(false);
@@ -259,6 +261,7 @@ export function FolderTile({ kind, f, canEdit }: { kind: FolderKind; f: FolderVi
       covers={f.art ? [f.art] : f.preview.flatMap((p) => (p.art ? [p.art] : []))}
       empty={f.count === 0 && !f.art}
       line={`Folder · ${holds}`}
+      tile={tile}
       menu={
         canEdit && (
           <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`More for ${f.name}`} className={ROUND}>

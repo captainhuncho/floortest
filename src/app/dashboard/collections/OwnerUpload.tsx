@@ -7,6 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fillFromFile, readTags } from "@/lib/tags";
 import { Icon } from "@/components/Kit";
+import { DropOutline, usePageDrop } from "@/components/usePageDrop";
+import { DROP_FAILED, skippedNote, type Dropped } from "@/lib/dropped-files";
+import { createProject } from "../actions/music";
 import { GHOST, LIME } from "../kitButtons";
 
 // held: stored and waiting for the next virus-check batch while the scanner sleeps; it's added within about 20 minutes.
@@ -26,6 +29,7 @@ export function OwnerUpload({
   fields = {},
   elsewhere,
   fromMenu = false,
+  pageDrop,
 }: {
   api: string;
   heading: string;
@@ -37,6 +41,12 @@ export function OwnerUpload({
   fields?: Record<string, unknown>;
   /** Where the tracks land, when it isn't this page. */
   elsewhere?: { label: string; href: string };
+  /**
+   * Files or folders dropped anywhere on the page come here (laptop and desktop; the picker stays for phones). "project":
+   * one folder dropped on its own becomes a new project named after it, made when the tracks are added. "here": they go
+   * where this upload already sends them.
+   */
+  pageDrop?: "project" | "here";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(startOpen);
@@ -44,6 +54,29 @@ export function OwnerUpload({
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [skipped, setSkipped] = useState("");
+  // A dropped folder's name: the project made for these tracks when they're added (pageDrop "project").
+  const [newProject, setNewProject] = useState<string | null>(null);
+  const madeProject = useRef<number | null>(null);
+  const dragging = usePageDrop(
+    !!pageDrop && !busy,
+    (d: Dropped) => {
+      setOpen(true);
+      setSkipped(skippedNote(d));
+      if (!d.audio.length) return setError("Nothing to add: drop WAV or MP3 files, or a folder of them.");
+      // Once a dropped folder's project is filled, the next drop starts fresh instead of joining it unasked.
+      const finished = madeProject.current !== null && items.length > 0 && items.every((it) => it.status === "done");
+      if (finished) {
+        madeProject.current = null;
+        setNewProject(null);
+      }
+      const fresh = finished || !items.length;
+      // 60: the longest name the server keeps for a folder, so the heading matches what's saved.
+      if (pageDrop === "project" && d.folder && fresh) setNewProject(d.folder.slice(0, 60));
+      pick(d.audio, finished);
+    },
+    () => (setOpen(true), setError(DROP_FAILED)),
+  );
   const input = useRef<HTMLInputElement>(null);
   // "Upload audio" in the "+" menu goes straight to the file picker. The input is always on the page in this mode, so
   // the click happens inside the tap (iOS Safari opens a picker only from a tap); choosing files opens the rest.
@@ -55,13 +88,13 @@ export function OwnerUpload({
   }, [fromMenu]);
   const patch = (i: number, p: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...p } : it)));
 
-  async function pick(files: FileList | null) {
+  async function pick(files: FileList | File[] | null, replace = false) {
     setError("");
     const chosen = Array.from(files ?? []).filter((f) => /\.(wav|mp3)$/i.test(f.name));
     if (!chosen.length) return setError("Choose WAV or MP3 files.");
     const fresh: Item[] = chosen.map((file) => ({ file, title: file.name.replace(/\.(wav|mp3)$/i, ""), artist: "", status: "ready", progress: 0 }));
-    const start = items.length;
-    setItems((list) => [...list, ...fresh]);
+    const start = replace ? 0 : items.length;
+    setItems((list) => [...(replace ? [] : list), ...fresh]);
     // Fills only what the owner hasn't changed while the file was being read (src/lib/tags.ts fillFromFile).
     fresh.forEach((it, k) =>
       readTags(it.file).then((read) =>
@@ -80,7 +113,7 @@ export function OwnerUpload({
     const post = (url: string, body: object) =>
       fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }));
     patch(i, { status: "uploading", progress: 0, error: undefined });
-    const start = await post(api, { ...fields, fileName: it.file.name, size: it.file.size, title: it.title, artist: it.artist, rights });
+    const start = await post(api, { ...fields, ...(madeProject.current ? { folderId: madeProject.current } : {}), fileName: it.file.name, size: it.file.size, title: it.title, artist: it.artist, rights });
     if (!start.ok) return patch(i, { status: "error", error: start.data.error || "Couldn't start the upload." });
     const target = start.data.target as { url: string; headers: Record<string, string> };
     const status = await new Promise<number>((resolve) => {
@@ -104,6 +137,14 @@ export function OwnerUpload({
     if (items.some((it) => it.status !== "done" && !it.title.trim())) return setError("Every track needs a title.");
     setError("");
     setBusy(true);
+    if (newProject && !madeProject.current) {
+      const made = await createProject(newProject).catch(() => ({ ok: false as const, error: "Couldn't make the project. Try again." }));
+      if (!made.ok) {
+        setBusy(false);
+        return setError(made.error);
+      }
+      madeProject.current = made.id;
+    }
     for (let i = 0; i < items.length; i++) if (items[i].status !== "done") await upload(i, items[i]);
     setBusy(false);
     router.refresh();
@@ -112,13 +153,22 @@ export function OwnerUpload({
   const picker = (
     <input ref={input} type="file" accept=".wav,.mp3,audio/wav,audio/mpeg" multiple hidden aria-label="Choose WAV or MP3 files to add" onChange={(e) => (setOpen(true), pick(e.target.files), (e.target.value = ""))} />
   );
-  if (!open && fromMenu) return picker;
+  const outline = <DropOutline show={dragging} label={pageDrop === "project" ? "Drop a folder to make a project, or tracks to add" : "Drop tracks to add them here"} />;
+  if (!open && fromMenu) return (
+    <>
+      {picker}
+      {outline}
+    </>
+  );
   if (!open)
     return (
+      <>
+      {outline}
       <button type="button" onClick={() => setOpen(true)} className={GHOST}>
         <Icon name="plus" className="size-3.5" />
         Add tracks
       </button>
+      </>
     );
 
   const waiting = items.filter((it) => it.status !== "done").length;
@@ -126,14 +176,16 @@ export function OwnerUpload({
     <section aria-label="Add your own tracks" className="w-full basis-full border-t border-dashed border-line-2 pt-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-[13px] font-semibold text-bone">{heading}</h3>
+          <h3 className="text-[13px] font-semibold text-bone">{newProject ? `New project: ${newProject}` : heading}</h3>
           {note && <p className="mt-1 text-[12px] text-mute">{note}</p>}
         </div>
-        <button type="button" onClick={() => (setOpen(false), setItems([]))} disabled={busy} className="tap-text text-[11px] font-bold text-mute hover:text-bone">
+        <button type="button" onClick={() => (setOpen(false), setItems([]), setSkipped(""), setNewProject(null), (madeProject.current = null))} disabled={busy} className="tap-text text-[11px] font-bold text-mute hover:text-bone">
           Close
         </button>
       </div>
+      {outline}
       {picker}
+      {skipped && <p className="mt-2 text-[12px] text-mute">{skipped}</p>}
       <button type="button" onClick={() => input.current?.click()} disabled={busy} className={`${GHOST} mt-3`}>
         Choose WAV or MP3 files
       </button>
@@ -180,6 +232,11 @@ export function OwnerUpload({
         <button type="button" onClick={sendAll} disabled={busy || !waiting} className={`${LIME} mt-3`}>
           {busy ? "Adding…" : waiting ? `Add ${waiting} track${waiting === 1 ? "" : "s"}` : "All added"}
         </button>
+      )}
+      {madeProject.current && newProject && items.length > 0 && !waiting && (
+        <Link href={`/dashboard/projects/${madeProject.current}`} className={`${GHOST} mt-3`}>
+          Open {newProject}
+        </Link>
       )}
       {elsewhere && items.some((it) => it.status === "done") && (
         <Link href={elsewhere.href} className={`${GHOST} mt-3`}>

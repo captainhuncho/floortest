@@ -41,6 +41,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             <OwnerUpload
               api="/api/music/upload"
               fields={{ folderId: id }}
+              pageDrop="here"
               heading={`Add tracks to ${project.name}`}
               note="WAV or MP3. Each file is checked as real audio and for viruses, then kept here until you delete it."
             />
