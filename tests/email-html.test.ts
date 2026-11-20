@@ -46,9 +46,9 @@ test("anything a sender typed is shown as text, never as HTML", async () => {
 test("a code on its own line becomes the code block; a sentence with a link is not turned into a button", async () => {
   const { emailHtml } = await import("../src/lib/email-html");
   const code = emailHtml("482913 is your FloorTest sign-in code", "Hi Max,\n\nYour sign-in code is:\n\n482913\n\nIt works once, for 10 minutes.\n\n— FloorTest", { optional: false, reserved: true });
-  assert.match(code, /class="ft-panel"[^>]*>482913<\/td>/);
+  assert.match(code, /Code to copy: <span[^>]*>482913<\/span>/, "the code once as one unbroken string, for Gmail's Copy code and iPhone Mail");
   assert.match(code, /<h1[^>]*>Your FloorTest sign-in code<\/h1>/, "the code is in its box, not repeated in the headline");
-  assert.equal(code.match(/482913/g)?.length, 2, "the code shows once in the email (plus the <title>)");
+  assert.equal(code.match(/482913/g)?.length, 2, "the whole code is written once in the email (plus the <title>); the boxes hold one character each");
   assert.match(code, /Security emails can't be turned off/);
   const welcome = emailHtml("Your link is live", `Hi Max,\n\nYour receiving link is ready: ${U}/max\n\nOn your desk:\n• Space plays\n• U undoes\n\n— FloorTest`, { optional: false, reserved: false });
   assert.doesNotMatch(welcome, /class="ft-btn-text"/, "\"Your receiving link is ready\" is a sentence, not a button label");
@@ -117,4 +117,27 @@ test("deliver passes the rows through the sealed outbox copy to the designed ver
   const m = sent.at(-1)!;
   assert.match(m.html, />Track<\/td><td[^>]*>Low Orbit<\/td>/);
   assert.equal(m.text, DELIVERED, "the text part has no rows added");
+});
+
+test("the code block: one box per character for the eye, hidden from screen readers, and the plain code once to copy", async () => {
+  const { emailHtml } = await import("../src/lib/email-html");
+  const html = emailHtml("Your FloorTest sign-in code", "Your sign-in code is:\n\n482913\n\nIt works once, for 10 minutes.", { optional: false, reserved: true });
+  const boxes = html.match(/<table role="presentation" aria-hidden="true"[^]*?<\/table>/)?.[0] ?? "";
+  assert.ok(boxes, "the boxes are hidden from screen readers");
+  assert.match(boxes, /user-select:none/, "the boxes can't be selected, so a copy takes the plain code");
+  const chars = [...boxes.matchAll(/class="ft-panel ft-line"[^>]*>([^<]+)<\/td>/g)].map((m) => m[1]);
+  assert.deepEqual(chars, ["4", "8", "2", "9", "1", "3"], "one box per character, in order");
+  assert.match(html, /user-select:all[^>]*>482913<\/span><\/p>/, "the plain code selects whole with one tap");
+  assert.doesNotMatch(html, /<span[^>]*>4<\/span><span/, "the plain code is never split into spans");
+  assert.doesNotMatch(html, /<img(?![^>]*\/brand\/icon-192\.png)|@import|fonts\.googleapis|<link /, "no outside font or image beyond the app's own icon");
+  assert.match(html, /\.ft-panel\{background:#171815!important;color:#f1f1eb!important\}/, "night theme repaints the boxes");
+});
+
+test("a long code with a hyphen gets smaller boxes and no box for the hyphen", async () => {
+  const { emailHtml } = await import("../src/lib/email-html");
+  const html = emailHtml("Your recovery code", "Use this:\n\nABCD-EFGH-1234\n\nKeep it safe.", { optional: false, reserved: true });
+  const boxes = html.match(/<table role="presentation" aria-hidden="true"[^]*?<\/table>/)![0];
+  assert.equal([...boxes.matchAll(/class="ft-panel ft-line"/g)].length, 12);
+  assert.match(boxes, /width:24px/);
+  assert.match(html, />ABCD-EFGH-1234<\/span>/);
 });
