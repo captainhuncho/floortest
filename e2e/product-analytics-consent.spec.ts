@@ -68,11 +68,12 @@ async function signedInAccepted(page: Page, baseURL: string | undefined) {
   await logIn(page, "demo@floortest.test");
 }
 
+// Withdrawing while PostHog is live reloads the page (that ends PostHog's retry queue); the banner asks again after it.
 async function acceptThenOpenSettings(page: Page, sent: { url: string }[]) {
   await page.goto("/");
   await page.getByRole("button", { name: "Accept" }).click();
   await expect.poll(() => sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
-  await page.getByRole("link", { name: "Cookie settings" }).first().click();
+  await Promise.all([page.waitForEvent("load"), page.getByRole("link", { name: "Cookie settings" }).first().click()]);
   await expect(page.getByRole("button", { name: "Not now" })).toBeVisible();
   await page.waitForTimeout(500);
 }
@@ -102,7 +103,7 @@ test("after Accept, events go to PostHog's EU host only, without keys, codes or 
   }
   await page.goto("/");
   await page.waitForTimeout(3000);
-  for (const { url } of sent) expect(["eu.i.posthog.com", "eu-assets.i.posthog.com"]).toContain(new URL(url).host);
+  for (const { url } of sent) expect(new URL(url).host).toBe("eu.i.posthog.com");
   const all = sent.map((s) => `${s.url}\n${s.body}`).join("\n");
   // The bodies were read (decoded page views are in them), so the checks below are real.
   expect(all).toContain("$pageview");
@@ -130,11 +131,11 @@ test("Cookie settings stops PostHog at once and clears what it kept", async ({ p
   expect(await phStorage(page)).toEqual([]);
 });
 
-test("Accept, then Not now: nothing leaves across the reload, beacons included", async ({ page }) => {
+test("Accept, then Cookie settings and Not now: nothing leaves across the reload, beacons included", async ({ page }) => {
   const { sent } = await watch(page);
   await acceptThenOpenSettings(page, sent);
   const before = sent.length;
-  await Promise.all([page.waitForEvent("load"), page.getByRole("button", { name: "Not now" }).click()]);
+  await page.getByRole("button", { name: "Not now" }).click();
   await page.waitForTimeout(2500);
   expect(sent.length).toBe(before);
   expect(await phStorage(page)).toEqual([]);
@@ -151,27 +152,94 @@ test("after the footer's Cookie settings, a click and a client navigation send n
   expect(sent.length).toBe(before);
 });
 
-// Replay starts only when PostHog's server-side settings say so, and those are never fetched (advanced_disable_flags),
-// so no recording leaves the browser at all. If replay is turned on later, these tests must assert redacted frames instead.
-test("signed in, a search in the address never reaches events, and no replay is sent", async ({ page, baseURL }) => {
+/** Replay bodies with PostHog's compressed frame fields (gzip in a latin1 string) unpacked, as one searchable text. */
+function replayText(sent: { url: string; body: string }[]): string {
+  const unpack = (v: unknown): unknown => {
+    if (typeof v === "string" && v.charCodeAt(0) === 0x1f && v.charCodeAt(1) === 0x8b) {
+      try {
+        const text = gunzipSync(Buffer.from(v, "latin1")).toString("utf8");
+        try {
+          return unpack(JSON.parse(text));
+        } catch {
+          return text;
+        }
+      } catch {
+        return v;
+      }
+    }
+    if (Array.isArray(v)) return v.map(unpack);
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, unpack(x)]));
+    return v;
+  };
+  return replay(sent)
+    .map((s) => {
+      try {
+        return JSON.stringify(unpack(JSON.parse(s.body)));
+      } catch {
+        return s.body;
+      }
+    })
+    .join("\n");
+}
+
+const FULL_SNAPSHOT = /"type":2,"data":\{"node"/;
+
+// PostHog's recorder uploads nothing until the visitor interacts with the page, so the tests move the mouse like one.
+async function interact(page: Page) {
+  for (const [x, y] of [[300, 300], [340, 330], [380, 360], [420, 390]]) {
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(100);
+  }
+}
+
+test("signed in, replay runs on an allowed page and hides searches, typed text, page text and attributes", async ({ page, baseURL }) => {
   const { sent } = await watch(page);
   await signedInAccepted(page, baseURL);
-  await page.goto(`/dashboard/review?q=${SECRET}&sender=${SECRET}&p=2`);
+  await page.goto(`/dashboard/review?q=${SECRET}&sender=${SECRET}&utm_term=${SECRET}&p=2`);
+  const facts = await page.evaluate(() => {
+    const visible = (el: Element) => (el as HTMLElement).offsetParent !== null;
+    const heading = [...document.querySelectorAll("h1, h2")].find(visible)?.textContent?.trim() ?? "";
+    const label = [...document.querySelectorAll("[aria-label]")].map((el) => el.getAttribute("aria-label") ?? "").find((v) => v.length >= 6) ?? "";
+    const link = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="/dashboard/"]')].map((a) => a.getAttribute("href") ?? "").find((h) => !h.startsWith("/dashboard/review")) ?? "";
+    return { heading, label, link };
+  });
+  const field = page.locator('input[type="search"], input[type="text"]').first();
+  if (await field.count()) await field.pressSequentially(`${SECRET}typed`);
+  await interact(page);
   await page.evaluate((secret) => history.pushState({}, "", `/dashboard/review?q=${secret}2`), SECRET);
-  await expect.poll(() => allText(sent), { timeout: 20_000 }).toContain("/dashboard/review");
-  await page.waitForTimeout(3000);
-  const all = allText(sent);
-  expect(all).toContain("$pageview");
-  expect(all).toContain("p=2");
-  expect(all).not.toContain(SECRET);
+  await expect.poll(() => replayText(sent), { timeout: 30_000 }).toContain("/dashboard/review");
+  await expect.poll(() => replayText(sent), { timeout: 30_000 }).toMatch(FULL_SNAPSHOT);
+  await page.waitForTimeout(4000);
+  const events = allText(sent.filter((x) => !replay([x]).length));
+  const frames = replayText(sent);
+  expect(frames).toContain("/dashboard/review");
+  expect(`${events}\n${frames}`).not.toContain(SECRET);
+  expect(facts.heading.length).toBeGreaterThan(3);
+  expect(frames).not.toContain(facts.heading);
+  expect(facts.label).not.toBe("");
+  expect(frames).not.toContain(facts.label);
+  expect(facts.link).not.toBe("");
+  expect(frames).not.toContain(`"${facts.link}"`);
+});
+
+test("replay never runs on sign-in, sign-up or pricing pages", async ({ page, baseURL }) => {
+  const { sent } = await watch(page);
+  await page.context().addCookies([{ name: "ft_consent", value: "accepted", url: baseURL ?? "http://localhost:3000" }]);
+  for (const path of ["/login", "/signup", "/pricing"]) {
+    await page.goto(path);
+    await interact(page);
+    await page.waitForTimeout(2500);
+  }
+  expect(allText(sent)).toContain("$pageview");
   expect(replay(sent)).toEqual([]);
 });
 
-test("moving from a recordable page to one that may not be recorded sends no replay", async ({ page, baseURL }) => {
+test("moving from a recorded page to one that may not be recorded sends no frames from it", async ({ page, baseURL }) => {
   const { sent } = await watch(page);
   await signedInAccepted(page, baseURL);
   await page.goto("/dashboard/floor");
-  await expect.poll(() => sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  await interact(page);
+  await expect.poll(() => replayText(sent), { timeout: 30_000 }).toMatch(FULL_SNAPSHOT);
   const target = await page.evaluate(() =>
     ["/dashboard/contacts", "/dashboard/settings", "/dashboard/account"].find((h) =>
       [...document.querySelectorAll<HTMLAnchorElement>(`a[href="${h}"]`)].some((a) => a.offsetParent !== null),
@@ -180,7 +248,57 @@ test("moving from a recordable page to one that may not be recorded sends no rep
   expect(target).toBeTruthy();
   await page.locator(`a[href="${target}"]:visible`).first().click();
   await page.waitForURL(`**${target}`);
-  await page.waitForTimeout(3000);
+  const framesBefore = replay(sent).length;
+  await interact(page);
+  await page.waitForTimeout(5000);
   expect(allText(sent)).toContain(target!);
-  expect(replay(sent)).toEqual([]);
+  expect(replayText(replay(sent).slice(framesBefore))).not.toContain(target!);
+  // No frame anywhere carries the unrecorded page as its address (rrweb Meta href or a custom page event).
+  expect(replayText(sent)).not.toContain(`${new URL(page.url()).origin}${target}`);
+});
+
+test("an event that failed before Cookie settings is never resent after it", async ({ page }) => {
+  const { sent } = await watch(page);
+  let failed = false;
+  // The first event send fails (a server error), so PostHog keeps it in its retry queue.
+  await page.route(/^https:\/\/eu\.i\.posthog\.com\/e\//, (route) => {
+    if (failed) return route.fallback();
+    failed = true;
+    sent.push({ url: route.request().url(), body: "" });
+    return route.fulfill({ status: 503, body: "" });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Accept" }).click();
+  await expect.poll(() => failed, { timeout: 20_000 }).toBe(true);
+  await Promise.all([page.waitForEvent("load"), page.getByRole("link", { name: "Cookie settings" }).first().click()]);
+  const before = sent.length;
+  await page.waitForTimeout(10_000);
+  expect(sent.slice(before)).toEqual([]);
+});
+
+test("withdrawing while PostHog is still downloading: it never starts and stores nothing", async ({ page }) => {
+  const { sent } = await watch(page);
+  // Hold back the file that holds PostHog itself (only it has this method name).
+  let held = false;
+  await page.route(/\/_next\/static\/.*\.js(\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    if (body.includes("_handle_unload")) {
+      held = true;
+      await new Promise((done) => setTimeout(done, 4000));
+    }
+    return route.fulfill({ response, body });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Accept" }).click();
+  await page.evaluate(() => {
+    location.hash = "cookie-settings";
+  });
+  await expect(page.getByRole("button", { name: "Not now" })).toBeVisible();
+  await page.waitForTimeout(6000);
+  expect(held).toBe(true);
+  expect(sent).toEqual([]);
+  expect(
+    await page.evaluate(() => [...Object.keys(localStorage), ...Object.keys(sessionStorage)].filter((k) => /^(ph_|__ph|_postHog)/.test(k))),
+  ).toEqual([]);
 });

@@ -6,13 +6,11 @@ import { redactUrl } from "./redact-url";
  */
 export const POSTHOG_HOST = "https://eu.i.posthog.com";
 export const POSTHOG_UI_HOST = "https://eu.posthog.com";
-/** Where the PostHog project's settings are read from (fetched, never run as a script). */
-export const POSTHOG_ASSETS_HOST = "https://eu-assets.i.posthog.com";
 
 /**
- * The only pages that may be recorded (an allow-list, Safety review of #704): the desk's music pages and the public home
- * and pricing pages. Everything else, including sign-in, private links, contacts, settings, admin, plans and checkout, is
- * never recorded.
+ * The only pages that may be recorded (an allow-list, Safety review of #704; owner, 20 Nov: never on sign-in, admin or
+ * payment pages): the desk's music pages and the public home page. Everything else, including sign-in, account, private
+ * links, sender uploads, contacts, settings, admin, view-as, pricing, plans and checkout, is never recorded.
  */
 const MAY_RECORD = [
   "/dashboard/floor",
@@ -24,7 +22,6 @@ const MAY_RECORD = [
   "/dashboard/played-out",
   "/dashboard/analytics",
   "/dashboard/how-it-works",
-  "/pricing",
 ];
 
 export function mayRecord(path: string): boolean {
@@ -47,14 +44,22 @@ export const SECRET_QUERY_KEYS = ["invite", "team", "token", "email", "code", "n
  * including searches (q, sender, genre, handle, ref, to) and invite codes, is removed, and so is any #fragment.
  */
 const KEPT_QUERY_KEYS = new Set(["p", "view", "tab", "folder"]);
+/** A kept key's value must look like a page number or a view name; anything else (free text, an email) goes. */
+const KEPT_QUERY_VALUE = /^[a-z0-9_-]{1,32}$/;
 
-function queryKey(pair: string): string {
-  const raw = pair.split("=")[0] ?? "";
+function decoded(raw: string): string | null {
   try {
-    return decodeURIComponent(raw.replace(/\+/g, " ")).trim().toLowerCase();
+    return decodeURIComponent(raw.replace(/\+/g, " "));
   } catch {
-    return "";
+    return null;
   }
+}
+
+function keptPair(pair: string): boolean {
+  const eq = pair.indexOf("=");
+  const key = decoded(eq === -1 ? pair : pair.slice(0, eq))?.trim().toLowerCase() ?? "";
+  const value = eq === -1 ? "" : decoded(pair.slice(eq + 1));
+  return KEPT_QUERY_KEYS.has(key) && value !== null && KEPT_QUERY_VALUE.test(value);
 }
 
 function keepListedQuery(s: string): string {
@@ -62,17 +67,23 @@ function keepListedQuery(s: string): string {
   const base = hash === -1 ? s : s.slice(0, hash);
   const q = base.indexOf("?");
   if (q === -1) return base;
-  const kept = base.slice(q + 1).split("&").filter((pair) => KEPT_QUERY_KEYS.has(queryKey(pair)));
+  const kept = base.slice(q + 1).split("&").filter(keptPair);
   return kept.length ? `${base.slice(0, q)}?${kept.join("&")}` : base.slice(0, q);
 }
 
-/** Private-link keys (src/lib/redact-url.ts) out of the path; only listed query keys kept; no fragment. */
+/** Private-link keys (src/lib/redact-url.ts) out of the path; only listed query keys with short plain values kept; no fragment. */
 export function redactAnalyticsUrl(s: string): string {
   return keepListedQuery(redactUrl(s));
 }
 
 const URL_KEY = /(url|pathname|referrer|href)$/i;
 const DROPPED = new Set(["title", "$title"]);
+/**
+ * Campaign and ad-click properties PostHog builds from the address (utm_*, gad_source, mc_cid, gclid, fbclid, msclkid
+ * and the like, and ph_keyword), also as $initial_… in $set_once: dropped, whatever they carry.
+ */
+const CAMPAIGN_KEY =
+  /^(\$initial_)?(utm_[a-z_]+|gad_source|mc_cid|gclid|gclsrc|dclid|gbraid|wbraid|fbclid|msclkid|twclid|li_fat_id|igshid|ttclid|rdt_cid|epik|qclid|sccid|irclid|_kx|ph_keyword)$/i;
 const NESTED = new Set(["$set", "$set_once"]);
 const RRWEB_META = 4;
 const RRWEB_CUSTOM = 5;
@@ -83,7 +94,7 @@ const isProps = (v: unknown): v is Props => !!v && typeof v === "object" && !Arr
 function redactProps(props: Props): Props {
   const out: Props = {};
   for (const [key, value] of Object.entries(props)) {
-    if (DROPPED.has(key)) continue;
+    if (DROPPED.has(key) || CAMPAIGN_KEY.test(key)) continue;
     if (typeof value === "string" && URL_KEY.test(key)) out[key] = redactAnalyticsUrl(value);
     else if (key === "$snapshot_data") out[key] = redactSnapshots(value);
     else if (NESTED.has(key) && isProps(value)) out[key] = redactProps(value);
@@ -122,6 +133,8 @@ export function redactEventUrls<T extends object>(event: T): T {
 }
 
 const OPT_OUT_KEY = "__ph_opt_in_out_";
+/** Where PostHog's toolbar keeps its launch parameters. */
+const TOOLBAR_KEY = "_postHogToolbarParams";
 
 type Store = Pick<Storage, "length" | "key" | "removeItem">;
 
@@ -130,7 +143,7 @@ function clearStore(storage: Store, keepOptOut: boolean) {
   for (let i = 0; i < storage.length; i++) {
     const key = storage.key(i);
     if (keepOptOut && key?.startsWith(OPT_OUT_KEY)) continue;
-    if (key?.startsWith("ph_") || key?.startsWith("__ph")) keys.push(key);
+    if (key?.startsWith("ph_") || key?.startsWith("__ph") || key === TOOLBAR_KEY) keys.push(key);
   }
   keys.forEach((key) => storage.removeItem(key));
 }

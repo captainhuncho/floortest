@@ -39,7 +39,7 @@ test("the policy keeps every other directive as it was before the nonce", async 
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.acct.r2.cloudflarestorage.com https://acct.r2.cloudflarestorage.com",
       "media-src 'self' blob: https://*.acct.r2.cloudflarestorage.com https://acct.r2.cloudflarestorage.com",
-      "connect-src 'self' https://*.acct.r2.cloudflarestorage.com https://acct.r2.cloudflarestorage.com https://challenges.cloudflare.com https://eu.i.posthog.com https://eu-assets.i.posthog.com",
+      "connect-src 'self' https://*.acct.r2.cloudflarestorage.com https://acct.r2.cloudflarestorage.com https://challenges.cloudflare.com https://eu.i.posthog.com",
       "font-src 'self' data:",
       "object-src 'none'",
       "base-uri 'self'",

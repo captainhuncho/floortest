@@ -3,14 +3,14 @@ import { test } from "node:test";
 import { clearPosthogStorage, mayRecord, recordingAllowed, redactAnalyticsUrl, redactEventUrls } from "../src/lib/product-analytics";
 
 test("only the listed desk and public pages may be recorded", () => {
-  for (const path of ["/", "/dashboard/floor", "/dashboard/review", "/dashboard/collections/12", "/pricing"]) assert.equal(mayRecord(path), true, path);
+  for (const path of ["/", "/dashboard/floor", "/dashboard/review", "/dashboard/collections/12"]) assert.equal(mayRecord(path), true, path);
 });
 
 test("everything else is never recorded: sign-in, private links, contacts, settings, admin, plans, checkout", () => {
   for (const path of [
     "/login", "/signup", "/reset/abc", "/ops-login", "/admin", "/admin/users", "/dashboard/account", "/dashboard/settings/security",
     "/dashboard/plans", "/dashboard/checkout", "/dashboard/contacts/4", "/dashboard/view-as", "/receipt/tok", "/join/tok", "/c/x",
-    "/newsletter/confirm/abc", "/coming-soon", "/dashboard/floorplan", "/pricingx",
+    "/newsletter/confirm/abc", "/coming-soon", "/dashboard/floorplan", "/pricing", "/pricingx", "/s/abc", "/upload",
   ]) {
     assert.equal(mayRecord(path), false, path);
   }
@@ -33,6 +33,18 @@ test("only paging and view keys stay in a query; searches, codes, emails and fra
   );
   assert.equal(redactAnalyticsUrl("/dashboard/contacts?Q=x&ref=y&handle=z&to=w&tab=all&folder=3"), "/dashboard/contacts?tab=all&folder=3");
   assert.equal(redactAnalyticsUrl("/admin/users?q=bob"), "/admin/users");
+  // Kept keys keep only short plain values.
+  assert.equal(redactAnalyticsUrl("/dashboard/review?p=2&view=sam%40label.co&tab=Sam+Sender&folder=" + "a".repeat(33)), "/dashboard/review?p=2");
+});
+
+test("campaign and ad-click properties are dropped, also as initial values", () => {
+  const event = redactEventUrls({
+    event: "$pageview",
+    properties: { utm_source: "x", utm_term: "secret", gad_source: "1", mc_cid: "c", gclid: "g", fbclid: "f", msclkid: "m", ph_keyword: "k", $os: "Mac" },
+    $set_once: { $initial_utm_campaign: "secret", $initial_gclid: "g", $initial_pathname: "/" },
+  });
+  assert.deepEqual(event.properties, { $os: "Mac" });
+  assert.deepEqual(event.$set_once, { $initial_pathname: "/" });
 });
 
 test("every URL-like property loses keys and searches, including session entry, initial and top-level $set_once, and the title is dropped", () => {
@@ -89,7 +101,7 @@ test("after Not now or Cookie settings, PostHog storage goes from both storages 
     const items = new Map(keys.map((k) => [k, "1"]));
     return { items, get length() { return items.size; }, key: (i: number) => [...items.keys()][i] ?? null, removeItem: (k: string) => void items.delete(k) };
   };
-  const local = store(["ph_phc_x_posthog", "__ph_opt_in_out_phc_x", "ft_view"]);
+  const local = store(["ph_phc_x_posthog", "__ph_opt_in_out_phc_x", "_postHogToolbarParams", "ft_view"]);
   const session = store(["ph_phc_x_window_id", "ph_phc_x_primary_window_exists", "ph_replay_pending_buffer_1", "ft_tab"]);
   const written: string[] = [];
   const doc = { get cookie() { return "ph_phc_x_posthog=1; ft_consent=rejected"; }, set cookie(v: string) { written.push(v); } };
