@@ -11,19 +11,25 @@ const REASONS = [
 ] as const;
 
 /**
- * Report a track to the FloorTest team (App Store Review 1.2). Opens in place under the track's buttons; admins and
- * owners can block the sender in the same step.
+ * Report a track to the FloorTest team (App Store Review 1.2). On the review card it opens from More, in its own layer
+ * (`startOpen`, with `onCancel` closing that layer); elsewhere it opens in place under its button. Admins and owners
+ * can block the sender in the same step.
  */
 export function ReportTrack({
   action,
   senderName,
   canBlock,
+  startOpen = false,
+  onCancel,
 }: {
   action: (state: ReportState, form: FormData) => Promise<ReportState>;
   senderName: string;
   canBlock: boolean;
+  /** Starts on the form, with no Report button of its own (the review card's More menu opened it). */
+  startOpen?: boolean;
+  onCancel?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const noteId = useId();
   const [state, submit, pending] = useActionState(action, undefined);
 
@@ -73,7 +79,7 @@ export function ReportTrack({
         <button className="btn-ghost btn-sm" disabled={pending}>
           {pending ? "Sending…" : "Send report"}
         </button>
-        <button type="button" className="btn btn-sm text-mute" onClick={() => setOpen(false)}>
+        <button type="button" className="btn btn-sm text-mute" onClick={() => (onCancel ? onCancel() : setOpen(false))}>
           Cancel
         </button>
       </div>

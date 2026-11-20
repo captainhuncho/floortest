@@ -229,13 +229,14 @@ export function DecisionRail({ track, selfHref, next, prev, children }: Props) {
 
   // Queue, final (option 42): Keep is the page's one lime button and comes first; the shortcut sits beside each word
   // where there's a keyboard. Phones: two big buttons, the other calls in a row under them. Laptops: one row.
-  const btn = "inline-flex min-h-13 items-center justify-center gap-2 whitespace-nowrap rounded-[15px] px-2.5 text-[14.5px] font-semibold transition-colors disabled:opacity-40 md:min-h-11 md:rounded-[13px] md:px-5 md:text-[13px]";
-  const key = "rounded-[5px] border border-current px-1.5 font-mono text-[10px] font-semibold opacity-55 [@media(pointer:coarse)]:hidden";
+  // Under 360px the two buttons share the row by their words, not in equal halves, so "Not for me" fits beside Info and More.
+  const btn = "inline-flex min-h-13 items-center justify-center gap-2 whitespace-nowrap rounded-[15px] px-2.5 text-[14.5px] max-[359px]:flex-auto max-[359px]:px-1.5 max-[359px]:text-[13.5px] font-semibold transition-colors disabled:opacity-40 md:min-h-11 md:rounded-[13px] md:px-5 md:text-[13px]";
+  const key = "rounded-[5px] border border-current px-1.5 font-mono text-[10px] font-semibold opacity-55 max-[359px]:hidden [@media(pointer:coarse)]:hidden";
   return (
     <div data-player-keys className="flex flex-col gap-2.5">
       {/* Compact card (owner, 19 Nov): Keep, Not for me and More in one row on every size. */}
       <div className="flex items-center gap-2">
-        <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 md:flex md:flex-none" role="group" aria-label="Decision">
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 max-[359px]:flex md:flex md:flex-none" role="group" aria-label="Decision">
           <button
             onClick={() => decide("kept")}
             disabled={busy}

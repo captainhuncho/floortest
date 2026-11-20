@@ -1,4 +1,4 @@
-import { expect, test, wav } from "./fixtures";
+import { expect, hydrated, test, wav } from "./fixtures";
 
 /** Batch actions in the List view, on the seeded receiver's own tracks: decide, move and delete several at once. */
 test("select tracks in the list and act on them together", async ({ page }) => {
@@ -49,8 +49,8 @@ test("select tracks in the list and act on them together", async ({ page }) => {
   await expect(page.getByText("Coastline (Dub)")).toHaveCount(0);
 });
 
-/** The review panel shows what the decision needs; file and sender admin wait in one closed Details section. */
-test("the review panel keeps the decision in view and folds the rest into Details", async ({ page }) => {
+/** The review card shows what the decision needs; the track's facts and the sender wait behind Info, Delete in More. */
+test("the review card keeps the decision in view: facts and the sender behind Info, Delete only in More", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("demo@floortest.test");
   await page.getByRole("textbox", { name: "Password" }).fill("floortest-demo");
@@ -62,13 +62,26 @@ test("the review panel keeps the decision in view and folds the rest into Detail
   await expect(panel.getByRole("button", { name: /^Keep/ }).locator("visible=true").first()).toBeVisible();
   await expect(panel.getByText(/\d+ BPM ·/).locator("visible=true").first()).toBeVisible();
 
-  // Details starts closed: Delete and Move aren't on screen until it's opened.
-  const details = panel.locator("details[data-panel-details]");
-  await expect(details.getByRole("button", { name: "Delete" })).toBeHidden();
-  await details.locator("summary").click();
-  await expect(details.getByRole("button", { name: "Delete" })).toBeVisible();
-  // The sender sits in its own card beside Details (owner, 18 Nov), always open.
-  await expect(panel.getByText("Full history →").locator("visible=true").first()).toBeVisible();
+  // Option 1 (owner, 20 Nov): no fold, and nothing on the card moves, reports or deletes a track.
+  await expect(panel.locator("details[data-panel-details]")).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: "Delete" })).toHaveCount(0);
+  await expect(panel.getByText("Full history →")).toBeHidden();
+  // Info opens the track's facts beside the card; the sender's record is its second tab.
+  const info = panel.getByRole("button", { name: "Track and sender info" });
+  await hydrated(info);
+  await info.click();
+  await expect(info).toHaveAttribute("aria-expanded", "true");
+  const drawer = panel.getByRole("complementary", { name: "Track and sender info" });
+  await expect(drawer.getByText("Format")).toBeVisible();
+  await drawer.getByRole("tab", { name: "Sender" }).click();
+  await expect(drawer.getByText("Full history →")).toBeVisible();
+  // Delete is the last item in More.
+  await panel.getByRole("button", { name: "More", exact: true }).click();
+  await expect(page.getByRole("menu", { name: "More" }).getByRole("menuitem").last()).toHaveText("Delete");
+  await page.keyboard.press("Escape");
+  // Put Info away again: open or closed is remembered on this device.
+  await info.click();
+  await expect(drawer).toBeHidden();
 });
 
 /** The owner adds their own file on Projects (1b); a callout page has no Add tracks; strangers are refused. */

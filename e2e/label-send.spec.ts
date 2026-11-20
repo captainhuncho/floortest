@@ -43,8 +43,8 @@ test("a signed-in sender picks Evaluation only or OK to play when sending to a l
 test("the label's desk shows each choice, and the pick page holds back the evaluation-only track", async ({ page }) => {
   test.slow();
   await logIn(page, "label@floortest.test");
-  for (const [title, chip] of [[EVAL(), "Evaluation only: ask before playing it out"], [OK(), "OK to play"]] as const) {
-    // The queue view's review card shows the choice; searching by title opens that track's card.
+  for (const [title, chip] of [[EVAL(), "Evaluation only"], [OK(), "OK to play"]] as const) {
+    // The queue view's review card shows the choice as plain words (review card option 1; owner, 20 Nov); searching by title opens that track's card.
     // Under a full run the list can trail the tab counts by a moment, so the search is loaded again until the card shows.
     await expect(async () => {
       await page.goto(`/dashboard/review?view=queue&q=${encodeURIComponent(title)}`);

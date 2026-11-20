@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { isTyping, PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
 import { overlayOpen, shortcutsOn } from "@/components/useShortcuts";
 import type { ReplyResult } from "../actions/review";
-import { MoreMenu } from "./MoreMenu";
+import { MoreMenu, type ReportProps } from "./MoreMenu";
+import { InfoButton } from "./ReviewInfo";
 import { useStep, type Step } from "./QueueState";
 import { ReplyPanel } from "./ReplyCard";
 
@@ -32,21 +33,6 @@ export function StoryBars({ at, total }: { at: number; total: number }) {
       <p aria-hidden className="mt-1.5 text-center text-[11px] text-mute tnum">
         {at} of {total}
       </p>
-    </div>
-  );
-}
-
-/**
- * Phones: the cover's left third goes to the previous track and its right third to the next, like stories. They sit
- * on the cover only, clear of Keep and Not for me, so a tap here never decides a track.
- */
-export function CoverSteps({ fromId, prev, next }: { fromId: number; prev: Step; next: Step }) {
-  const step = useStep(fromId);
-  const zone = "absolute inset-y-0 w-1/3 rounded-[14px] disabled:pointer-events-none";
-  return (
-    <div className="absolute inset-0 md:hidden">
-      <button type="button" data-cover-step="prev" aria-label="Previous track" disabled={!prev} onClick={() => step(prev)} className={`${zone} left-0`} />
-      <button type="button" data-cover-step="next" aria-label="Next track" disabled={!next} onClick={() => step(next)} className={`${zone} right-0`} />
     </div>
   );
 }
@@ -111,11 +97,33 @@ export function CardControls({ track, prev, next }: { track: PlayerTrack; prev: 
   );
 }
 
+/** Info and More: 44px squares on laptops, 52px beside the taller phone buttons (44px wide under 360px). */
+const SQUARE = "inline-flex min-h-13 w-13 max-[359px]:w-11 shrink-0 items-center justify-center rounded-[15px] border border-line bg-well text-bone transition-colors hover:border-line-2 md:min-h-11 md:w-11 md:rounded-[13px]";
+
 /**
- * The More button beside Keep and Not for me (compact card, owner 19 Nov): Reply and Download live in its menu now. R
- * (from anywhere outside a field) still opens the reply panel, from the More button so focus comes back there.
+ * Info and More beside Keep and Not for me (review card option 1; owner, 20 Nov). Info opens the track's facts and the
+ * sender's record; Reply, Download, Move, Report and Delete live in More. R (from anywhere outside a field) still
+ * opens the reply panel, from the More button so focus comes back there.
  */
-export function PanelCalls({ trackId, href, senderName, onReply }: { trackId: number; href: string; senderName: string; onReply: (fd: FormData) => Promise<ReplyResult> }) {
+export function PanelCalls({
+  trackId,
+  href,
+  senderName,
+  onReply,
+  move,
+  project,
+  report,
+  onDelete,
+}: {
+  trackId: number;
+  href: string;
+  senderName: string;
+  onReply: (fd: FormData) => Promise<ReplyResult>;
+  move?: React.ReactNode;
+  project?: React.ReactNode;
+  report?: ReportProps;
+  onDelete?: () => Promise<void>;
+}) {
   const [replying, setReplying] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -127,15 +135,16 @@ export function PanelCalls({ trackId, href, senderName, onReply }: { trackId: nu
       if (overlayOpen()) return;
       e.preventDefault();
       // From the More button, so closing the panel puts focus back there and not at the top of the page.
-      wrap.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+      wrap.current?.querySelector<HTMLButtonElement>('button[aria-label="More"]')?.focus({ preventScroll: true });
       setReplying(true);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   return (
-    <div ref={wrap} className="shrink-0">
-      <MoreMenu trackId={trackId} href={href} onReply={() => setReplying(true)} download={`/api/tracks/${trackId}/download`} />
+    <div ref={wrap} className="flex shrink-0 gap-2">
+      <InfoButton className={SQUARE} />
+      <MoreMenu trackId={trackId} href={href} onReply={() => setReplying(true)} download={`/api/tracks/${trackId}/download`} move={move} project={project} report={report} onDelete={onDelete} />
       <ReplyPanel open={replying} onClose={() => setReplying(false)} senderName={senderName} onReply={onReply} />
     </div>
   );
