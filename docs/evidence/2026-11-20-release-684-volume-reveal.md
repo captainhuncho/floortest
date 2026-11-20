@@ -32,7 +32,8 @@ The aborted-stream noise in the e2e server log is tracked separately (board #65)
 
 ## Other releases since the last code report
 - #694, report for #686: merge `907ae88e`, deploy 7936431035.
-- #696, the App Store review list (docs): merge `ab4c7200`, deploy 7937101766. Its own report is #697, still open.
+- #696, the App Store review list (docs): merge `ab4c7200`, deploy 7937101766.
+- #697, report for #696: merge `0a3b26f7`, deploy 7937581544.
 
 ## After the merge
 `main` merged into `mobile-next` as `b440a5ea`, no conflicts.
