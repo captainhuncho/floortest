@@ -23,40 +23,68 @@ test("an admin view is never recorded, even on an allowed page", () => {
   assert.equal(recordingAllowed("/dashboard/floor", plain), true);
 });
 
-test("invite codes, tokens, emails and next pages are removed from query strings", () => {
-  assert.equal(redactAnalyticsUrl("https://floortest.app/signup?team=abc123&x=1"), "https://floortest.app/signup?team=[redacted]&x=1");
-  assert.equal(redactAnalyticsUrl("/signup?invite=QWE&email=a@b.co&next=/dashboard"), "/signup?invite=[redacted]&email=[redacted]&next=[redacted]");
-  assert.equal(redactAnalyticsUrl("/receipt/secret123?code=9"), "/receipt/[token]?code=[redacted]");
+test("only paging and view keys stay in a query; searches, codes, emails and fragments go", () => {
+  assert.equal(redactAnalyticsUrl("https://floortest.app/signup?team=abc123&x=1"), "https://floortest.app/signup");
+  assert.equal(redactAnalyticsUrl("/signup?invite=QWE&email=a@b.co&next=/dashboard"), "/signup");
+  assert.equal(redactAnalyticsUrl("/receipt/secret123?code=9"), "/receipt/[token]");
+  assert.equal(
+    redactAnalyticsUrl("https://floortest.app/dashboard/review?q=sam%40label.co&sender=Sam&genre=house&p=2&view=grid#cookie-settings"),
+    "https://floortest.app/dashboard/review?p=2&view=grid",
+  );
+  assert.equal(redactAnalyticsUrl("/dashboard/contacts?Q=x&ref=y&handle=z&to=w&tab=all&folder=3"), "/dashboard/contacts?tab=all&folder=3");
+  assert.equal(redactAnalyticsUrl("/admin/users?q=bob"), "/admin/users");
 });
 
-test("every URL-like property loses keys, including session entry, initial and $set_once, and the title is dropped", () => {
+test("every URL-like property loses keys and searches, including session entry, initial and top-level $set_once, and the title is dropped", () => {
   const event = redactEventUrls({
     event: "$pageview",
     properties: {
       $current_url: "https://floortest.app/receipt/secret123",
       $pathname: "/reset/abc",
       $referrer: "https://floortest.app/c/k9",
+      $prev_pageview_url: "https://floortest.app/dashboard/review?q=sam@label.co",
       $session_entry_url: "https://floortest.app/signup?team=t1",
       $session_entry_pathname: "/join/zz",
       $session_entry_referrer: "https://floortest.app/c/k9",
       title: "Sam Sender — FloorTest",
-      $set_once: { $initial_current_url: "https://floortest.app/signup?invite=i9", $initial_pathname: "/receipt/r1" },
       other: 1,
     },
+    $set: { $current_url: "https://floortest.app/dashboard/contacts?q=x" },
+    $set_once: { $initial_current_url: "https://floortest.app/signup?invite=i9", $initial_pathname: "/receipt/r1" },
   });
   const p = event.properties;
   assert.equal(p.$current_url, "https://floortest.app/receipt/[token]");
   assert.equal(p.$pathname, "/reset/[token]");
   assert.equal(p.$referrer, "https://floortest.app/c/[token]");
-  assert.equal(p.$session_entry_url, "https://floortest.app/signup?team=[redacted]");
+  assert.equal(p.$prev_pageview_url, "https://floortest.app/dashboard/review");
+  assert.equal(p.$session_entry_url, "https://floortest.app/signup");
   assert.equal(p.$session_entry_pathname, "/join/[token]");
   assert.equal(p.$session_entry_referrer, "https://floortest.app/c/[token]");
   assert.equal("title" in p, false);
-  assert.deepEqual(p.$set_once, { $initial_current_url: "https://floortest.app/signup?invite=[redacted]", $initial_pathname: "/receipt/[token]" });
   assert.equal(p.other, 1);
+  assert.deepEqual(event.$set, { $current_url: "https://floortest.app/dashboard/contacts" });
+  assert.deepEqual(event.$set_once, { $initial_current_url: "https://floortest.app/signup", $initial_pathname: "/receipt/[token]" });
 });
 
-test("after Not now or Cookie settings, PostHog storage goes from both storages and cookies, and nothing else", () => {
+test("replay frames lose searches and keys from the Meta href and from custom page events", () => {
+  const event = redactEventUrls({
+    event: "$snapshot",
+    properties: {
+      $snapshot_data: [
+        { type: 4, data: { href: "https://floortest.app/dashboard/review?q=sam@label.co", width: 1, height: 1 } },
+        { type: 5, data: { tag: "$url_changed", payload: { href: "https://floortest.app/receipt/tok?q=x" } } },
+        { type: 3, data: { source: 2 } },
+      ],
+    },
+  });
+  assert.deepEqual(event.properties.$snapshot_data, [
+    { type: 4, data: { href: "https://floortest.app/dashboard/review", width: 1, height: 1 } },
+    { type: 5, data: { tag: "$url_changed", payload: { href: "https://floortest.app/receipt/[token]" } } },
+    { type: 3, data: { source: 2 } },
+  ]);
+});
+
+test("after Not now or Cookie settings, PostHog storage goes from both storages and cookies; the opt-out record only while PostHog is live", () => {
   const store = (keys: string[]) => {
     const items = new Map(keys.map((k) => [k, "1"]));
     return { items, get length() { return items.size; }, key: (i: number) => [...items.keys()][i] ?? null, removeItem: (k: string) => void items.delete(k) };
@@ -65,8 +93,10 @@ test("after Not now or Cookie settings, PostHog storage goes from both storages 
   const session = store(["ph_phc_x_window_id", "ph_phc_x_primary_window_exists", "ph_replay_pending_buffer_1", "ft_tab"]);
   const written: string[] = [];
   const doc = { get cookie() { return "ph_phc_x_posthog=1; ft_consent=rejected"; }, set cookie(v: string) { written.push(v); } };
-  clearPosthogStorage([local, session], doc);
-  assert.deepEqual([...local.items.keys()], ["ft_view"]);
+  clearPosthogStorage([local, session], doc, true);
+  assert.deepEqual([...local.items.keys()], ["__ph_opt_in_out_phc_x", "ft_view"]);
   assert.deepEqual([...session.items.keys()], ["ft_tab"]);
   assert.deepEqual(written, ["ph_phc_x_posthog=; Max-Age=0; Path=/; SameSite=Lax"]);
+  clearPosthogStorage([local, session], doc);
+  assert.deepEqual([...local.items.keys()], ["ft_view"]);
 });

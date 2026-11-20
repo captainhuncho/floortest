@@ -1,6 +1,6 @@
 import { gunzipSync } from "node:zlib";
 import { expect, test, type Page } from "@playwright/test";
-import { POSTHOG_REQUESTS } from "./fixtures";
+import { FAKE_TURNSTILE, logIn, POSTHOG_REQUESTS } from "./fixtures";
 
 /**
  * PostHog loads only after Accept on the cookie banner (owner's rule): before a choice, after "Not now" and after
@@ -47,10 +47,35 @@ async function watch(page: Page) {
   return { sent, cspBlocks };
 }
 
+// What PostHog keeps in the browser, apart from its opt-out record (kept while PostHog is live on the page, so it stays
+// opted out; removed on the next page load).
 const phStorage = (page: Page) =>
   page.evaluate(() =>
-    [...Object.keys(localStorage), ...Object.keys(sessionStorage), ...document.cookie.split(";").map((c) => c.split("=")[0].trim())].filter((k) => /^(ph_|__ph)/.test(k)),
+    [...Object.keys(localStorage), ...Object.keys(sessionStorage), ...document.cookie.split(";").map((c) => c.split("=")[0].trim())].filter(
+      (k) => /^(ph_|__ph)/.test(k) && !k.startsWith("__ph_opt_in_out_"),
+    ),
   );
+
+const allText = (sent: { url: string; body: string }[]) => sent.map((s) => `${s.url}\n${s.body}`).join("\n");
+const replay = (sent: { url: string; body: string }[]) => sent.filter((s) => new URL(s.url).pathname.startsWith("/s/"));
+
+/** Signed in with Accept already chosen: the desk pages that may be recorded. */
+async function signedInAccepted(page: Page, baseURL: string | undefined) {
+  await page.context().addCookies([{ name: "ft_consent", value: "accepted", url: baseURL ?? "http://localhost:3000" }]);
+  await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js*", (route) => route.fulfill({ contentType: "text/javascript", body: FAKE_TURNSTILE }));
+  await page.goto("/api/health");
+  await page.bringToFront();
+  await logIn(page, "demo@floortest.test");
+}
+
+async function acceptThenOpenSettings(page: Page, sent: { url: string }[]) {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Accept" }).click();
+  await expect.poll(() => sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  await page.getByRole("link", { name: "Cookie settings" }).first().click();
+  await expect(page.getByRole("button", { name: "Not now" })).toBeVisible();
+  await page.waitForTimeout(500);
+}
 
 test("nothing before a choice, nothing after Not now", async ({ page }) => {
   const { sent } = await watch(page);
@@ -103,4 +128,59 @@ test("Cookie settings stops PostHog at once and clears what it kept", async ({ p
   await page.waitForTimeout(2500);
   expect(sent.length).toBe(before);
   expect(await phStorage(page)).toEqual([]);
+});
+
+test("Accept, then Not now: nothing leaves across the reload, beacons included", async ({ page }) => {
+  const { sent } = await watch(page);
+  await acceptThenOpenSettings(page, sent);
+  const before = sent.length;
+  await Promise.all([page.waitForEvent("load"), page.getByRole("button", { name: "Not now" }).click()]);
+  await page.waitForTimeout(2500);
+  expect(sent.length).toBe(before);
+  expect(await phStorage(page)).toEqual([]);
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("__ph")))).toEqual([]);
+});
+
+test("after the footer's Cookie settings, a click and a client navigation send nothing", async ({ page }) => {
+  const { sent } = await watch(page);
+  await acceptThenOpenSettings(page, sent);
+  const before = sent.length;
+  await page.getByRole("heading").first().click();
+  await page.evaluate(() => history.pushState({}, "", "/pricing?view=after"));
+  await page.waitForTimeout(2500);
+  expect(sent.length).toBe(before);
+});
+
+// Replay starts only when PostHog's server-side settings say so, and those are never fetched (advanced_disable_flags),
+// so no recording leaves the browser at all. If replay is turned on later, these tests must assert redacted frames instead.
+test("signed in, a search in the address never reaches events, and no replay is sent", async ({ page, baseURL }) => {
+  const { sent } = await watch(page);
+  await signedInAccepted(page, baseURL);
+  await page.goto(`/dashboard/review?q=${SECRET}&sender=${SECRET}&p=2`);
+  await page.evaluate((secret) => history.pushState({}, "", `/dashboard/review?q=${secret}2`), SECRET);
+  await expect.poll(() => allText(sent), { timeout: 20_000 }).toContain("/dashboard/review");
+  await page.waitForTimeout(3000);
+  const all = allText(sent);
+  expect(all).toContain("$pageview");
+  expect(all).toContain("p=2");
+  expect(all).not.toContain(SECRET);
+  expect(replay(sent)).toEqual([]);
+});
+
+test("moving from a recordable page to one that may not be recorded sends no replay", async ({ page, baseURL }) => {
+  const { sent } = await watch(page);
+  await signedInAccepted(page, baseURL);
+  await page.goto("/dashboard/floor");
+  await expect.poll(() => sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  const target = await page.evaluate(() =>
+    ["/dashboard/contacts", "/dashboard/settings", "/dashboard/account"].find((h) =>
+      [...document.querySelectorAll<HTMLAnchorElement>(`a[href="${h}"]`)].some((a) => a.offsetParent !== null),
+    ),
+  );
+  expect(target).toBeTruthy();
+  await page.locator(`a[href="${target}"]:visible`).first().click();
+  await page.waitForURL(`**${target}`);
+  await page.waitForTimeout(3000);
+  expect(allText(sent)).toContain(target!);
+  expect(replay(sent)).toEqual([]);
 });
