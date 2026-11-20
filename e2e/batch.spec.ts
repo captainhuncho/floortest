@@ -89,12 +89,14 @@ test("the owner adds a WAV on Projects, not from a callout page; strangers and o
   // A callout page has no Add tracks (owner, 16 Nov: Projects only); your own files are added on Projects.
   await page.goto("/dashboard/collections/2");
   await expect(page.getByRole("button", { name: "Add tracks" })).toHaveCount(0);
-  await page.goto("/dashboard/projects");
-  // Upload audio opens the file picker from a React handler, so a click before the page has hydrated does nothing (the
-  // 17 Nov #596 run timed out that way under load). Click until the picker really opens, then hand it the file once.
+  await page.goto("/dashboard/collections?tab=projects");
+  // + Add → Import opens the file picker from a React handler, so a click before the page has hydrated does nothing (the
+  // 17 Nov #596 run timed out that way under load). Try until the picker really opens, then hand it the file once.
   await expect(async () => {
     const chooser = page.waitForEvent("filechooser", { timeout: 3_000 });
-    await page.getByRole("button", { name: "Upload audio" }).click();
+    const add = page.getByRole("button", { name: "Add", exact: true });
+    if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+    await page.getByRole("menuitem", { name: /^Import/ }).click();
     await (await chooser).setFiles({ name: "Owner Promo.wav", mimeType: "audio/wav", buffer: wav(4) });
   }).toPass({ timeout: 30_000 });
   await page.getByLabel(/own these recordings/).check();

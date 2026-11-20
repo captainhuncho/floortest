@@ -19,11 +19,11 @@ test("a new desk has no collection, and its link is open", async ({ page }) => {
   await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
   await expect(page.getByText("Sends tracks to your Review Queue")).toBeVisible();
   await page.goto("/dashboard/collections");
-  // The first callout is made from "New folder" (owner, 17 Nov, option 43: one sheet, a callout or a project).
-  await page.getByRole("button", { name: "New folder", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "New folder" }).getByRole("radio", { name: /^Callout/ })).toBeVisible();
+  // The first callout is made from + Add (owner, 20 Nov, option 66: Callout or Folder on the Callouts tab).
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("menu", { name: "Add to Callouts" }).getByRole("menuitem", { name: /^Callout/ })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "New folder" })).toHaveCount(0);
+  await expect(page.getByRole("menu", { name: "Add to Callouts" })).toHaveCount(0);
   await expect(page.getByText("Receiving", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/sends tracks straight to your Review Queue/)).toBeVisible();
   // A link takes tracks only once its owner has confirmed their email (sign-up guard, #535): confirm it from the email.
