@@ -247,17 +247,19 @@ export function ListRows({
           const waiting = !decision;
           const ticked = picked.has(r.id);
           const sub = [r.artist, ...r.meta].join(" · ");
+          // The current row's number turns into pause (playing) or play (paused); other rows keep their number.
           const no = numbered && (
-            <span aria-hidden className="w-5 shrink-0 text-center text-[12px] text-mute tnum">
-              {i + 1}
+            <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[12px] text-mute tnum">
+              {isCurrent ? <PlayIcon playing={playing} className="size-3.5 text-lime" /> : i + 1}
             </span>
           );
-          // A folder's page (numbered): no play button, tapping the track plays it; pausing is the player's (owner, 19 Nov).
+          // A folder's page (numbered): no play button. Tapping a track plays it; tapping the current track pauses or
+          // resumes, like the review queue (owner, 20 Nov).
           const tapPlay = (e: React.MouseEvent) => {
             e.stopPropagation();
             setSelected(r.id);
-            if (!isCurrent) player.play(toPlayer(r), queue);
-            else if (!player.playing) player.toggle();
+            if (isCurrent) player.toggle();
+            else player.play(toPlayer(r), queue);
           };
           const play = !numbered && (
             <button
@@ -274,7 +276,7 @@ export function ListRows({
             </button>
           );
           // The button's label replaces what it holds for screen readers, so it carries the status too (Safety P3, 19 Nov).
-          const playLabel = `Play ${r.title}${waiting ? ", needs review" : ""}${r.duplicateOf ? ", possible duplicate" : ""}`;
+          const playLabel = `${playing ? "Pause" : "Play"} ${r.title}${waiting ? ", needs review" : ""}${r.duplicateOf ? ", possible duplicate" : ""}`;
           const name = (
             <>
               <span className={`truncate text-[13px] ${waiting ?"font-semibold text-bone" : "font-medium text-mute"}`}>
