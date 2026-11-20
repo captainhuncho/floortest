@@ -7,6 +7,7 @@ import { analyzeAudio } from "@/lib/analyze";
 import { fmtBytes } from "@/lib/format";
 import { MAX_RELEASE_TRACKS } from "@/lib/plans";
 import { readTags, type Tags } from "@/lib/tags";
+import { entriesOf, readDrop } from "@/lib/dropped-files";
 import { Turnstile } from "@/components/Turnstile";
 import { CANCELLED, MAX_BYTES, sendArtwork, uploadTrack } from "../../[handle]/useTrackUpload";
 import { TransferScreen } from "../../[handle]/TransferScreen";
@@ -26,24 +27,6 @@ type Item = {
 type Kind = "ep" | "album";
 
 const audio = (f: File) => /\.(wav|mp3)$/i.test(f.name);
-/** Files inside a dropped folder (or loose dropped files), read through the browser's entry API. */
-async function droppedFiles(dt: DataTransfer): Promise<File[]> {
-  const entries = [...dt.items].map((i) => i.webkitGetAsEntry?.()).filter((e): e is FileSystemEntry => !!e);
-  if (!entries.length) return [...dt.files];
-  const walk = async (e: FileSystemEntry): Promise<File[]> => {
-    if (e.isFile) return [await new Promise<File>((res, rej) => (e as FileSystemFileEntry).file(res, rej))];
-    const reader = (e as FileSystemDirectoryEntry).createReader();
-    const all: FileSystemEntry[] = [];
-    for (;;) {
-      const batch = await new Promise<FileSystemEntry[]>((res, rej) => reader.readEntries(res, rej));
-      if (!batch.length) break;
-      all.push(...batch);
-    }
-    return (await Promise.all(all.map(walk))).flat();
-  };
-  return (await Promise.all(entries.map(walk))).flat();
-}
-
 const releaseId = () => Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"[b % 64]).join("");
 
 /**
@@ -308,7 +291,8 @@ export function FolderSend({
           onDrop={async (e) => {
             e.preventDefault();
             setDrag(false);
-            choose(await droppedFiles(e.dataTransfer));
+            // Taken at once (the browser empties a drop after the event), then read; music-software projects are left out.
+            choose((await readDrop(entriesOf(e.dataTransfer))).audio);
           }}
           className={`flex flex-col items-center gap-2 rounded-[14px] border-[1.5px] border-dashed p-5 text-center transition-colors motion-reduce:transition-none ${drag ? "border-lime bg-lime/5" : "border-line-2 bg-well"}`}
         >
