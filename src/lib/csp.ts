@@ -8,6 +8,8 @@
  * attributes); frame-ancestors 'none' is the owner's no-clickjacking rule (23 Oct).
  */
 const TURNSTILE = "https://challenges.cloudflare.com";
+/** Product analytics (PostHog, EU), only after Accept on the banner; events only, no scripts from there. */
+const POSTHOG = "https://eu.i.posthog.com";
 
 /** Audio, covers and uploads go straight to the storage bucket via signed URLs. */
 function storageSources(endpoint = process.env.S3_ENDPOINT) {
@@ -34,7 +36,7 @@ export function contentSecurityPolicy({ nonce, dev = false, endpoint }: { nonce?
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${store}`,
     `media-src 'self' blob: ${store}`,
-    `connect-src 'self' ${store} ${TURNSTILE}`,
+    `connect-src 'self' ${store} ${TURNSTILE} ${POSTHOG}`,
     "font-src 'self' data:",
     "object-src 'none'",
     "base-uri 'self'",
