@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Kit";
 import { createCollection } from "../actions/collections";
-import { createFolder, fileProject } from "../actions/folders";
+import { createFolder, fileCallout, fileProject } from "../actions/folders";
 import { createProject } from "../actions/music";
 import { NameSheet } from "./Folders";
 import { addItems, type AddKind as Kind, type CollectionsTab as AddTab } from "./add-items";
@@ -14,7 +14,8 @@ import { addItems, type AddKind as Kind, type CollectionsTab as AddTab } from ".
  * lime pill floating bottom-right above the mini player, the menu and the safe area; its menu opens just above it with a
  * scrim behind, and the button reads "Close". From 768px: the same button in the tab header, aligned right; the menu
  * opens under it, with no scrim. Callouts offers Callout and Folder; Projects offers Import, Project and Folder. Each
- * item opens the name sheet it needs (a new project opens its page); Import opens the file picker (OwnerUpload).
+ * item opens the name sheet it needs (a new project opens its page); Import opens the file picker (OwnerUpload). Inside a
+ * folder there's no Folder item, and a new callout or project is filed into that folder.
  */
 /** The floating button sits this far above the phone's player-and-menu pair. */
 const GAP = 12;
@@ -155,7 +156,12 @@ export function AddMenu({ tab, folder, canEdit, canCreate = canEdit }: { tab: Ad
           }
           onClose={() => setSheet(null)}
           onSave={async (_name, fd) => {
-            await createCollection(fd);
+            const id = await createCollection(fd);
+            // Made inside a callouts folder: it lands in that folder (owner, 20 Nov: option 66 v147).
+            if (id && folder) {
+              const r = await fileCallout(id, folder);
+              if (!r.ok) return r.error;
+            }
             router.refresh();
             return null;
           }}

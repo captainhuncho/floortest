@@ -40,6 +40,10 @@ test("a callout folder: create from + Add, file a callout, rename, delete, and t
   await tile.getByRole("link", { name: "Open E2E crate, folder, 1 callout", exact: true }).click();
   await page.waitForURL(/\?folder=\d+/);
   await expect(calloutLink(page, name)).toBeVisible();
+  // Inside a callouts folder + Add stays with Callout only (no folders in folders; option 66 v147).
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("menu", { name: "Add to Callouts" }).getByRole("menuitem")).toHaveText([/^Callout/]);
+  await page.keyboard.press("Escape");
   await page.getByRole("link", { name: "All callouts" }).click();
   await page.waitForURL(/\/dashboard\/collections\?tab=callouts$/);
 

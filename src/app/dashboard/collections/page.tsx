@@ -98,7 +98,7 @@ export default async function Collections({ searchParams }: { searchParams: Prom
           <FolderList
             items={items}
             label={folder ? folder.name : "Callouts"}
-            empty={folder ? "Nothing in this folder yet. Move a callout here from its ··· menu." : canAdd ? "No callouts yet. Use + Add to make one." : "No callouts yet."}
+            empty={folder ? (canAdd ? "Nothing in this folder yet. Make a callout with + Add, or move one here from its ··· menu." : "Nothing in this folder yet. Move a callout here from its ··· menu.") : canAdd ? "No callouts yet. Use + Add to make one." : "No callouts yet."}
           />
           <p className="text-[12px] leading-snug text-mute">
             Your link <span className="break-all font-mono text-bone">{host}/{user.handle}</span>{" "}

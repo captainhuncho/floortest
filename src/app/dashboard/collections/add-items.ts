@@ -13,14 +13,15 @@ export function tabFrom(params: { tab?: string }): CollectionsTab {
 
 /**
  * What each tab's + Add offers. Callouts: Callout, Folder. Projects: Import, Project, Folder. No Record. Inside a folder
- * there's no Folder (no folders in folders) and no Callout (a new callout can't be filed into a folder yet). A ticked
- * Member may make callouts (canCreate) but not projects or folders (canEdit: owner and A&R / Admin).
+ * there's no Folder (no folders in folders); what you make lands in that folder, so a callout there needs both making
+ * (canCreate) and filing (canEdit). A ticked Member may make callouts (canCreate) but not projects or folders (canEdit:
+ * owner and A&R / Admin).
  */
 export function addItems({ tab, inFolder, canEdit, canCreate }: { tab: CollectionsTab; inFolder: boolean; canEdit: boolean; canCreate: boolean }): AddItem[] {
   const folder: AddItem = { kind: "folder", name: "Folder", line: tab === "callouts" ? "Groups callouts" : "Groups projects", icon: "folder" };
   if (tab === "callouts") {
     const callout: AddItem = { kind: "callout", name: "Callout", line: "A playlist people send tracks into", icon: "plus" };
-    return [...(canCreate && !inFolder ? [callout] : []), ...(canEdit && !inFolder ? [folder] : [])];
+    return [...(canCreate && (canEdit || !inFolder) ? [callout] : []), ...(canEdit && !inFolder ? [folder] : [])];
   }
   if (!canEdit) return [];
   return [

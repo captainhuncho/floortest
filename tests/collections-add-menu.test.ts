@@ -25,9 +25,11 @@ test("each item has one quiet line; Folder says what it groups", () => {
   assert.deepEqual(all.filter((i) => i.kind === "folder").map((i) => i.line), ["Groups callouts", "Groups projects"]);
 });
 
-test("inside a folder: no Folder (no folders in folders) and no Callout; Projects keeps + Add with Import and Project", () => {
+test("inside a folder: no Folder (no folders in folders); Import and Project in a projects folder, Callout in a callouts folder", () => {
   assert.deepEqual(names({ tab: "projects", inFolder: true, canEdit: true, canCreate: true }), ["Import", "Project"]);
-  assert.deepEqual(names({ tab: "callouts", inFolder: true, canEdit: true, canCreate: true }), []);
+  assert.deepEqual(names({ tab: "callouts", inFolder: true, canEdit: true, canCreate: true }), ["Callout"]);
+  // Filing into a folder is an owner or A&R / Admin power, so a ticked Member gets no Callout inside one.
+  assert.deepEqual(names({ tab: "callouts", inFolder: true, canEdit: false, canCreate: true }), []);
 });
 
 test("a ticked Member gets Callout only; an unticked Member gets nothing", () => {
