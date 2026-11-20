@@ -32,7 +32,7 @@ shipped it on "ship it #699" typed in the Desk (lane:auto).
 ## Live versus unfinished
 Live: as in the #684 report, plus this goal. Next for the iPhone app (BUILD, each a small PR): hide the web checkout
 in the app, check the lock screen, safe areas; then RevenueCat purchase with Restore Purchases, push, and the listing
-and privacy fixes. Approved packages, not yet added: `@capacitor/push-notifications` 8.1.3 and
+and privacy fixes. Packages the owner said yes to on 20 Nov (relayed to the Desk from BUILD and the hub), not yet added: `@capacitor/push-notifications` 8.1.3 and
 `@revenuecat/purchases-capacitor` 14.1.2 (`mobile/` only). Parked: the desktop app plan (#700, draft). On `mobile-next`
 for the owner's try: the clearer player buttons (#687), the compact review card (#681), review card option 1 (#691).
 e2e in progress: Collections step 1 (#693).
