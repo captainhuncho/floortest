@@ -62,7 +62,7 @@ export function MusicList({ tracks, canEdit, folders, here, empty, numbered = fa
 
   return (
     <>
-      {/* Rows (owner, 19 Nov: option 63 A): the whole row plays (pauses when it's the one playing), then length and ···. */}
+      {/* Rows (owner, 19 Nov: option 63 A): the whole row plays, or pauses and resumes the current track; then length and ···. */}
       <ul className="flex flex-col" aria-label="Tracks">
         {shown.map((t, i) => {
           const on = current?.id === -t.id;
@@ -74,6 +74,7 @@ export function MusicList({ tracks, canEdit, folders, here, empty, numbered = fa
                 </div>
               ) : (
                 <div className="flex min-h-[60px] items-center gap-2 py-1.5">
+                  {/* No play button: tapping a track plays it; tapping the current track pauses or resumes, like the review queue (owner, 20 Nov). */}
                   <button
                     type="button"
                     onClick={() => (on ? toggle() : play(toPlayer(t), queue))}
@@ -82,11 +83,11 @@ export function MusicList({ tracks, canEdit, folders, here, empty, numbered = fa
                   >
                     {numbered ? (
                       <span aria-hidden className="grid w-6 shrink-0 place-items-center text-[13px] text-mute tnum">
-                        {on ? <PlayIcon playing={playing} /> : i + 1}
+                        {on ? <PlayIcon playing={playing} className="size-3.5 text-lime" /> : i + 1}
                       </span>
                     ) : (
                       <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-line bg-well text-mute">
-                        {on ? <PlayIcon playing={playing} /> : <Icon name="music" className="size-4" />}
+                        {on ? <PlayIcon playing={playing} className="size-3.5 text-lime" /> : <Icon name="music" className="size-4" />}
                       </span>
                     )}
                     <span className="min-w-0 flex-1">
