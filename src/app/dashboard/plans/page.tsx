@@ -10,15 +10,18 @@ import { BillingSwitch } from "./BillingSwitch";
 import { PlanCards } from "./PlanCards";
 import { PlanCompare } from "./PlanCompare";
 import { PlansIntro } from "./PlansIntro";
+import { PlanPick } from "./PlanPick";
+import { firstPick, pickRows } from "./pick-rows";
 import { bestSaving, hasYearly } from "./plan-lines";
 import { pendingRequest } from "@/lib/plan-requests";
-import { CARD, Icon, SectionHead } from "@/components/Kit";
+import { CARD, Icon } from "@/components/Kit";
 
 export const metadata = { title: "Plans — FloorTest" };
 
 /**
- * A centred intro with the Monthly / Yearly switch (only when plans have yearly prices), usage, the plans side by side
- * on desktop (stacked on phones), then a table comparing every plan. During the beta bigger plans are given on
+ * A centred intro with the Monthly / Yearly switch (only when plans have yearly prices), usage in one card, then the
+ * plans: on phones a pick list with one button for the picked plan, on wider screens the cards side by side. Then
+ * "Compare every plan" (the table, opened on tap) and the renewal notes. During the beta bigger plans are given on
  * request (switch `plan_requests`) or set by FloorTest; once the billing switch is on, upgrades go through checkout.
  */
 export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; period?: string; requested?: string }> }) {
@@ -39,12 +42,24 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   // The Yearly view only exists when plans have yearly prices; a plan without one says so rather than guessing.
   const yearly = sp.period === "year" && hasYearly(plans);
   const save = bestSaving(plans);
+  const requests = await switchOn("plan_requests", user);
+  const rows = pickRows(plans, {
+    billing,
+    requests,
+    userPlan: user.plan,
+    currentPrice: current.price,
+    capUsed: cap.used,
+    capBonus: cap.bonus,
+    pendingPlan: pending?.plan ?? null,
+    live,
+    yearly: hasYearly(plans),
+  });
 
   return (
     <div id="plans-root" data-period={yearly ? "year" : "month"} className="page-gutter py-4 text-bone sm:py-7">
-      <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-5 sm:gap-7">
+      <div className="mx-auto flex w-full min-w-0 max-w-[1040px] flex-col gap-5 sm:gap-7">
       <Link href="/dashboard/settings" className="tap-text -my-2 w-fit text-[11.5px] font-medium text-faint hover:text-bone">
-        ← Settings
+        ‹ Settings
       </Link>
       <PlansIntro billing={billing} title="Choose your plan" sub="Same desk. Pick the room you need.">
         {hasYearly(plans) && (
@@ -77,23 +92,46 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </div>
       )}
 
-      <section aria-labelledby="usage-h" className={`${CARD} mx-auto flex w-full max-w-3xl flex-col gap-2.5 p-3 sm:p-4`}>
-        <SectionHead id="usage-h" icon="card" title={`${current.name} plan · ${cap.used} of ${cap.limit.toLocaleString("en")} tracks`} aside={<span className="tnum">{pct}% used</span>} />
+      <section aria-labelledby="usage-h" className={`${CARD} flex w-full flex-col gap-2.5 p-4`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="usage-h" className="text-[14px] font-semibold text-bone">
+            {current.name} plan · {cap.used} of {cap.limit.toLocaleString("en")} tracks
+          </h2>
+          <span className="shrink-0 text-[12.5px] text-mute tnum">{pct}% used</span>
+        </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-line-2" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Tracks used">
           <div className="h-full rounded-full bg-lime" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-[11.5px] leading-[1.5] text-faint">
+        <p className="text-[12px] leading-[1.5] text-faint">
           Active tracks: everything on your desk. Undecided tracks leave after {RETAIN_UNREVIEWED_DAYS} days, Not for me after{" "}
           {RETAIN_PASSED_DAYS}, kept tracks when you delete them. Deleting frees the slot at once.
           {cap.bonus > 0 && ` Includes ${cap.bonus} extra slots from referrals.`}
         </p>
       </section>
 
-      <PlanCards note={false} requests={await switchOn("plan_requests", user)} teams={live.teams} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
+      <div className="md:hidden">
+        <PlanPick
+          rows={rows}
+          initial={firstPick(plans, user.plan, current.price)}
+          note={!billing && requests ? "Free for the rest of the beta. We look at requests within two working days." : undefined}
+        />
+      </div>
+      <div className="hidden flex-col gap-5 md:flex">
+        <PlanCards quiet note={false} requests={requests} teams={live.teams} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
+      </div>
 
-      <PlanCompare plans={plans} billing={billing} prices live={live} userPlan={user.plan} note={billing ? undefined : "Prices apply after the beta."} />
+      {/* The full table stays one tap away; closed by default so the plans themselves come first. */}
+      <details className="group">
+        <summary className="tap-text mx-auto flex min-h-11 w-fit cursor-pointer list-none items-center gap-1.5 text-[13.5px] font-medium text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
+          Compare every plan
+          <Icon name="down" className="size-4 text-mute transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+        </summary>
+        <div className="mt-3">
+          <PlanCompare plans={plans} billing={billing} prices live={live} userPlan={user.plan} note={billing ? undefined : "Prices apply after the beta."} />
+        </div>
+      </details>
 
-      <section aria-labelledby="renewal-h" className={`${CARD} mx-auto flex w-full max-w-3xl flex-col gap-1.5 p-3 text-[11.5px] leading-[1.5] text-faint sm:p-4`}>
+      <section aria-labelledby="renewal-h" className={`${CARD} flex w-full flex-col gap-1.5 p-4 text-[12px] leading-[1.5] text-faint sm:p-4`}>
         <h2 id="renewal-h" className="text-[12.5px] font-semibold text-bone">
           Renewal and billing
         </h2>

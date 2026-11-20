@@ -10,6 +10,10 @@ import { CARD, PageHead } from "@/components/Kit";
 
 export const metadata = { title: "Request a plan — FloorTest" };
 
+/** A tap-to-pick chip: a real radio (keyboard, VoiceOver, form value) styled as a 40px+ pill; the picked one has the stronger edge. */
+const CHIP =
+  "inline-flex min-h-11 cursor-pointer items-center rounded-full border border-line bg-well px-4 text-[14px] text-bone has-[:checked]:border-bone/70 has-[:checked]:bg-ink-4 has-[:checked]:font-semibold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lime";
+
 const ERRORS: Record<string, string> = {
   kind: "Tell us what you are.",
   link: "That link doesn't look right. Start it with https://",
@@ -32,7 +36,7 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
     <div className="page-gutter py-4 text-bone sm:py-7">
       <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-4 sm:gap-5">
       <Link href="/dashboard/plans" className="tap-text -my-2 w-fit text-[11.5px] font-medium text-faint hover:text-bone">
-        ← Plans
+        ‹ Plans
       </Link>
       <header className="flex flex-col gap-2">
         <PageHead label="Free for the rest of the beta" title={`Request ${plan.name}`} />
@@ -60,10 +64,10 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
         <input type="hidden" name="plan" value={plan.id} />
         <fieldset className="space-y-2">
           <legend className="label mb-1">What are you?</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="flex flex-wrap gap-2">
             {Object.entries(REQUEST_KINDS).map(([k, label]) => (
-              <label key={k} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[11px] border border-line bg-well px-3 py-2 text-[13px] has-[:checked]:border-lime/60 has-[:checked]:bg-lime/10">
-                <input type="radio" name="kind" value={k} required defaultChecked={k === guess} className="size-4 accent-lime" />
+              <label key={k} className={CHIP}>
+                <input type="radio" name="kind" value={k} required defaultChecked={k === guess} className="sr-only" />
                 {label}
               </label>
             ))}
@@ -78,24 +82,27 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
           <input name="link" type="url" maxLength={LINK_FIELD_CHARS} placeholder="https://" className="input" />
           <span className="block text-[11.5px] text-faint">Website, label page, Beatport, Spotify or Instagram</span>
         </label>
-        <label className="block space-y-1.5">
-          <span className="label">Tracks you receive</span>
-          <select name="volume" defaultValue="" className="input">
-            <option value="">Not sure</option>
+        <fieldset className="space-y-2">
+          <legend className="label mb-1">Tracks you receive</legend>
+          <div className="flex flex-wrap gap-2">
             {VOLUMES.map((v) => (
-              <option key={v}>{v}</option>
+              <label key={v} className={CHIP}>
+                <input type="radio" name="volume" value={v} className="sr-only" />
+                {v}
+              </label>
             ))}
-          </select>
-        </label>
+            <label className={CHIP}>
+              <input type="radio" name="volume" value="" defaultChecked className="sr-only" />
+              Not sure
+            </label>
+          </div>
+        </fieldset>
         <label className="block space-y-1.5">
           <span className="label">Anything else? (optional)</span>
           <textarea name="note" rows={3} maxLength={1000} className="input" />
         </label>
-        <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/dashboard/plans" className="tap-text justify-center text-[13px] text-mute hover:text-bone">
-            Cancel
-          </Link>
-          <button className="btn-lime min-h-11 w-full rounded-[13px] sm:w-auto">Send request</button>
+        <div className="border-t border-line pt-4">
+          <button className="btn-lime min-h-12 w-full rounded-[14px] sm:w-auto sm:px-8">Send request</button>
         </div>
       </form>
       </div>
