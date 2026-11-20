@@ -98,8 +98,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <NoticeStrip id={siteNotice.id} title={siteNotice.title} detail={siteNotice.detail} href={siteNotice.href} when={noticeWindow(siteNotice, (me ?? user).tz)} />
             )}
             {view && (
-              // data-recording-off: PostHog never records an admin view (src/lib/product-analytics.ts).
-              <div role="alert" data-recording-off="" className="flex flex-wrap items-center justify-between gap-2 border-b border-danger/50 bg-danger/15 px-4 py-2.5 text-sm sm:px-6">
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-2 border-b border-danger/50 bg-danger/15 px-4 py-2.5 text-sm sm:px-6">
                 <span>
                   <span className="font-semibold text-danger">Admin view</span> · You&apos;re seeing @{view.handle}&apos;s desk. Read-only: changes are blocked.
                 </span>
