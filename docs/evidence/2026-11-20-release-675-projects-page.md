@@ -37,5 +37,5 @@ after #680; the owner sent it again once the merged head was cleared.
 Live: Floor (#596), Analytics (#599), Prepare (#606), the sign-in screens (#617), Collections covers (#621), Settings
 (#609), the Projects rights change (#581), change cover (#669), the receipt limit (#683), the code email (#688), tap to
 play with pause (#680) and the Projects page. On `mobile-next` for the owner's try: folder drag and drop (#686, being
-merged with `main`), the compact review card (#681), the volume reveal (#684), the clearer player buttons (#687). In
-review: review card option 1 (#691, e2e 12/12, waiting for Safety). Being built: Collections step 1 (option 66).
+merged with `main`), the compact review card (#681), the volume reveal (#684), the clearer player buttons (#687). Ready
+for the owner's try: review card option 1 (#691, e2e 12/12, Safety cleared at `3b429cb9`; merges after #681). Being built: Collections step 1 (option 66).
