@@ -18,7 +18,7 @@ test("a callout folder: create from New folder, file a callout, rename, delete, 
   const create = page.getByRole("dialog", { name: "New folder" });
   await expect(create.getByRole("radio", { name: /^Callout/ })).toBeVisible();
   await create.getByLabel("Name").fill("E2E crate");
-  await create.getByRole("radio", { name: /^Group of callouts/ }).check();
+  await create.getByRole("radio", { name: /^Folder\s*Holds callouts/ }).check();
   await create.getByRole("button", { name: "Create folder" }).click();
   const tile = page.locator("[data-card]").filter({ hasText: "E2E crate" });
   await expect(tile.getByText("0 callouts")).toBeVisible();
@@ -75,7 +75,7 @@ test("Projects offers Upload audio, and New folder makes a project or a group of
   await expect(page.getByRole("button", { name: "Upload audio" }).first()).toBeVisible();
   await page.getByRole("button", { name: "New folder", exact: true }).click();
   const create = page.getByRole("dialog", { name: "New folder" });
-  for (const item of [/^Project/, /^Group of projects/]) await expect(create.getByRole("radio", { name: item })).toBeVisible();
+  for (const item of [/^Project/, /^Folder\s*Holds projects/]) await expect(create.getByRole("radio", { name: item })).toBeVisible();
   // A callout isn't made from Projects.
   await expect(create.getByRole("radio", { name: /^Callout/ })).toHaveCount(0);
   await create.getByLabel("Name").fill("E2E project");
