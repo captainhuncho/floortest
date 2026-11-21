@@ -135,7 +135,7 @@ export function KeptCardsList({ rows, status, senders, canMark }: { rows: Row[];
         {open && menu?.view === "menu" && <TrackMenu row={open} status={status[open.id]} playedOut={playedOut(open.id)} canMark={canMark} canReply={open.id in senders} pending={pending} onMark={() => mark(open)} onView={(view) => setMenu({ id: open.id, view })} onClose={close} />}
         {open && menu?.view === "details" && <Details row={open} status={status[open.id]} playedOut={playedOut(open.id)} />}
         {open && menu?.view === "reply" && (
-          <form
+          <form method="post"
             ref={form}
             // A plain submit, not a form action: React clears a form after its action, and a refused reply keeps its text.
             onSubmit={(e) => {

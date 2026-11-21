@@ -26,7 +26,7 @@ export function EmailForm({ email, pending, twoFactor }: { email: string; pendin
           </form>
         </div>
       )}
-      <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2 sm:items-start">
+      <form method="post" onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2 sm:items-start">
         <label className="flex flex-col gap-1.5">
           <span className={FIELD}>New email</span>
           <input name="email" type="email" required className="input" autoComplete="email" />

@@ -30,7 +30,7 @@ function FeedbackForm({ ask = false, onClose, className = "" }: { ask?: boolean;
   };
 
   return (
-    <form
+    <form method="post"
       data-feedback-panel
       aria-label={title}
       className={`space-y-3 rounded-[18px] border border-line bg-card p-3 text-bone shadow-pop ${className}`}

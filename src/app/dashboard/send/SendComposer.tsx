@@ -163,7 +163,7 @@ export function SendComposer({ host, account, initial, before, latest, total }: 
               <p className="text-[13px] leading-5 text-mute">Send a track to anyone with a FloorTest link. You get a receipt for each one.</p>
             </header>
 
-            <form onSubmit={go} noValidate className="flex flex-col gap-1.5">
+            <form method="post" onSubmit={go} noValidate className="flex flex-col gap-1.5">
               <label htmlFor="send-to" className="px-1 text-[13px] font-semibold text-bone">
                 Who&apos;s it for?
               </label>

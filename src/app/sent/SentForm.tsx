@@ -64,7 +64,7 @@ export function SentForm({ botCheckKey }: { botCheckKey: string | null }) {
       <p className="mt-2 text-[13px] leading-5 text-mute">
         We&apos;ll email you a private link to every track you&apos;ve sent and what happened to it. No account or password.
       </p>
-      <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-3">
+      <form method="post" onSubmit={onSubmit} className="mt-5 flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
           <span className="text-[12px] font-semibold text-mute">Your email</span>
           <input name="email" type="email" required autoComplete="email" className="input min-h-[46px] w-full rounded-xl text-[16px]!" placeholder="The one you send music from" />

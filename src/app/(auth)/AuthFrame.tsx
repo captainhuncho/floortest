@@ -122,7 +122,7 @@ export function AuthFrame({
           <span className="aw-have">{top}</span>
         </div>
       )}
-      <div className="af-panel">{form ? <form className="af-flow" {...form}>{inner}</form> : <div className="af-flow">{inner}</div>}</div>
+      <div className="af-panel">{form ? <form method="post" className="af-flow" {...form}>{inner}</form> : <div className="af-flow">{inner}</div>}</div>
       <div className="af-view">{aside ?? <CrestMoment />}</div>
     </div>
   );

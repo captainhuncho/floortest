@@ -123,7 +123,7 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
         </Notice>
       )}
       {adding && (
-        <form
+        <form method="post"
           className={`${WELL} flex flex-col gap-3 p-3.5 sm:p-4`}
           onSubmit={(e) => {
             e.preventDefault();

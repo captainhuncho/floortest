@@ -488,7 +488,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
           Open full review →
         </Link>
       </div>
-      <form
+      <form method="post"
         ref={form}
         // A plain submit, not a form action: React clears a form after its action, and a refused reply keeps its text.
         onSubmit={(e) => {

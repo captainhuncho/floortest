@@ -170,7 +170,7 @@ function SignOut({ open, confirming, everywhere, twoFactor, onEverywhere, onClos
       }
     >
       {confirming ? (
-        <form
+        <form method="post"
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
@@ -246,7 +246,7 @@ function DeleteForGood({ open, twoFactor, onClose }: { open: boolean; twoFactor:
       busy={pending}
       title="Are you sure?"
     >
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <form method="post" onSubmit={onSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
           <span className={FIELD}>Type {DELETE_PHRASE} to confirm</span>
           {/* The phrase shows inside the box as a grey hint, never filled in for them (owner, 18 Nov). */}

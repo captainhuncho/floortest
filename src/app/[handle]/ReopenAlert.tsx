@@ -14,7 +14,7 @@ export function ReopenAlert({ handle, receiverName, botCheckKey }: { handle: str
       </p>
     );
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-2.5" aria-label="Email me when it reopens">
+    <form method="post" onSubmit={onSubmit} className="flex flex-col gap-2.5" aria-label="Email me when it reopens">
       <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
       <input type="hidden" name="handle" value={handle} />
       <label htmlFor="reopen-email" className="text-[12px] text-mute">

@@ -516,7 +516,7 @@ export function DeleteCollection({ c, canDelete }: { c: { id: number; name: stri
         )}
       </div>
       {canDelete && open && (
-        <form
+        <form method="post"
           className="mt-4 space-y-3"
           onSubmit={(e) => {
             e.preventDefault();

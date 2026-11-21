@@ -80,7 +80,7 @@ export function ProofForm({
   }
 
   return (
-    <form onSubmit={submit} aria-busy={!!busy} className="mt-2 space-y-3 aria-busy:opacity-70">
+    <form method="post" onSubmit={submit} aria-busy={!!busy} className="mt-2 space-y-3 aria-busy:opacity-70">
       <label className="block space-y-1.5" htmlFor={`${id}-reason`}>
         <span className="label">Reason</span>
         <textarea

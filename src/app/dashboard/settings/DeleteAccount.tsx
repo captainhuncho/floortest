@@ -28,7 +28,7 @@ export function DeleteAccount({ twoFactor, sub = "Want a copy first? Ask for you
         onClose={() => setTyped("")}
         className="dialog-box m-auto w-[min(92vw,28rem)] rounded-[18px] border-danger/40 p-5 backdrop:bg-black/70 sm:p-6"
       >
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <form method="post" onSubmit={onSubmit} className="flex flex-col gap-4">
           <div>
             <h2 id="delete-title" className="text-[17px] font-semibold tracking-[-0.015em] text-danger">
               Delete your account?

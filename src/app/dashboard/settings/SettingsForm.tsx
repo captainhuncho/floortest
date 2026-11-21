@@ -25,7 +25,7 @@ export function SettingsForm({ name, firstName, lastName, handle, base, nextChan
   const [picked, setPicked] = useState<Partial<Record<Tool, boolean>>>(() => readTools(tools));
   const isOn = (t: Tool) => picked[t] ?? toolDefault(type, t);
   return (
-    <form onSubmit={guarded} className="flex flex-col gap-5">
+    <form method="post" onSubmit={guarded} className="flex flex-col gap-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className={FIELD}>First name</span>

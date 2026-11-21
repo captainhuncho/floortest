@@ -24,7 +24,7 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
 
   return (
     <div className="flex flex-col gap-6">
-      <form
+      <form method="post"
         onSubmit={(e) => {
           onSubmit(e);
         }}
