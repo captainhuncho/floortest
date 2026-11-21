@@ -10,7 +10,7 @@ then "ship it #726".
 | Head | `4127d435` |
 | Merge commit | `4c1f15fa` |
 | Production deploy | `dpl_W2gnq3sPQNkdLgetAaC6uaC83ULZ`, ready |
-| Rollback target | `dpl_HC5qEzcmM3RihA1LwgUyQEXhhJuz` (`5e16302c`, #724) |
+| Rollback target | `dpl_4232niUAPFhwdAWYyf4bYyynasxN` (`4ab93e2b`, #725 report), the last live deploy; same code as `dpl_HC5qEzcmM3RihA1LwgUyQEXhhJuz` (`5e16302c`, #724) |
 
 ## Checks
 | Check | Commit | Result |
@@ -23,7 +23,7 @@ then "ship it #726".
 | Health `/api/health`, `/`, `/login`, `/signup` | production | 200, 200, 200, 200 |
 
 ## Other releases since the last code report
-- #725, report for #724: merge `4ab93e2b`.
+- #725, report for #724: merge `4ab93e2b`, deploy `dpl_4232niUAPFhwdAWYyf4bYyynasxN`.
 
 ## After the merge
 `main` merged into `mobile-next` as `532c9127`, no conflicts; preview `dpl_J56ZdF2KzhMZ7QE5j69sWdoL5h6L`, and the test
