@@ -164,7 +164,7 @@ export function AccountsTable({ rows, canAct }: { rows: AccountRow[]; canAct: bo
       </div>
       {canAct && (
         <BulkBar count={n} onClear={sel.clear}>
-          <form
+          <form method="post"
             className="flex items-center gap-2"
             onSubmit={(e) => {
               // Enter in the tag field presses Add tag.

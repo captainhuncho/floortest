@@ -588,7 +588,7 @@ export function SubmitForm({
         {busy ? uploadMilestone(items) : ""}
       </p>
       {/* One column, in the order a sender answers (option 48): the track, who's sending, about it, extras, Terms, Send. */}
-      <form onSubmit={submit} noValidate data-picked className={waiting || transferring ? "hidden" : "flex flex-col gap-3.5"} onChange={() => (touched.current = true)} onClick={() => (touched.current = true)} {...dropProps}>
+      <form method="post" onSubmit={submit} noValidate data-picked className={waiting || transferring ? "hidden" : "flex flex-col gap-3.5"} onChange={() => (touched.current = true)} onClick={() => (touched.current = true)} {...dropProps}>
         {fileInput}
         <section aria-label={many ? `The tracks (${items.length})` : "The track"} className={`${box} gap-2.5`}>
           <ol className="flex flex-col gap-3.5">{items.map(row)}</ol>

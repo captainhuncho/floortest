@@ -107,7 +107,7 @@ export function Composer({
   const area = useRef<HTMLTextAreaElement>(null);
 
   return (
-    <form
+    <form method="post"
       ref={ref}
       // A plain submit, not a form action: React clears a form after its action, and a refused reply must keep its text.
       onSubmit={(e) => {

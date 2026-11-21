@@ -38,7 +38,7 @@ export function PublicPageForm({ roleLine, links, verified = false }: { roleLine
     return sameProfiles(links, next as ProfileLink[]) ? null : "profiles";
   }, onSubmit);
   return (
-    <form onSubmit={guarded} className="flex flex-col gap-5">
+    <form method="post" onSubmit={guarded} className="flex flex-col gap-5">
       <label className="flex flex-col gap-1.5">
         <span className={FIELD}>Role line</span>
         <input name="role_line" defaultValue={roleLine} maxLength={60} className="input" placeholder="DJ / Performer" />

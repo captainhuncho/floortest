@@ -16,7 +16,7 @@ export function NewsletterForm({ botCheckKey }: { botCheckKey: string | null }) 
       </p>
     );
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form method="post" onSubmit={onSubmit} className="space-y-3">
       <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
       <div className="flex gap-2">
         <input name="email" type="email" required maxLength={200} placeholder="Your email" aria-label="Email for the newsletter" className="input min-w-0 flex-1" />

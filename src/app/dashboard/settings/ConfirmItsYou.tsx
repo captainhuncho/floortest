@@ -27,7 +27,7 @@ export function ConfirmItsYou({
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   return (
-    <form
+    <form method="post"
       className={`${WELL} flex flex-col gap-3 p-3.5 sm:p-4 ${className}`}
       onSubmit={(e) => {
         e.preventDefault();

@@ -262,7 +262,7 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
                       <span className="text-faint"> · {q.email} · via this link · {fmtDate(q.created_at)}</span>
                     </p>
                     {q.note && <p className="mt-1 text-mute">&ldquo;{q.note}&rdquo;</p>}
-                    <form className="mt-2 flex flex-wrap items-center gap-2">
+                    <form method="post" className="mt-2 flex flex-wrap items-center gap-2">
                       <select name="permission" defaultValue="listen" aria-label="What they get" className="input w-auto text-[12px]">
                         <option value="listen">Listen</option>
                         {link.permission === "download" && <option value="download">Listen + Download</option>}

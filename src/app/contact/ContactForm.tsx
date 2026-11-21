@@ -18,7 +18,7 @@ export function ContactForm({ name, email, topic, message, botCheckKey }: { name
       </div>
     );
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form method="post" onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block space-y-1.5">
           <span className="label">Name</span>

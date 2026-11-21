@@ -40,7 +40,7 @@ export function WaitlistPanel({ host, botCheckKey, onBack }: { host: string; bot
           Done
         </button>
       ) : (
-        <form onSubmit={onSubmit} className="cs-form cs-wl-form">
+        <form method="post" onSubmit={onSubmit} className="cs-form cs-wl-form">
           <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
           <label className="block">
             <span className="cs-lab">Email</span>

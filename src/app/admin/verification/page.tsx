@@ -162,7 +162,7 @@ export default async function Verification({ searchParams }: { searchParams: Pro
         <p className="mt-1 text-[13.5px] text-mute">
           For people you already know are real (a known label, a DJ you&apos;ve checked): find their account, then use {powers.direct ? "Verify profile" : "Propose verification"} on it, with your reason and proof. No request or bio code needed.
         </p>
-        <form role="search" className="mt-4 flex flex-wrap gap-2">
+        <form method="get" role="search" className="mt-4 flex flex-wrap gap-2">
           <label className="min-w-0 flex-1 basis-56" htmlFor="direct-find">
             <span className="sr-only">Handle or email</span>
             <input id="direct-find" name="find" type="search" defaultValue={find} minLength={2} maxLength={100} className="input min-h-11 w-full" placeholder="@handle or email" autoComplete="off" />

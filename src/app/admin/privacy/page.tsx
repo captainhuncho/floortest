@@ -46,7 +46,7 @@ export default async function Privacy({ searchParams }: { searchParams: Promise<
         {requests.length > 0 && <p className="text-xs text-mute">Mark them handled in the <Link href="/admin/inbox" className="underline">Inbox</Link> once done.</p>}
       </section>
 
-      <form className="flex gap-2">
+      <form method="get" className="flex gap-2">
         <input name="email" type="email" defaultValue={email} required className="input w-80" placeholder="person@example.com" aria-label="Email" />
         <button className="btn-ghost btn-sm">Look up</button>
       </form>

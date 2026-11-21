@@ -21,7 +21,7 @@ export function SignInDialog() {
         aria-labelledby="signin-title"
         className="m-auto w-[min(92vw,24rem)] rounded-2xl border border-line-2 bg-ink-2 p-6 text-bone backdrop:bg-black/80"
       >
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form method="post" onSubmit={onSubmit} className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 id="signin-title" className="text-lg font-semibold">
               Sign in

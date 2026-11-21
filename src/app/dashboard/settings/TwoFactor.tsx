@@ -156,7 +156,7 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
         )}
 
         {on && confirmOff && (
-          <form onSubmit={submitOff} className={`${WELL} grid gap-3 p-3.5 sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:p-4`}>
+          <form method="post" onSubmit={submitOff} className={`${WELL} grid gap-3 p-3.5 sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:p-4`}>
             <label className="flex flex-col gap-1.5">
               <span className={FIELD}>Password</span>
               <input className="input" type="password" name="password" required autoComplete="current-password" />

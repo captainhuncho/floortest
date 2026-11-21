@@ -60,7 +60,7 @@ function NameForm({ initial = "", label, bare = false, onSave, onCancel }: { ini
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   return (
-    <form
+    <form method="post"
       className={`flex w-full flex-wrap items-end gap-3 ${bare ? "" : `${CARD} p-3`}`}
       onSubmit={(e) => {
         e.preventDefault();
