@@ -47,10 +47,20 @@ function Sheet({ title, onClose, children, role = "menu" }: { title: string; onC
 
 const ROWS = "flex flex-col divide-y divide-line [&>*]:flex [&>*]:min-h-11 [&>*]:w-full [&>*]:items-center [&>*]:gap-2.5 [&>*]:px-4 [&>*]:py-3 [&>*]:text-left [&>*]:hover:bg-well";
 
+/** Arrow keys, Home and End move between a menu's items (as + Add's menu does). */
+function onMenuKey(e: React.KeyboardEvent<HTMLElement>) {
+  const all = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=menuitem]")];
+  const at = all.indexOf(document.activeElement as HTMLButtonElement);
+  const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: all.length - 1 }[e.key];
+  if (to === undefined) return;
+  e.preventDefault();
+  all[(to + all.length) % all.length]?.focus();
+}
+
 function MenuSheet({ title, items, onClose }: { title: string; items: Item[]; onClose: () => void }) {
   return (
     <Sheet title={title} onClose={onClose}>
-      <div className={ROWS}>
+      <div className={ROWS} onKeyDown={onMenuKey}>
         {items.map((it) => (
           <button key={it.label} role="menuitem" onClick={() => (onClose(), it.run())}>
             <Icon name={it.icon} className="size-4 text-mute" />
@@ -154,7 +164,10 @@ export function FolderTile({ kind, f, canEdit, tile = false }: { kind: FolderKin
   const [pending, start] = useTransition();
   const cover = useCoverChoice("folder", f.id, f.name);
   // A delete that doesn't go through keeps the dialog open and says why (20 Nov: a refused or lost call closed it silently).
+  // While it runs the buttons are aria-disabled, not disabled, so keyboard focus stays on them (a disabled button drops
+  // focus to the page, and it never came back after a refusal).
   const remove = () =>
+    !pending &&
     start(async () => {
       setDeleteError("");
       const r = await deleteFolder(kind, f.id).catch(() => ({ ok: false as const, error: "Couldn't delete the folder. Try again." }));
@@ -216,10 +229,11 @@ export function FolderTile({ kind, f, canEdit, tile = false }: { kind: FolderKin
             <p className="text-[12px] text-mute">The folder goes. The {NOUN[kind]}s in it stay, in no folder.</p>
             <FormError>{deleteError}</FormError>
             <div className="flex gap-2">
-              <button className={GHOST_TALL} disabled={pending} onClick={remove}>
+              <button className={`${GHOST_TALL} aria-disabled:cursor-not-allowed aria-disabled:opacity-40`} aria-disabled={pending || undefined} onClick={remove}>
                 {pending ? "Deleting…" : "Delete folder"}
               </button>
-              <button className={GHOST} onClick={closeConfirm} disabled={pending}>
+              {/* Focus starts on Cancel, not on the destructive button. */}
+              <button className={`${GHOST} aria-disabled:cursor-not-allowed aria-disabled:opacity-40`} aria-disabled={pending || undefined} onClick={() => !pending && closeConfirm()} autoFocus>
                 Cancel
               </button>
             </div>
