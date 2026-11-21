@@ -22,7 +22,7 @@ said "try it #719" in the Desk (on `mobile-next` as `da8718c1`), then "ship it #
 | Unit | `4f833855` | 1089 of 1089 passed |
 | e2e: full suite | `4f833855` | 134 passed, 1 skipped (the deliberate one), 18.1 min; load 16.3 at start, 52.9 at end |
 | Safety review | `4f833855` | cleared |
-| Sam's click-through on the test link | `da8718c1` | not run: Sam had no way to sign in on the preview (no test account, no email on previews) |
+| Sam's click-through on the test link | `da8718c1` | partial: one run (in a browser pane already signed in to the preview) passed journey 1, a normal delete closes the dialog and refreshes the list; it was stopped before the failed-delete, device and theme checks. A second run could not sign in (no test account, no email on previews). Leftover preview folder "Sam test B" |
 | Health `/api/health`, `/`, `/login`, `/signup` | production | 200, 200, 200, 200 |
 
 ## Other releases since the last code report
