@@ -93,8 +93,8 @@ async function maxwellDesk(page: Page, request: APIRequestContext, senders: numb
   const read = async () => (await page.locator("main").innerText()).replace(/\b\d+\s?(?:s|m|h|d|min|mins|hr|hrs)\s+ago\b/g, "ago");
   for (const s of senders) {
     await page.goto(`/dashboard/contacts/${s}`);
-    // Read once the page has streamed in, not its loading state.
-    await expect(page.locator("main")).toContainText("Contact since");
+    // Read once the page has streamed in, not its loading state: the actions row is on every contact page.
+    await expect(page.getByRole("group", { name: /^Actions for / })).toBeVisible();
     pages.push(await read());
   }
   await page.goto("/dashboard/contacts?show=blocked");

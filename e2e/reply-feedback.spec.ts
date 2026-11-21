@@ -27,7 +27,7 @@ test("a reply says whether it went, was already sent, or hit the limit, and a re
   await page.goto("/dashboard/contacts");
   await page.getByRole("link", { name: who.link }).first().click();
   const box = page.getByRole("textbox", { name: /Message to/ });
-  const send = page.getByRole("button", { name: "Send email" });
+  const send = page.getByRole("button", { name: "Send reply" });
   const status = page.getByRole("status").filter({ hasText: /Reply emailed|Already sent|Not sent|Waiting/ });
   // React has to own the button before the first press (in a full run the press could come first and nothing answered).
   await hydrated(send);
