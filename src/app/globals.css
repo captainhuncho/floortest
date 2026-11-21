@@ -657,3 +657,102 @@ html:has(.theme-day) .ptr-ring { --ptr-track: #cfd3c0; --ptr-fill: #4a6400; --pt
   .ptr-pill[data-shown] { opacity: 1; transition: opacity 0.2s; }
 }
 @media print { .ptr-ring, .ptr-pill { display: none; } }
+
+/* Home 1E (src/app/page.tsx, HomeWeek.tsx, HomeLive.tsx; owner, 20 Nov). One track's week. No lime on this page: the
+   accent is the text colour (bone) with the page colour on top, in both themes, for the kept sections and forms too. */
+.home-1e.home-1e { --color-lime: var(--color-bone); }
+.home-1e.home-1e :is(.bg-lime, .btn-lime) { background-color: var(--color-bone); color: var(--color-ink); }
+.home-1e.home-1e .btn-lime:hover { background-color: var(--color-bone); }
+.home-1e.home-1e ::selection { background: var(--color-bone); color: var(--color-ink); }
+.home-1e.home-1e :focus-visible { outline-color: var(--color-bone); }
+/* An ink-filled control (Claim your link, Keep, Download). Its own class: the day theme's .bg-bone rules are fixed
+   colours, which would be wrong inside the booth band (always dark). */
+.h1e-fill { background: var(--color-bone); color: var(--color-ink); border: 0; }
+/* The column: phone width with safe-area gutters, then the wide page from 900px. */
+.h1e-col {
+  width: 100%; max-width: 430px; margin-inline: auto;
+  padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right));
+}
+@media (min-width: 900px) {
+  .h1e-col { max-width: 1160px; padding-left: max(40px, env(safe-area-inset-left)); padding-right: max(40px, env(safe-area-inset-right)); }
+}
+.h1e-cover { background: linear-gradient(135deg, #3b3e33, #1b1c18); }
+
+/* The warehouse loop: night or day photo with the theme, a slow push-in and a drifting beam (never fast), and the
+   messages on top. Only transform and opacity move. Reduced motion: the still photo with every message shown. */
+.h1e-wh {
+  position: relative; isolation: isolate; overflow: hidden; height: 440px; border-radius: 28px;
+  border: 1px solid var(--color-line); background: #0b0c0a;
+  --wh-top: 26px; --wh-gap: 36px; --wh-edge: 10px; --wh-left-step: 10px; --wh-right-step: 8px;
+}
+.h1e-wh::before {
+  content: ""; position: absolute; inset: -5%; z-index: -2;
+  background: linear-gradient(90deg, rgb(11 12 10 / 0.62) 0%, rgb(11 12 10 / 0.25) 60%, rgb(11 12 10 / 0.1)), url(/auth/bg-night.webp) 72% 58% / cover no-repeat;
+  animation: h1e-push 26s ease-in-out infinite alternate;
+}
+.h1e-wh::after {
+  content: ""; position: absolute; inset: -20% -30%; z-index: -1; pointer-events: none; mix-blend-mode: screen;
+  background: linear-gradient(104deg, transparent 44%, rgb(255 246 228 / 0.1) 50%, transparent 57%);
+  animation: h1e-beam 11s ease-in-out infinite alternate;
+}
+@keyframes h1e-push { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.09) translate(-2%, -1%); } }
+@keyframes h1e-beam { from { transform: translateX(-7%); opacity: 0.6; } to { transform: translateX(7%); opacity: 1; } }
+.h1e-wh > span {
+  position: absolute; top: calc(var(--wh-top) + var(--i) * var(--wh-gap)); white-space: nowrap;
+  font-size: 13px; padding: 7px 11px; border-radius: 13px; border: 1px solid var(--color-line);
+  background: var(--color-ink-3); color: var(--color-mute);
+  opacity: 0; transform: translateY(10px) rotate(var(--r));
+  transition: opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.h1e-wh > span[data-side="left"] { left: calc(var(--wh-edge) + var(--k) * var(--wh-left-step)); }
+.h1e-wh > span[data-side="right"] { right: calc(var(--wh-edge) + var(--k) * var(--wh-right-step)); }
+.h1e-wh > span.h1e-wh-mono { font-family: var(--font-stage-mono), var(--font-mono); font-size: 11.5px; }
+.h1e-wh > span[data-on] { opacity: 1; transform: rotate(var(--r)); }
+.h1e-wh[data-leaving] > span { opacity: 0; transform: translateY(-6px) rotate(var(--r)); transition-duration: 0.7s; }
+@media (min-width: 900px) {
+  .h1e-wh { height: 540px; --wh-top: 34px; --wh-gap: 44px; --wh-edge: 28px; --wh-left-step: 26px; --wh-right-step: 22px; }
+  .h1e-wh > span { font-size: 15px; padding: 9px 14px; }
+  .h1e-wh > span.h1e-wh-mono { font-size: 13px; }
+}
+.theme-day .h1e-wh { background: #e9ebdf; }
+.theme-day .h1e-wh::before { background: linear-gradient(90deg, rgb(243 244 236 / 0.55) 0%, rgb(243 244 236 / 0.2) 60%, rgb(243 244 236 / 0)), url(/auth/bg-day.webp) 72% 58% / cover no-repeat; }
+@media (prefers-color-scheme: light) {
+  .theme-system .h1e-wh { background: #e9ebdf; }
+  .theme-system .h1e-wh::before { background: linear-gradient(90deg, rgb(243 244 236 / 0.55) 0%, rgb(243 244 236 / 0.2) 60%, rgb(243 244 236 / 0)), url(/auth/bg-day.webp) 72% 58% / cover no-repeat; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .h1e-wh > span, .h1e-wh[data-leaving] > span { opacity: 1; transform: rotate(var(--r)); transition: none; }
+}
+
+/* The link card's routes: the picked row is raised. */
+.h1e-route { border-color: var(--color-line); color: var(--color-mute); transition: background-color 0.35s, border-color 0.35s, color 0.35s; }
+.h1e-route[aria-pressed="true"] { background: var(--color-ink-2); border-color: var(--color-line-2); color: var(--color-bone); }
+.h1e-route[aria-pressed="true"] > span:last-child { font-weight: 650; }
+/* The booth band: Saturday night stays dark in day mode. The night tokens, set here for everything inside. */
+.home-1e.home-1e .h1e-booth {
+  --color-ink: #10110f; --color-ink-2: #171815; --color-ink-3: #1e1f1b; --color-line: #2c2e29; --color-line-2: #3a3d37;
+  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-faint: #94978e; --color-lime: #f1f1eb;
+  background: #0b0c0a; color: var(--color-bone); color-scheme: dark;
+}
+.home-1e.home-1e .h1e-booth :focus-visible { outline-color: #f1f1eb; }
+.h1e-tick { border-color: var(--color-line-2); color: transparent; transition: background-color 0.2s, border-color 0.2s, color 0.2s; }
+.h1e-tickrow[aria-pressed="true"] .h1e-tick { background: var(--color-bone); border-color: var(--color-bone); color: var(--color-ink); }
+/* The receipt: Played out fills in, and its time appears, when the receipt comes into view. */
+.h1e-played { transition: background-color 0.5s, border-color 0.5s, color 0.5s; }
+.h1e-played-when { opacity: 0; transition: opacity 0.5s 0.2s; }
+[data-lit] .h1e-played { background: var(--color-bone); border-color: var(--color-bone); color: var(--color-ink); }
+[data-lit] .h1e-played-when { opacity: 1; }
+/* Phones: the claim bar in the thumb zone, above the home bar. */
+.h1e-bar {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 30;
+  padding: 10px max(14px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: color-mix(in srgb, var(--color-ink) 90%, transparent); border-top: 1px solid var(--color-line);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  transform: translateY(110%); visibility: hidden;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s 0.3s;
+}
+.h1e-bar[data-show] { transform: none; visibility: visible; transition-delay: 0s; }
+@media (min-width: 900px) { .h1e-bar { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .h1e-route, .h1e-tick, .h1e-played, .h1e-played-when, .h1e-bar { transition: none; }
+}

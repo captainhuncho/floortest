@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseSizes, sizesString } from "../src/lib/text-size";
-import { cleanField, pairs, rows, sizeableKeys, SITE_PAGES } from "../src/lib/content-fields";
+import { cells, cleanField, messages, pairs, sectionOrder, sizeableKeys, SITE_PAGES } from "../src/lib/content-fields";
 
 test("text sizes: only the fixed steps are accepted, anything else is dropped", () => {
   assert.deepEqual(parseSizes("headline:lg,intro:sm,faq:xl"), { headline: "lg", intro: "sm", faq: "xl" });
@@ -16,23 +16,23 @@ test("text sizes: only the fixed steps are accepted, anything else is dropped", 
 
 test("site copy: new fields start with the wording the page had", () => {
   const home = SITE_PAGES.home.fields;
-  assert.equal(home.deck_title.start, "Cued up like a deck.");
-  assert.equal(home.log_title.start, "Sent during the week. Played during the weekend.");
-  assert.equal(home.desk_title.start, "Two sides of one desk.");
+  assert.equal(home.sun_title.start, "One link. Point it anywhere.");
+  assert.equal(home.sat_title.start, "You play it.");
+  assert.equal(home.end_title.start, "Your link is waiting.");
   assert.equal(home.waitlist_title.start, "No invite yet?");
   assert.equal(home.waitlist_intro.start, "Invites go out a few at a time. Leave your details and we'll email yours.");
   assert.equal(home.footer_note.start, "Private beta. Web · iPhone and Android soon.");
-  assert.deepEqual(pairs(home.deck_readouts.start), [["Order", "Oldest first"], ["Listened", "30 s"], ["Keep", "→ crate"]]);
   assert.deepEqual(pairs(home.journey_steps.start).map(([t]) => t), ["Delivered", "Listened", "Downloaded", "Replied"]);
   assert.equal(pairs(home.private_points.start).length, 3);
-  assert.deepEqual(rows(home.log_rows.start), [
-    ["Tue 18:00", "Callout open", null, "Reads your brief"],
-    ["Wed 21:40", "Lands in Up next", null, "Delivered"],
-    ["Thu 00:12", "30 seconds in", "Real playback only", "Listened"],
-    ["Thu 00:13", "Keep", null, null],
-    ["Sat 19:30", "Into the crate", "Rekordbox XML and M3U8", "Downloaded"],
-    ["Sun 01:12", "On the floor", null, "Played out"],
-  ]);
+  // The home's lists: 11 loop messages (four in mono), two routes, four receipt steps, three points for senders.
+  assert.equal(messages(home.loop_messages.start).length, 11);
+  assert.deepEqual(messages(home.loop_messages.start).filter((m) => m.mono).map((m) => m.text), ["did you get my track?", "new_mix_v3_master.wav", "Download limit reached", "which version was the final?"]);
+  assert.deepEqual(cells(home.route_rows.start), [["Yesterday", "Friday residency"], ["Today", "Radio show callout"]]);
+  assert.deepEqual(cells(home.receipt_steps.start).map(([t]) => t), ["Delivered", "Listened", "Downloaded", "Played out"]);
+  assert.equal(pairs(home.fair_points.start).length, 3);
+  // 1E has no deck, set log or two-sides sections, and a saved order that names them drops them.
+  assert.deepEqual(sectionOrder("deck,log,desk,private,plans,waitlist,faq,-journey,-how,-preview").map((x) => x.id).slice(0, 4), ["week", "booth", "receipt", "fair"]);
+  assert.ok(!("deck_title" in home) && !("log_rows" in home) && !("desk_title" in home));
   assert.equal(SITE_PAGES.auth.fields.login_intro.start, "", "log in shows no intro line unless one is saved");
   assert.equal(SITE_PAGES.pricing.fields.pricing_back.start, "← Back to home");
   assert.equal(SITE_PAGES.receipt.fields.history_title.start, "What's happened");
@@ -51,5 +51,5 @@ test("site edit: a saved sizes field keeps only this page's text fields at the f
   assert.equal(cleanField("home", "sizes", fld, ["headline:lg"]), "headline:lg");
   assert.equal(cleanField("auth", "sizes", SITE_PAGES.auth.fields.sizes, "login_title:sm,headline:lg"), "login_title:sm");
   // An empty text field falls back to its starting wording, as before.
-  assert.equal(cleanField("home", "deck_title", SITE_PAGES.home.fields.deck_title, "  "), "Cued up like a deck.");
+  assert.equal(cleanField("home", "sun_title", SITE_PAGES.home.fields.sun_title, "  "), "One link. Point it anywhere.");
 });
