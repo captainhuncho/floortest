@@ -28,16 +28,17 @@ export function useMediaSession({ audio, meta, play, onNext, onPrev }: Options) 
 
   const title = meta?.title;
   const artist = meta?.artist;
+  const cover = meta?.cover;
   // One effect, so a new track or a changed list rebinds everything together (cheap) and the cleanup never leaves
   // the lock screen half set.
   useEffect(() => {
     const s = mediaSession();
     if (!s || !audio) return;
-    setMetadata(s, title === undefined ? null : { title, artist });
+    setMetadata(s, title === undefined ? null : { title, artist, cover });
     return bindMediaSession(s, audio, {
       play: () => (latest.current.play ? latest.current.play() : void audio.play().catch(() => {})),
       next: hasNext ? () => latest.current.onNext?.() : undefined,
       previous: hasPrev ? () => latest.current.onPrev?.() : undefined,
     });
-  }, [audio, hasNext, hasPrev, title, artist]);
+  }, [audio, hasNext, hasPrev, title, artist, cover]);
 }
