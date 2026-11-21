@@ -110,6 +110,8 @@ Feedback (every desk page, phones too: the speech-bubble icon in the top bar) �
    └─ Don't ask again · a second Not now ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
 ```
 Mobile menu: Floor · Collections · Queue · Prepare · More (a sheet: Send music, Contacts, Activity, How it works; from #594; the owner kept it on 17 Nov rather than option 47's menu without More, for now). Desktop sidebar: Floor · Collections · Review Queue · Prepare · Send music; at the foot, How it works then Settings. Contacts and Analytics (owner and A&R / Admin) are rows on Settings; Emails to senders is no longer linked from users' screens (option 47).
+
+How FloorTest works (`/dashboard/how-it-works`, option 61 A, 19 Nov): Replay the tour reopens the tour pop-up; Get your link from the Floor goes to the Floor; each habit link goes to its page (Floor, Settings → Account, Settings, Settings → Security). On phones "‹ More" opens the More sheet.
 Any menu tap (desk, settings rail, ops): the tapped item lights up at once ─► the page's skeleton (loading.tsx) ─► the page. A thin lime line along the top only if nothing has arrived after 150ms.
 
 ## Plans
