@@ -42,7 +42,7 @@ export function IdentityForm({ status, links, note }: { status: Status; links: s
     );
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form method="post" onSubmit={onSubmit} className="flex flex-col gap-4">
       {now === "rejected" && (
         <Notice tone="error" next="Fix it below and send it again.">
           Not verified yet{note ? `: ${note}` : "."}

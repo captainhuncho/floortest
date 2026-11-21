@@ -46,7 +46,7 @@ export async function CrmUsers({ sp, access }: { sp: Record<string, string | und
 
   const toolbar = (
     <>
-      <form className="ou-search" role="search">
+      <form method="get" className="ou-search" role="search">
         {Object.entries(params).map(([k, v]) => k !== "q" && v && <input key={k} type="hidden" name={k} value={v} />)}
         <input name="q" defaultValue={search} placeholder="Name, email or link" className="input" aria-label="Search accounts" />
         <button className="btn-ghost btn-sm">Search</button>
@@ -56,7 +56,7 @@ export async function CrmUsers({ sp, access }: { sp: Record<string, string | und
           Filters
           {chips.length > 0 && <span className="rounded bg-lime px-1.5 text-[11px] font-bold text-ink tnum">{chips.length}</span>}
         </summary>
-        <form className="ou-filter-panel">
+        <form method="get" className="ou-filter-panel">
           {Object.entries(params).map(([k, v]) => ["q", "view", "layout"].includes(k) && v && <input key={k} type="hidden" name={k} value={v} />)}
           <AudienceFields a={aud} plans={plans} />
           <label className="block max-w-xs space-y-1.5">

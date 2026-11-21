@@ -71,7 +71,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
       </div>
       <Tabs active="receivers" />
       <div className="relative mt-4 flex flex-wrap items-center gap-2">
-        <form className="flex min-w-0 basis-full gap-2 sm:max-w-sm sm:flex-1 sm:basis-auto" role="search">
+        <form method="get" className="flex min-w-0 basis-full gap-2 sm:max-w-sm sm:flex-1 sm:basis-auto" role="search">
           {Object.entries(params).map(([k, v]) => k !== "q" && v && <input key={k} type="hidden" name={k} value={v} />)}
           <input name="q" defaultValue={search} placeholder="Name, email or link" className="input min-w-0 flex-1" aria-label="Search receivers" />
           <button className="btn-ghost btn-sm">Search</button>
@@ -81,7 +81,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
             Filters
             {chips.length > 0 && <span className="rounded bg-lime px-1.5 text-[11px] font-bold text-ink tnum">{chips.length}</span>}
           </summary>
-          <form className="fixed inset-x-4 top-28 z-40 max-h-[70dvh] space-y-3 overflow-y-auto rounded-[14px] border border-line-2 bg-ink-3 p-4 shadow-2xl sm:absolute sm:inset-x-0 sm:top-full sm:mt-2">
+          <form method="get" className="fixed inset-x-4 top-28 z-40 max-h-[70dvh] space-y-3 overflow-y-auto rounded-[14px] border border-line-2 bg-ink-3 p-4 shadow-2xl sm:absolute sm:inset-x-0 sm:top-full sm:mt-2">
             {search && <input type="hidden" name="q" value={search} />}
             <AudienceFields a={aud} plans={plans} />
             <label className="block max-w-xs space-y-1.5">
@@ -218,7 +218,7 @@ async function Senders({ search }: { search: string }) {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-        <form className="flex gap-2">
+        <form method="get" className="flex gap-2">
           <input type="hidden" name="view" value="senders" />
           <input name="q" defaultValue={search} placeholder="Sender name or email" className="input w-64" aria-label="Search senders" />
           <button className="btn-ghost btn-sm">Search</button>

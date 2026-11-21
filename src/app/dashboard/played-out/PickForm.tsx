@@ -19,7 +19,7 @@ export function PickForm({ tracks, promptOpen }: { tracks: PromptTrack[]; prompt
   const toast = useToast();
   const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   return (
-    <form
+    <form method="post"
       className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();

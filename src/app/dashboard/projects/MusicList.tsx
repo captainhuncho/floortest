@@ -164,7 +164,7 @@ function RenameForm({ t, onDone }: { t: MusicItem; onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-2">
+    <form method="post" onSubmit={save} className="flex flex-col gap-2">
       <div className="grid gap-2 sm:grid-cols-2">
         <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} aria-label="Title" placeholder="Title" className="input text-[16px] sm:text-[13px]" autoFocus />
         <input value={artist} onChange={(e) => setArtist(e.target.value)} maxLength={200} aria-label="Artist" placeholder="Artist" className="input text-[16px] sm:text-[13px]" />

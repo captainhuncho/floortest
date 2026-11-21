@@ -68,7 +68,7 @@ export function NameSheet({ title, label, initial = "", extra, onSave, onClose }
   const [pending, start] = useTransition();
   return (
     <Sheet title={title} onClose={onClose} role="dialog">
-      <form
+      <form method="post"
         className="flex flex-col gap-3 p-4"
         onSubmit={(e) => {
           e.preventDefault();

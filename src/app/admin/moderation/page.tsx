@@ -54,7 +54,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
         <h1 className="text-3xl font-bold tracking-tight">Moderation</h1>
         <p className="mt-1 text-mute">Search every account by track, artist, sender name or email, or a receipt token.</p>
       </div>
-      <form className="flex flex-wrap items-center gap-2" role="search">
+      <form method="get" className="flex flex-wrap items-center gap-2" role="search">
         <input name="q" defaultValue={search} className="input min-w-0 flex-1 sm:max-w-lg" placeholder="Search tracks and senders" aria-label="Search" />
         <button className="btn-lime btn-sm">Search</button>
         {search && (

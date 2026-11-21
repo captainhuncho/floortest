@@ -28,7 +28,7 @@ export function Bulk({ rows, sel, ask, csv }: { rows: CrmRow[]; sel: ReturnType<
   const cleaned = cleanTag(tag);
   return (
     <BulkBar count={n} onClear={sel.clear}>
-      <form
+      <form method="post"
         className="flex items-center gap-2"
         onSubmit={(e) => {
           // Enter in the tag field presses Add tag.

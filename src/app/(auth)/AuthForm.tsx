@@ -132,7 +132,7 @@ export function AuthForm({
   const describe = (f: Field) => (issue?.key === f.name ? `f-${f.name}-issue` : f.hint ? `f-${f.name}-hint` : undefined);
 
   return (
-    <form
+    <form method="post"
       noValidate
       aria-busy={pending}
       onSubmit={(e) => {

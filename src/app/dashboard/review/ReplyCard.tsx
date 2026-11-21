@@ -45,7 +45,7 @@ export function ReplyPanel({ open, onClose, senderName, onReply }: { open: boole
         </>
       }
     >
-      <form
+      <form method="post"
         id={formId}
         ref={formRef}
         data-reply

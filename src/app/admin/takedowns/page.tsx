@@ -112,7 +112,7 @@ export default async function Takedowns() {
                 </p>
                 {c.basis && <p className="mt-1 whitespace-pre-wrap text-mute">{c.basis}</p>}
               </div>
-              <form className="mt-4 space-y-3">
+              <form method="post" className="mt-4 space-y-3">
                 <label className="block">
                   <span className="sr-only">Note for the record</span>
                   <input name="notes" required className="input min-h-11 w-full" placeholder="Note for the record (required)" maxLength={1000} />

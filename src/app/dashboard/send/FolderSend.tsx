@@ -270,7 +270,7 @@ export function FolderSend({
         onCancel={() => setWaiting(false)}
       />
     )}
-    <form
+    <form method="post"
       ref={formRef}
       hidden={waiting || running}
       className="space-y-4"

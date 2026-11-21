@@ -70,7 +70,7 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
   const toast = useToast();
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-7">
+    <form method="post" onSubmit={onSubmit} className="flex flex-col gap-7">
       <input type="hidden" name="tz" value={tz} />
       <fieldset>
         <legend className={LEGEND}>New tracks</legend>

@@ -176,7 +176,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
                   {h.title && <> · “{h.title}”</>} · {fmtDate(h.created_at)}
                 </p>
                 {approves ? (
-                  <form className="mt-2.5 flex flex-col gap-2.5">
+                  <form method="post" className="mt-2.5 flex flex-col gap-2.5">
                     <label className="sr-only" htmlFor={`held-${h.id}`}>
                       Reply
                     </label>

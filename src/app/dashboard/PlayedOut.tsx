@@ -26,7 +26,7 @@ export function PlayedOut({ trackId, senderName, at, note }: { trackId: number; 
       </button>
     );
   return (
-    <form
+    <form method="post"
       className="flex flex-wrap items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault();

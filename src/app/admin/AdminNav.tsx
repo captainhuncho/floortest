@@ -183,7 +183,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
         </button>
       </div>
       {open && (
-        <form
+        <form method="post"
           role="search"
           className="mx-3 flex items-center gap-2 rounded-[10px] border border-line bg-ink px-2.5"
           onSubmit={(e) => {

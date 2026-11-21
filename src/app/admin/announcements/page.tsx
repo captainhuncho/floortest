@@ -160,7 +160,7 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
         <h2 id="new-h" className="w-[92px] shrink-0 text-[22px] font-bold leading-[1.1] tracking-[-0.02em]">
           Draft
         </h2>
-        <form className="min-w-0 flex-1 space-y-3">
+        <form method="get" className="min-w-0 flex-1 space-y-3">
           <input type="hidden" name="preview" value="1" />
           {fields}
           <button className="admin-press inline-flex min-h-11 items-center rounded-full px-5 text-[13.5px] font-semibold ring-1 ring-line-2 hover:bg-ink-3">Preview</button>

@@ -35,7 +35,7 @@ export function ClaimBox({ host, inviteOnly, end = false }: { host: string; invi
   const display = name.split(/[-_]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
   const possessive = display.endsWith("s") ? `${display}’` : `${display}’s`;
   return (
-    <form onSubmit={claim} data-claim={end ? "end" : "hero"} className={`w-full ${end ? "min-[900px]:mx-auto min-[900px]:max-w-[520px]" : "min-[900px]:max-w-[520px]"}`}>
+    <form method="post" onSubmit={claim} data-claim={end ? "end" : "hero"} className={`w-full ${end ? "min-[900px]:mx-auto min-[900px]:max-w-[520px]" : "min-[900px]:max-w-[520px]"}`}>
       <label htmlFor={id} className="sr-only">
         Your link
       </label>

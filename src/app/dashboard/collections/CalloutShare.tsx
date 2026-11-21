@@ -181,7 +181,7 @@ export function CalloutShare({
                 </button>
               ))}
             </div>
-            <form onSubmit={addNote} className="flex flex-col gap-1.5">
+            <form method="post" onSubmit={addNote} className="flex flex-col gap-1.5">
               <label htmlFor={noteId} className="text-[13px] text-mute">
                 Your words on the card (optional)
               </label>
