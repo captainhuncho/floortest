@@ -121,14 +121,14 @@ export function bindMediaSession(s: SessionLike, a: AudioLike, o: BindOptions = 
   };
 }
 
-export type MediaMeta = { title: string; artist?: string | null };
+export type MediaMeta = { title: string; artist?: string | null; cover?: string | null };
 
-/** Title and artist for the lock screen, with the FloorTest crest as artwork. Null clears it. */
+/** Title, artist and cover for the lock screen; the FloorTest crest when there's no cover (a PNG: iOS shows no SVG). Null clears it. */
 export function setMetadata(s: SessionLike, meta: MediaMeta | null) {
   try {
     s.metadata =
       meta && typeof MediaMetadata !== "undefined"
-        ? new MediaMetadata({ title: meta.title, artist: meta.artist ?? "", album: "FloorTest", artwork: [{ src: "/icon.svg", sizes: "512x512", type: "image/svg+xml" }] })
+        ? new MediaMetadata({ title: meta.title, artist: meta.artist ?? "", album: "FloorTest", artwork: [meta.cover ? { src: meta.cover } : { src: "/brand/icon-512.png", sizes: "512x512", type: "image/png" }] })
         : null;
   } catch {}
 }

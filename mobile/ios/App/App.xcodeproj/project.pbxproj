@@ -20,6 +20,7 @@
 		F7A100000000000C0FFEE005 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE004 /* ShareViewController.swift */; };
 		F7A100000000000C0FFEE009 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE008 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F7A100000000000C0FFEE101 /* OfflineCratePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE100 /* OfflineCratePlugin.swift */; };
+		F7A100000000000C0FFEE301 /* NowPlayingPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE300 /* NowPlayingPlugin.swift */; };
 		F7A100000000000C0FFEE201 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE200 /* PrivacyInfo.xcprivacy */; };
 		F7A100000000000C0FFEE203 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE202 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
@@ -67,6 +68,7 @@
 		F7A100000000000C0FFEE007 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		F7A100000000000C0FFEE008 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7A100000000000C0FFEE100 /* OfflineCratePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineCratePlugin.swift; sourceTree = "<group>"; };
+		F7A100000000000C0FFEE300 /* NowPlayingPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingPlugin.swift; sourceTree = "<group>"; };
 		F7A100000000000C0FFEE200 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F7A100000000000C0FFEE202 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -115,6 +117,7 @@
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				F7A100000000000C0FFEE001 /* ShareInboxPlugin.swift */,
 				F7A100000000000C0FFEE100 /* OfflineCratePlugin.swift */,
+				F7A100000000000C0FFEE300 /* NowPlayingPlugin.swift */,
 				F7A100000000000C0FFEE003 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -255,6 +258,7 @@
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				F7A100000000000C0FFEE002 /* ShareInboxPlugin.swift in Sources */,
 				F7A100000000000C0FFEE101 /* OfflineCratePlugin.swift in Sources */,
+				F7A100000000000C0FFEE301 /* NowPlayingPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
