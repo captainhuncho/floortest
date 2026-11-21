@@ -162,12 +162,6 @@ export function FolderTile({ kind, f, canEdit, tile = false }: { kind: FolderKin
   const [confirm, setConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [pending, start] = useTransition();
-  // The delete dialog starts on Cancel, not the destructive button. An effect here, not autoFocus: it runs after the
-  // closing menu hands focus back to its ··· button and after the dialog's focus trap, so Cancel keeps it.
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (confirm) cancelRef.current?.focus();
-  }, [confirm]);
   const cover = useCoverChoice("folder", f.id, f.name);
   // A delete that doesn't go through keeps the dialog open and says why (20 Nov: a refused or lost call closed it silently).
   // While it runs the buttons are aria-disabled, not disabled, so keyboard focus stays on them (a disabled button drops
@@ -238,7 +232,7 @@ export function FolderTile({ kind, f, canEdit, tile = false }: { kind: FolderKin
               <button className={`${GHOST_TALL} aria-disabled:cursor-not-allowed aria-disabled:opacity-40`} aria-disabled={pending || undefined} onClick={remove}>
                 {pending ? "Deleting…" : "Delete folder"}
               </button>
-              <button ref={cancelRef} className={`${GHOST} aria-disabled:cursor-not-allowed aria-disabled:opacity-40`} aria-disabled={pending || undefined} onClick={() => !pending && closeConfirm()}>
+              <button data-autofocus className={`${GHOST} aria-disabled:cursor-not-allowed aria-disabled:opacity-40`} aria-disabled={pending || undefined} onClick={() => !pending && closeConfirm()}>
                 Cancel
               </button>
             </div>

@@ -6,7 +6,9 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
 
 /**
  * Keeps keyboard focus inside an open dialog: Tab and Shift+Tab cycle within it, focus moves in on open
- * (unless something inside already has it) and returns to whatever opened it on close.
+ * (unless something inside already has it; a control marked data-autofocus goes first, as in Dialog) and returns
+ * to whatever opened it on close. The choice lives here, not in a caller's effect: a dev re-run of this effect
+ * would move focus back to the first control.
  */
 export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true) {
   useEffect(() => {
@@ -14,7 +16,7 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true) 
     if (!active || !box) return;
     const opener = document.activeElement as HTMLElement | null;
     const items = () => [...box.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
-    if (!box.contains(document.activeElement)) (items()[0] ?? box).focus();
+    if (!box.contains(document.activeElement)) (box.querySelector<HTMLElement>("[data-autofocus]") ?? items()[0] ?? box).focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
       const list = items();
