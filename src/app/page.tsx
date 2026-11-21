@@ -5,13 +5,14 @@ import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
 import { footerGroups } from "@/lib/site";
-import { HOME_SECTIONS, pairs, sectionOrder, siteCopy, siteImageUrl, type HomeSection } from "@/lib/content";
+import { HOME_SECTIONS, messages, pairs, sectionOrder, siteCopy, siteImageUrl, type HomeSection } from "@/lib/content";
 import { siteEditor } from "@/lib/site-editor";
 import { SectionFrame, SectionList, SiteEditor } from "@/components/SiteEditor";
 import { editable } from "@/components/Editable";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
-import { DeckSection, SetLog, TwoSides } from "./HomeStage";
+import { Booth, COL, Fair, Thanks, Week } from "./HomeWeek";
+import { ClaimBar, WarehouseLoop } from "./HomeLive";
 import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
 import { NewsletterForm } from "./NewsletterForm";
@@ -22,7 +23,6 @@ import { CARD, Icon } from "@/components/Kit";
 export const metadata = { alternates: { canonical: "/" } };
 
 const HOST = APP_URL.replace(/^https?:\/\//, "");
-const DEMO = "/maxwell";
 
 /** The receipt steps' icons, in order; their words come from Site content (journey_steps). */
 const JOURNEY_ICONS = ["✓", "♪", "↓", "↩"];
@@ -57,9 +57,22 @@ export default async function Home({
       : { href: "/signup", label: "Claim your link" };
 
   const SECTIONS: Record<HomeSection, React.ReactNode> = {
-    deck: <DeckSection c={c} {...ed} />,
-    log: <SetLog c={c} {...ed} />,
-    desk: <TwoSides c={c} {...ed} />,
+    week: <Week c={c} {...ed} host={HOST} />,
+    booth: <Booth c={c} {...ed} />,
+    receipt: <Thanks c={c} {...ed} />,
+    fair: <Fair c={c} {...ed} />,
+    end: (
+      <section aria-labelledby="end-title" className={`${COL} pb-10 pt-14 min-[900px]:flex min-[900px]:flex-col min-[900px]:items-center min-[900px]:pb-16 min-[900px]:pt-24 min-[900px]:text-center`}>
+        <h2 id="end-title" className="mb-[18px] text-balance text-[28px] font-semibold leading-[1.1] tracking-[-0.03em] min-[900px]:text-[40px]"><E k="end_title" /></h2>
+        {user ? (
+          <Link href="/dashboard/floor" className="h1e-fill inline-flex min-h-[52px] items-center rounded-full px-5 text-base font-semibold">
+            Open your desk
+          </Link>
+        ) : (
+          <ClaimBox host={HOST} inviteOnly={inviteOnly} end />
+        )}
+      </section>
+    ),
     preview: (
       <section data-edit-image={editor ? "preview_image" : undefined} className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         {c.preview_image ? (
@@ -173,7 +186,7 @@ export default async function Home({
       </section>
   ),
     waitlist: !user ? (
-      <section id="waitlist" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-14 sm:px-6 sm:py-16">
+      <section id="waitlist" className={`${COL} scroll-mt-24 py-14 sm:py-16`}>
           <div className={`${CARD} grid grid-cols-1 gap-8 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-10`}>
             <div>
               <h2 className="text-[clamp(1.6rem,3vw,2.25rem)] font-semibold leading-[1.05] tracking-[-0.03em]"><E k="waitlist_title" /></h2>
@@ -187,7 +200,7 @@ export default async function Home({
       ) : null
 ,
     faq: (
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      <section className={`${COL} py-16`}>
         <h2 className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]">
           <E k="faq_title" />
         </h2>
@@ -214,10 +227,10 @@ export default async function Home({
 
   const page = (
     <div
-      className={`${serif.variable} ${mono.variable} theme-system bg-ink text-bone`}
+      className={`${serif.variable} ${mono.variable} home-1e theme-system bg-ink text-bone`}
     >
       <RememberSource />
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className={COL}>
         {deleted && (
           <p
             role="status"
@@ -230,101 +243,75 @@ export default async function Home({
       </div>
       {/* Stays at the top while scrolling. */}
       <div className="sticky top-0 z-40 border-b border-line bg-ink/85 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <header className={`${COL} flex min-h-14 items-center justify-between gap-3 min-[900px]:min-h-[68px]`}>
           <Logo />
-          <nav className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+          <nav aria-label="Main" className="flex shrink-0 items-center gap-1 whitespace-nowrap">
+            <a href="#week" className="hidden min-h-11 items-center px-3 text-[15px] text-mute hover:text-bone min-[900px]:inline-flex">
+              <E k="nav_how" />
+            </a>
+            <Link href="/pricing" className="hidden min-h-11 items-center px-3 text-[15px] text-mute hover:text-bone min-[900px]:inline-flex">
+              <E k="nav_plans" />
+            </Link>
             {user ? (
-              <Link href="/dashboard/floor" className="btn-ghost btn-sm">
+              <Link href="/dashboard/floor" className="h1e-fill ml-2 inline-flex min-h-11 items-center rounded-full px-[18px] text-[15px] font-semibold">
                 Open your desk
               </Link>
             ) : (
               <>
-                <Link href="/pricing" className="hidden min-h-11 items-center px-2 text-[13px] text-mute hover:text-bone sm:inline-flex">
-                  Pricing
-                </Link>
-                {/* Under 375px (iPhone SE, small Androids) the logo and two buttons don't fit: Log in moves to the line under the hero. */}
-                <Link href="/login" className="btn-ghost btn-sm max-[374px]:hidden">
+                <Link href="/login" className="inline-flex min-h-11 items-center px-1 text-[15px] text-mute hover:text-bone min-[900px]:px-3">
                   Log in
                 </Link>
-                {/* The hero holds the page's one lime button; this one stays quiet. Short label so the header fits on a phone. */}
-                <Link href={cta.href} className="btn-ghost btn-sm">
-                  {inviteOnly ? "Request invite" : "Claim your link"}
-                </Link>
+                {/* Phones have the claim box on screen and then the claim bar; the header's button is for the wide page. */}
+                <a href="#hero" className="h1e-fill ml-2 hidden min-h-11 items-center rounded-full px-[18px] text-[15px] font-semibold min-[900px]:inline-flex">
+                  Claim your link
+                </a>
               </>
             )}
           </nav>
         </header>
       </div>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-12 sm:px-6 sm:pt-20">
-          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-center lg:gap-14">
-            <div>
-              <p className="home-label flex items-center gap-3 normal-case tracking-normal">
-                <span aria-hidden className="h-px w-8 bg-line-2" /> <E k="eyebrow" />
-              </p>
-              <h1 className="mt-5 text-[clamp(2.4rem,5.2vw,4.25rem)] font-semibold leading-[1] tracking-[-0.045em]">
-                <E k="headline" />
-                <span className="block font-[family-name:var(--font-serif)] font-normal italic tracking-[-0.02em] text-mute">
-                  <E k="headline_italic" />
-                </span>
-              </h1>
-              <p className="mt-6 max-w-xl text-[15px] leading-7 text-mute">
-                <E k="intro" />
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-                <Link
-                  href={cta.href}
-                  className="inline-flex min-h-12 items-center rounded-[13px] bg-lime px-5 text-[14px] font-semibold text-ink hover:brightness-95"
-                >
-                  {cta.label} →
-                </Link>
-                <Link
-                  href={DEMO}
-                  className="inline-flex min-h-11 items-center gap-1 text-[13.5px] text-bone hover:underline hover:underline-offset-4"
-                >
-                  <E k="hero_example" /> <span className="text-dim">/username</span> →
-                </Link>
-              </div>
-              {!user && (
-                <p className="mt-4 text-xs text-dim">
-                  <E k="hero_beta" />
-                  <span className="min-[375px]:hidden">
-                    {" "}· <Link href="/login" className="underline underline-offset-4 hover:text-bone">Log in</Link>
-                  </span>
-                  {inviteOnly && (
-                    <>
-                      {" "}· <Link href="/signup" className="underline underline-offset-4 hover:text-bone"><E k="hero_invite_link" /></Link>
-                    </>
-                  )}
-                </p>
-              )}
-            </div>
-            {/* The one link, and where it routes: the product in a card. */}
-            <div className={`${CARD} min-w-0 p-5 sm:p-6`}>
+      {/* Hero: the promise and the claim box; beside it (under it on phones) the noise it replaces, on a loop. */}
+      <section id="hero" aria-labelledby="hero-title" className={`${COL} scroll-mt-20 pb-2 pt-[18px] min-[900px]:pb-10 min-[900px]:pt-6`}>
+        <div className="min-[900px]:grid min-[900px]:min-h-[620px] min-[900px]:grid-cols-2 min-[900px]:items-center min-[900px]:gap-16">
+          <div className="min-w-0">
+            <h1 id="hero-title" className="text-balance text-[31px] font-semibold leading-[1.08] tracking-[-0.035em] min-[900px]:text-[50px]">
+              <E k="headline" />
+              <span className="block font-[family-name:var(--font-serif)] text-[1.08em] font-normal italic tracking-[-0.01em]">
+                <E k="headline_italic" />
+              </span>
+            </h1>
+            <p className="mt-3 max-w-[30em] text-base text-mute min-[900px]:text-lg">
+              <E k="intro" />
+            </p>
+            <div className="mt-[18px]">
               {user ? (
-                <>
+                <div className={`${CARD} min-w-0 p-5 min-[900px]:max-w-[520px]`}>
                   <p className="home-label"><E k="hero_your_link" /></p>
-                  <p className="mt-4 break-all text-xl sm:text-2xl">
-                    {HOST}/<wbr /><span className="text-bone">{user.handle}</span>
+                  <p className="mt-3 break-all text-xl sm:text-2xl">
+                    <span className="text-mute">{HOST}/</span><wbr />{user.handle}
+                  </p>
+                  <Link href="/dashboard/floor" className="h1e-fill mt-4 inline-flex min-h-[52px] items-center rounded-full px-5 text-base font-semibold">
+                    Open your desk
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <ClaimBox host={HOST} inviteOnly={inviteOnly} />
+                  <p className="mt-1.5 text-[13px] text-mute">
+                    <E k="hero_beta" />
+                    {inviteOnly && (
+                      <>
+                        {" "}· <Link href="/signup" className="inline-flex min-h-11 items-center text-bone underline underline-offset-[3px]"><E k="hero_invite_link" /></Link>
+                      </>
+                    )}
                   </p>
                 </>
-              ) : (
-                <ClaimBox host={HOST} inviteOnly={inviteOnly} />
               )}
-              <p className="home-label mt-5 border-t border-dashed border-line-2 pt-4 normal-case tracking-normal"><E k="hero_route_label" /></p>
-              <div className="mt-3 space-y-2">
-                <div className="flex min-h-11 items-center justify-between rounded-[11px] border border-line px-3.5 text-[12px] text-mute">
-                  <span>Yesterday</span>
-                  <span>Friday residency</span>
-                </div>
-                <div className="flex min-h-11 items-center justify-between rounded-[11px] border border-line-2 bg-well px-3.5 text-[12px]">
-                  <span className="text-mute">Today</span>
-                  <span className="font-semibold text-bone">Radio show callout</span>
-                </div>
-              </div>
             </div>
+          </div>
+          <div {...panel("loop_messages", "One message per line. Add \" | m\" after a message to set it in the mono type. Eleven fit; keep each one short.")} className="mt-[22px] min-[900px]:mt-0">
+            <WarehouseLoop messages={messages(c.loop_messages)} />
           </div>
         </div>
       </section>
@@ -339,7 +326,7 @@ export default async function Home({
       </SectionList>
 
       {/* Desktop: brand + newsletter left, links right; reference legal pages in a small bottom row. */}
-      <footer className="mx-auto hidden max-w-6xl px-6 pb-10 pt-12 text-sm text-mute lg:block">
+      <footer className={`${COL} hidden pb-10 pt-12 text-sm text-mute lg:block`}>
         <div className="grid grid-cols-12 gap-8 border-t border-line pt-10">
           <div className="col-span-5">
             <Logo />
@@ -387,7 +374,7 @@ export default async function Home({
       </footer>
 
       {/* Phones and tablets. */}
-      <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6 lg:hidden">
+      <footer className={`${COL} pt-12 text-sm text-mute lg:hidden ${user ? "pb-10" : "pb-[calc(110px+env(safe-area-inset-bottom))] min-[900px]:pb-10"}`}>
         <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
           <Logo />
           <p className="max-w-xs"><E k="footer_line" /></p>
@@ -421,6 +408,7 @@ export default async function Home({
         </nav>
         <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest Labs. <E k="footer_note" /></p>
       </footer>
+      {!user && <ClaimBar host={HOST} />}
     </div>
   );
 

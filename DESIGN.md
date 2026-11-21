@@ -171,7 +171,7 @@ Booth Black and Bone carry almost everything; Cue Lime is the one light.
 **Display Font:** the system sans (-apple-system, Segoe UI, Roboto, system-ui), owner 28 Oct
 **Body Font:** the system sans
 **Readout Font:** JetBrains Mono (variable, self-hosted: the files are in `src/app/fonts/`, loaded with `next/font/local`, nothing fetched from Google), for counts, durations and BPM (`font-mono`)
-**Accent Font:** Instrument Serif italic, home page only (the headline's second line and the blurred "send me music" booth neon)
+**Accent Font:** Instrument Serif italic, home page only (the headline's second line and the preview line under the claim box)
 
 **Character:** Plain words in the device's own face; figures in mono read like gear. Hierarchy comes from size, weight and spacing.
 

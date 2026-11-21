@@ -8,6 +8,7 @@ Built from the product's own UI with sample data, in code. No AI video.
 | M2 · The receipt ticks to Listened (re-drawn 14 Oct from the real receipt: waveform, Delivered lit while it waits, What these mean, Details, Send another) | 5 s | Home receipts / two sides of the desk; sender-facing posts | `m2-receipt-listened.html`, `.webm`, `-poster.png` |
 | M3 · Keep | 3 s | "Cued up like a deck"; the 10-second Keep clip in the story kit | `m3-keep.html`, `.webm`, `-poster.png` |
 
+- Since home 1E (20 Nov) the home page no longer plays these: its motion is the warehouse loop and the week's own cards (`docs/04-design.md`, Home page). The "Where it goes" home placements above are history; the social uses stand, and the site copies in `public/motion/` are unused until the owner decides what to do with them.
 - Two sizes. **Social** (here): 4:5, 1080 × 1350, muted, 300–480 KB. **Site** (`public/motion/`): 540 × 675, 126–220 KB, under the 400 KB budget; the home page plays them only on screen, with a pause button.
 - Each is one exact cycle plus about half a second of its first frame. The very first frame is blank (the recorder starts before the page draws): the site skips it; when converting for social, trim it with `-ss 0.1`.
 - Posters are the reduced-motion still: the loop's story frame (the track landed, Listened lit, Kept).
