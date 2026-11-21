@@ -150,8 +150,22 @@ export function FolderTile({ kind, f, canEdit, tile = false }: { kind: FolderKin
   const [menu, setMenu] = useState(false);
   const [rename, setRename] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [pending, start] = useTransition();
   const cover = useCoverChoice("folder", f.id, f.name);
+  // A delete that doesn't go through keeps the dialog open and says why (20 Nov: a refused or lost call closed it silently).
+  const remove = () =>
+    start(async () => {
+      setDeleteError("");
+      const r = await deleteFolder(kind, f.id).catch(() => ({ ok: false as const, error: "Couldn't delete the folder. Try again." }));
+      if (!r.ok) return setDeleteError(r.error);
+      setConfirm(false);
+      router.refresh();
+    });
+  const closeConfirm = () => {
+    setConfirm(false);
+    setDeleteError("");
+  };
   const holds = `${f.count} ${f.count === 1 ? NOUN[kind] : `${NOUN[kind]}s`}`;
   return (
     <FolderRow
@@ -197,14 +211,15 @@ export function FolderTile({ kind, f, canEdit, tile = false }: { kind: FolderKin
         />
       )}
       {confirm && (
-        <Sheet title={`Delete ${f.name}?`} onClose={() => setConfirm(false)} role="dialog">
+        <Sheet title={`Delete ${f.name}?`} onClose={closeConfirm} role="dialog">
           <div className="flex flex-col gap-3 p-4">
             <p className="text-[12px] text-mute">The folder goes. The {NOUN[kind]}s in it stay, in no folder.</p>
+            <FormError>{deleteError}</FormError>
             <div className="flex gap-2">
-              <button className={GHOST_TALL} disabled={pending} onClick={() => start(async () => { await deleteFolder(kind, f.id); setConfirm(false); })}>
+              <button className={GHOST_TALL} disabled={pending} onClick={remove}>
                 {pending ? "Deleting…" : "Delete folder"}
               </button>
-              <button className={GHOST} onClick={() => setConfirm(false)} disabled={pending}>
+              <button className={GHOST} onClick={closeConfirm} disabled={pending}>
                 Cancel
               </button>
             </div>

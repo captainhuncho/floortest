@@ -76,6 +76,40 @@ test("a callout folder: create from + Add, file a callout, rename, delete, and t
   await expect(calloutLink(page, name)).toBeVisible();
 });
 
+/**
+ * A delete that doesn't go through says so (20 Nov: a test click closed the dialog silently and the folder stayed). Here
+ * the folder is deleted in a second tab first, so the first tab's delete is refused: the dialog stays with the reason.
+ */
+test("deleting a folder that's already gone keeps the dialog open and says why", async ({ page, context }) => {
+  await logIn(page, "demo@floortest.test");
+  await page.goto("/dashboard/collections");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menu", { name: "Add to Callouts" }).getByRole("menuitem", { name: /^Folder/ }).click();
+  const create = page.getByRole("dialog", { name: "New folder" });
+  await create.getByLabel("Name").fill("E2E gone crate");
+  await create.getByRole("button", { name: "Create folder" }).click();
+  const tile = page.locator("[data-card]").filter({ hasText: "E2E gone crate" });
+  await expect(tile).toBeVisible();
+
+  await tile.getByRole("button", { name: "More for E2E gone crate" }).click();
+  await page.getByRole("menuitem", { name: "Delete folder" }).click();
+  const confirm = page.getByRole("dialog", { name: "Delete E2E gone crate?" });
+  await expect(confirm).toBeVisible();
+
+  const other = await context.newPage();
+  await other.goto("/dashboard/collections");
+  const otherTile = other.locator("[data-card]").filter({ hasText: "E2E gone crate" });
+  await otherTile.getByRole("button", { name: "More for E2E gone crate" }).click();
+  await other.getByRole("menuitem", { name: "Delete folder" }).click();
+  await other.getByRole("dialog", { name: "Delete E2E gone crate?" }).getByRole("button", { name: "Delete folder" }).click();
+  await expect(otherTile).toHaveCount(0);
+  await other.close();
+
+  await confirm.getByRole("button", { name: "Delete folder" }).click();
+  await expect(confirm.getByRole("alert")).toHaveText("That folder isn't there any more.");
+  await expect(confirm).toBeVisible();
+});
+
 /** Projects (option 66): /dashboard/projects is a tab now; + Add offers Import, Project and Folder; a new project opens its page. */
 test("Projects is a tab, its + Add offers Import, Project and Folder, and a new project opens its page", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
