@@ -119,6 +119,15 @@ Any menu tap (desk, settings rail, ops): the tapped item lights up at once ─�
    └─ billing on (after beta) ─► /dashboard/checkout ─► paid (Paddle, to build)
 ```
 
+## Referrals (owners, switch `referrals`; off in the beta)
+```
+/dashboard/referrals (switch off or not an owner ─► /dashboard/settings)
+   ├─ Share invite ─► phone share sheet, else copies the link ─► "Invite link copied"
+   ├─ tap the link field ─► selects it for copying
+   └─ friend signs up with ?ref=<code> ─► their first track arrives ─► both get REFERRAL_BONUS (10) tracks ─► row shows "+10 tracks each"
+```
+Phones: "‹ Settings" goes back (laptops use the sidebar).
+
 ## Sender
 ```
 floortest.app/<handle> ─► Choose a track, or drop it on the page (or "Sending an EP? Send a folder" on Pro/Team)
