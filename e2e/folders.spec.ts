@@ -91,10 +91,18 @@ test("deleting a folder that's already gone keeps the dialog open and says why",
   const tile = page.locator("[data-card]").filter({ hasText: "E2E gone crate" });
   await expect(tile).toBeVisible();
 
+  // By keyboard (21 Nov): arrows move through the ··· menu, and the dialog starts on Cancel, not the destructive button.
   await tile.getByRole("button", { name: "More for E2E gone crate" }).click();
-  await page.getByRole("menuitem", { name: "Delete folder" }).click();
+  const menu = page.getByRole("menu", { name: "E2E gone crate" });
+  await expect(menu.getByRole("menuitem", { name: "Open" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitem", { name: "Rename" })).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  await expect(menu.getByRole("menuitem", { name: "Delete folder" })).toBeFocused();
+  await page.keyboard.press("Enter");
   const confirm = page.getByRole("dialog", { name: "Delete E2E gone crate?" });
-  await expect(confirm).toBeVisible();
+  await expect(confirm.getByRole("button", { name: "Cancel" })).toBeFocused();
 
   const other = await context.newPage();
   await other.goto("/dashboard/collections");
@@ -105,9 +113,13 @@ test("deleting a folder that's already gone keeps the dialog open and says why",
   await expect(otherTile).toHaveCount(0);
   await other.close();
 
-  await confirm.getByRole("button", { name: "Delete folder" }).click();
+  await page.keyboard.press("Shift+Tab");
+  await expect(confirm.getByRole("button", { name: "Delete folder" })).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(confirm.getByRole("alert")).toHaveText("That folder isn't there any more.");
   await expect(confirm).toBeVisible();
+  // Focus stays in the dialog, on the button just used, so Escape or Tab still work from here.
+  await expect(confirm.getByRole("button", { name: "Delete folder" })).toBeFocused();
 });
 
 /** Projects (option 66): /dashboard/projects is a tab now; + Add offers Import, Project and Folder; a new project opens its page. */
