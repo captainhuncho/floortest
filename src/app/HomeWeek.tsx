@@ -7,7 +7,7 @@
 import type { editable } from "@/components/Editable";
 import { cells, pairs, type Copy } from "@/lib/content-fields";
 import { LinkCard, LitOnView, ReviewCard, TickList } from "./HomeLive";
-import { TRACKS } from "./homeSample";
+import { coverSrc, TRACKS } from "./homeSample";
 
 /** The home page's wording (Site content) and its on-page editing helpers, from page.tsx. */
 export type HomeEd = { c: Copy<"home"> } & ReturnType<typeof editable<Copy<"home">>>;
@@ -33,7 +33,11 @@ function Day({ flip = false, words, children }: { flip?: boolean; words: React.R
   );
 }
 
-const Cover = ({ small = false }: { small?: boolean }) => <span aria-hidden className={`h1e-cover shrink-0 ${small ? "size-[38px] rounded-[9px]" : "size-12 rounded-[11px]"}`} />;
+/** A sample track's cover. The title sits beside it, so the picture says nothing to a screen reader. Below the fold: lazy. */
+const Cover = ({ slug }: { slug: string }) => (
+  // eslint-disable-next-line @next/next/no-img-element -- already a 152 px WebP; the optimizer has nothing to add
+  <img src={coverSrc(slug)} alt="" width={38} height={38} loading="lazy" decoding="async" draggable={false} className="h1e-cover size-[38px] shrink-0 rounded-[9px] object-cover" />
+);
 
 /** A list card's heading row, and one track row: cover, title, artist, BPM and length. `fresh` marks a new arrival. */
 const ListHead = ({ title, note }: { title: React.ReactNode; note: React.ReactNode }) => (
@@ -43,10 +47,10 @@ const ListHead = ({ title, note }: { title: React.ReactNode; note: React.ReactNo
   </div>
 );
 function TrackRow({ track, fresh = false }: { track: (typeof TRACKS)[number]; fresh?: boolean }) {
-  const [title, artist, bpm, length] = track;
+  const [title, artist, bpm, length, cover] = track;
   return (
     <div className="flex min-h-14 items-center gap-3 border-t border-line">
-      <Cover small />
+      <Cover slug={cover} />
       <span className="flex min-w-0 flex-1 flex-col">
         <b className="flex items-center gap-2 text-base">
           <span className="truncate">{title}</span>
@@ -129,8 +133,8 @@ export function Week({ c, E, panel, host }: HomeEd & { host: string }) {
             <TrackRow key={t[0]} track={t} />
           ))}
           {/* A picture of the desk's download, not a control: the real one is on the Prepare page. */}
-          <p className="h1e-fill mb-2 mt-2.5 flex min-h-[52px] items-center justify-center gap-2 rounded-full px-5 text-base font-semibold">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <p className="h1e-fill mb-2.5 mt-3 flex min-h-10 w-fit items-center gap-2 rounded-full px-4 text-[15px] font-semibold">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
               <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
             </svg>
             <E k="crate_button" />
