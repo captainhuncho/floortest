@@ -110,6 +110,7 @@ Feedback (every desk page, phones too: the speech-bubble icon in the top bar) �
    └─ Don't ask again · a second Not now ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
 ```
 Mobile menu: Floor · Collections · Queue · Prepare · More (a sheet: Send music, Contacts, Activity, How it works; from #594; the owner kept it on 17 Nov rather than option 47's menu without More, for now). Desktop sidebar: Floor · Collections · Review Queue · Prepare · Send music; at the foot, How it works then Settings. Contacts and Analytics (owner and A&R / Admin) are rows on Settings; Emails to senders is no longer linked from users' screens (option 47).
+Activity (More → Activity, or Settings): a filter (Your actions · Everything · Decisions · Sent to senders · Arrivals; the address keeps `?f=`) ─► the log by day ─► a track name opens it in the Queue · a day with more than 8 entries shows 8 and "Show N more from <day>" ─► the rest appear in place (no new load), focus on the first new one · nothing yet ─► the sentence for that filter and its one lime button (Start reviewing or Share your link). Option 60 A, owner 19 Nov.
 Any menu tap (desk, settings rail, ops): the tapped item lights up at once ─► the page's skeleton (loading.tsx) ─► the page. A thin lime line along the top only if nothing has arrived after 150ms.
 
 ## Plans

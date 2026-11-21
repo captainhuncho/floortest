@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CARD, Icon, type IconName } from "@/components/Kit";
+import { Icon, type IconName } from "@/components/Kit";
+import { DayFold } from "./DayFold";
 
 /** One line of the log: when, what happened (to which track), and who did it. */
 export type LogEntry = {
@@ -18,27 +19,59 @@ export type LogEntry = {
   quote?: string | null;
   /** The person (a teammate, "You", the sender, or "Automatic"). */
   who: string;
-  /** The icon in the entry's box, and a tint for the good news (a keep) and our own words (a reply). */
+  /** The icon in the entry's box; a keep's heart is the one thing tinted (lime). */
   icon?: IconName;
-  tone?: "up" | "acc";
+  tone?: "up";
 };
 
-/** An entry's icon box: green for a keep, lime for a reply, plain for the rest. */
+/** An entry's icon square: the card surface (raised inside the laptop card), the icon in the text colour; lime only for a keep. */
 function EntryIcon({ icon = "activity", tone }: { icon?: IconName; tone?: LogEntry["tone"] }) {
-  const tones = {
-    up: "border-transparent bg-[color-mix(in_oklab,#9be15d_14%,transparent)] text-[#6aa636]",
-    acc: "border-transparent bg-lime/12 text-lime",
-  };
   return (
-    <span aria-hidden className={`grid size-8 shrink-0 place-items-center rounded-[10px] border ${tone ? tones[tone] : "border-line bg-well text-bone"}`}>
+    <span aria-hidden className={`grid size-8 shrink-0 place-items-center rounded-[10px] bg-card lg:bg-ink-4 ${tone === "up" ? "text-lime" : "text-bone"}`}>
       <Icon name={icon} className="size-4" />
     </span>
   );
 }
 
+/** One line of the log: icon, what happened (to which track), who and the note under it, a quote if any, the time. */
+function Entry({ e, tz }: { e: LogEntry; tz: string }) {
+  return (
+    <div className="box-border flex min-h-14 items-start gap-3 py-2.5">
+      <EntryIcon icon={e.icon} tone={e.tone} />
+      <div className="min-w-0 flex-1">
+        <p className="break-words text-[15px] leading-[1.35] text-bone">
+          {e.what}
+          {e.object &&
+            (e.href ? (
+              <Link href={e.href} className="font-semibold underline-offset-4 hover:underline">
+                {" "}
+                {e.object}
+              </Link>
+            ) : (
+              <b className="font-semibold"> {e.object}</b>
+            ))}
+        </p>
+        <p className="mt-0.5 truncate text-[13px] text-mute">
+          {/* "by" is read out but not shown: the line under the action is always who did it first. */}
+          <span>
+            <span className="sr-only">by </span>
+            {e.who}
+          </span>
+          {e.note && <> · {e.note}</>}
+        </p>
+        {e.quote && <p className="mt-2 line-clamp-3 whitespace-pre-wrap rounded-xl border border-line bg-card px-3 py-2 text-[14px] leading-[1.45] text-bone lg:bg-ink-4">{e.quote}</p>}
+      </div>
+      <time dateTime={new Date(e.at).toISOString()} className="shrink-0 pt-0.5 text-[12px] text-faint tnum">
+        {clock(e.at, tz)}
+      </time>
+    </div>
+  );
+}
+
 /**
- * The desk's log: one card per day (the day and how many entries over its list), each entry an icon box, what happened
- * (to which track) with who did it and a note under it, and the time on the right. Same at every width.
+ * The desk's log, option 60 A (owner, 19 Nov): one list, a plain heading over each day (the day on the left, how many
+ * entries on the right, a hairline under), a hairline between rows, and a busy day folded after eight. On a laptop the
+ * whole log sits in one card.
  */
 export function SetLog({ entries, tz }: { entries: LogEntry[]; tz: string }) {
   const days: { key: string; label: string; rows: LogEntry[] }[] = [];
@@ -50,48 +83,16 @@ export function SetLog({ entries, tz }: { entries: LogEntry[]; tz: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2.5 lg:rounded-2xl lg:border lg:border-line lg:bg-card lg:px-4 lg:pt-1 lg:pb-2">
       {days.map((d) => (
-        <section key={d.key} aria-label={d.label} className={`${CARD} flex flex-col gap-0.5 p-3`}>
-          <div className="flex items-center justify-between gap-2 pb-1">
-            <h2 className="text-[12px] font-semibold text-bone">{d.label}</h2>
-            <span className="text-[11px] text-faint tnum">
+        <section key={d.key} aria-label={d.label}>
+          <div className="flex items-baseline justify-between gap-2 border-b border-line py-1.5">
+            <h2 className="text-[13px] font-semibold text-bone">{d.label}</h2>
+            <span className="text-[12px] text-faint tnum">
               {d.rows.length} {d.rows.length === 1 ? "entry" : "entries"}
             </span>
           </div>
-          <ol className="flex flex-col">
-            {d.rows.map((e) => (
-              <li key={e.key} className="flex min-h-11 items-start gap-2.5 border-t border-line py-2 first:border-t-0">
-                <EntryIcon icon={e.icon} tone={e.tone} />
-                <div className="min-w-0 flex-1 text-[12.5px] leading-[1.4]">
-                  <p className="break-words text-bone">
-                    {e.what}
-                    {e.object &&
-                      (e.href ? (
-                        <Link href={e.href} className="font-semibold underline-offset-4 hover:underline">
-                          {" "}
-                          {e.object}
-                        </Link>
-                      ) : (
-                        <b className="font-semibold"> {e.object}</b>
-                      ))}
-                  </p>
-                  <p className="truncate text-[11.5px] text-mute">
-                    {/* "by" is read out but not shown: the line under the action is always who did it first. */}
-                    <span>
-                      <span className="sr-only">by </span>
-                      {e.who}
-                    </span>
-                    {e.note && <> · {e.note}</>}
-                  </p>
-                  {e.quote && <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap rounded-[11px] border border-line bg-well px-2.5 py-1.5 text-[12px] leading-[1.45] text-bone">{e.quote}</p>}
-                </div>
-                <time dateTime={new Date(e.at).toISOString()} className="shrink-0 pt-0.5 text-[11px] text-faint tnum">
-                  {clock(e.at, tz)}
-                </time>
-              </li>
-            ))}
-          </ol>
+          <DayFold label={d.label} rows={d.rows.map((e) => <Entry key={e.key} e={e} tz={tz} />)} />
         </section>
       ))}
     </div>
