@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useClaim } from "./claimName";
-import { REVIEW_TRACKS, TRACKS } from "./homeSample";
+import { coverSrc, REVIEW_TRACKS, TRACKS } from "./homeSample";
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -155,12 +155,13 @@ export function ReviewCard({ hint, kept, unkept, next }: { hint: string; kept: s
   const [at, setAt] = useState(0);
   const [isKept, setIsKept] = useState(false);
   const [toast, setToast] = useState(hint);
-  const [title, artist, bpm, length] = REVIEW_TRACKS[at % REVIEW_TRACKS.length];
+  const [title, artist, bpm, length, cover] = REVIEW_TRACKS[at % REVIEW_TRACKS.length];
   return (
     <div>
       <div className="flex flex-col gap-3 rounded-[20px] border border-line bg-ink-3 p-3.5">
         <div className="flex items-center gap-3">
-          <span aria-hidden className="h1e-cover size-12 rounded-[11px]" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- already a 152 px WebP; the optimizer has nothing to add */}
+          <img src={coverSrc(cover)} alt="" width={48} height={48} loading="lazy" decoding="async" draggable={false} className="h1e-cover size-12 shrink-0 rounded-[11px] object-cover" />
           <span className="flex min-w-0 flex-1 flex-col">
             <b className="truncate text-base">{title}</b>
             <span className="truncate text-[13px] text-mute">{artist}</span>
@@ -209,7 +210,7 @@ export function TickList() {
   const rows = [TRACKS[0], TRACKS[2]];
   return (
     <>
-      {rows.map(([title, artist], i) => (
+      {rows.map(([title, artist, , , cover], i) => (
         <button
           key={title}
           type="button"
@@ -223,6 +224,8 @@ export function TickList() {
               <path d="M5 12l5 5 9-10" />
             </svg>
           </span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- already a 152 px WebP; the optimizer has nothing to add */}
+          <img src={coverSrc(cover)} alt="" width={38} height={38} loading="lazy" decoding="async" draggable={false} className="h1e-cover size-[38px] shrink-0 rounded-[9px] object-cover" />
           <span className="flex min-w-0 flex-col">
             <b className="truncate text-base">{title}</b>
             <span className="truncate text-[13px] text-mute">{artist}</span>
