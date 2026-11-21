@@ -276,8 +276,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       a.addEventListener("loadedmetadata", () => (a.currentTime = at), { once: true });
       if (resume) void a.play().catch(() => setPlaying(false));
     });
-    // The Android app's notification player sends the same buttons as the media keys.
-    const stopNative = onNowPlayingAction((act) => (act === "play" ? void a.play() : act === "pause" ? a.pause() : step(act === "next" ? 1 : -1)));
+    // The apps' lock screen / notification player sends the same buttons as the media keys, plus the scrubber.
+    const stopNative = onNowPlayingAction((act, position) => {
+      if (act === "play") void a.play().catch(() => setPlaying(false));
+      else if (act === "pause") a.pause();
+      else if (act === "seek") {
+        if (typeof position === "number" && Number.isFinite(position)) a.currentTime = Math.max(0, position);
+      } else step(act === "next" ? 1 : -1);
+    });
     return () => {
       stopNative();
       hideNowPlaying();
@@ -291,7 +297,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Media keys, headphone buttons, lock screen, Control Centre, Touch Bar (src/lib/media-session.ts).
   useMediaSession({
     audio: element,
-    meta: current ? { title: current.title, artist: current.artist } : null,
+    meta: current ? { title: current.title, artist: current.artist, cover: current.cover } : null,
     play: () => {
       if (listened.current.id) void audio.current?.play().catch(refused);
     },
@@ -299,11 +305,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     onPrev: () => step(-1),
   });
 
-  // Android app: keep the notification player in step (title, play/pause, where we are). Progress runs on from here.
+  // The apps: keep the lock screen / notification player in step (title, cover, play/pause, where we are). Progress
+  // runs on from here; a seek (here or on the lock screen) sends the new spot.
+  const [seekedAt, setSeekedAt] = useState(0);
+  useEffect(() => {
+    if (!element) return;
+    const onSeeked = () => setSeekedAt(Date.now());
+    element.addEventListener("seeked", onSeeked);
+    return () => element.removeEventListener("seeked", onSeeked);
+  }, [element]);
   useEffect(() => {
     if (!current) return;
-    showNowPlaying({ title: current.title, artist: current.artist, playing, position: audio.current?.currentTime ?? 0, duration: duration || current.duration || 0 });
-  }, [current, playing, duration]);
+    showNowPlaying({ title: current.title, artist: current.artist, cover: current.cover, playing, position: audio.current?.currentTime ?? 0, duration: duration || current.duration || 0 });
+  }, [current, playing, duration, seekedAt]);
 
   const play = useCallback(
     (t: PlayerTrack, q?: PlayerTrack[]) => {
